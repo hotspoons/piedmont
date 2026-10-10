@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "oxc"
+  ],
+  "rules": {},
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "shots",
+    "**/dist",
+    "**/vendor",
+    "packages/enginesim/wasm",
+    "**/public/basis",
+    "**/public/assets/draco",
+    "**/public/draco",
+    "ext",
+    "**/*.min.js",
+    "scratchpad"
+  ]
+}

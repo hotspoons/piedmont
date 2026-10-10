@@ -1,0 +1,151 @@
+image:
+  # ghcr, not the Harbor this was first proven on. Harbor is a work registry and this is a personal
+  # project — it has no business being a permanent dependency of this application's CI. It was the
+  # right place to get the build working (native arm64 runners, a mirrored CUDA base) and the wrong
+  # place to leave it.
+  #
+  # The GH200s can still pull THROUGH Harbor's existing ghcr.io pull-through cache without Harbor
+  # being part of the pipeline — that cache already fronts every ghcr image on the cluster. Set
+  # `repository` to harbor.tools.basedweights.com/ghcr.io/hotspoons/recon for that; the bytes are
+  # the same and CI never touches Harbor.
+  repository: ghcr.io/hotspoons/recon
+  # `latest` MOVES. With IfNotPresent a node that has ever pulled it keeps serving its cache, so a
+  # rollout restarts the old image and the fix you just published never lands — which cost two
+  # identical diagnoses before the digest gave it away. Pin `tag` to a commit sha for a reproducible
+  # deploy and IfNotPresent becomes correct again.
+  #
+  # sha-da4b51b is the build the CI of record made from da4b51b (2026-09-15), multi-arch, arm64
+  # side built with TORCH_CUDA_ARCH_LIST=9.0 — Hopper, which is every node on gh200-1. Its index
+  # digest is sha256:11e1dddf959edcff99bfbd404fc23157e9637ec78e87b8771ee6d7f069dcb741; `latest` and
+  # `main` point at the same index today. A new CI build lands as a new sha- tag; bump this to move.
+  tag: "sha-da4b51b"
+  pullPolicy: IfNotPresent
+
+# The Service and Deployment are called `recon`, full stop — not `recon-recon`. Scripts and docs
+# elsewhere in this repo address it as `svc/recon` (tools/assetgen/HANDOFF.md), and the previous
+# cluster ran it under that name.
+fullnameOverride: recon
+
+# One GPU, one replica. The service serialises reconstructions internally, so a second replica
+# only helps if you also have a second GPU — scale the node pool, not this number, unless you do.
+replicaCount: 1
+
+resources:
+  limits:
+    nvidia.com/gpu: 1
+    cpu: "16"
+    memory: 64Gi
+  requests:
+    nvidia.com/gpu: 1
+    cpu: "8"
+    memory: 32Gi
+
+nodeSelector:
+  nvidia.com/gpu.product: NVIDIA-GH200-480GB
+tolerations: []
+affinity: {}
+
+env:
+  ATTN_BACKEND: sdpa
+  # sparse attention does NOT accept "sdpa" and silently keeps its flash_attn default; xformers
+  # is the only backend it accepts that has a working aarch64 wheel.
+  SPARSE_ATTN_BACKEND: xformers
+  MODEL_REPO: microsoft/TRELLIS.2-4B
+  MODEL_DIR: /weights/model
+  MAX_VIEWS: "8"
+  # ENCODER_REPO / REMBG_REPO are intentionally unset. The service decides at startup:
+  #   hfToken set    -> the upstream gated repos (facebook/dinov3..., briaai/RMBG-2.0)
+  #   hfToken unset  -> ungated mirrors, plus a loud licence warning in the pod log
+  # Set either only to pin a specific repo; doing so overrides that decision.
+
+# Optional Hugging Face token. WITHOUT IT the service falls back to community mirrors of two gated
+# models — byte-identical weights, but it bypasses the access gate rather than the licence, and
+# complying with Meta's and BRIA's terms remains yours to do. The pod log says so on every start.
+#
+# To go through the front door:
+#   1. request access:  https://huggingface.co/facebook/dinov3-vitl16-pretrain-lvd1689m
+#                       https://huggingface.co/briaai/RMBG-2.0
+#   2. mint a read token at https://huggingface.co/settings/tokens
+#   3. kubectl create secret generic hf-token --from-literal=token=hf_xxx
+#   4. helm upgrade --install recon ./chart --set hfToken.secretName=hf-token
+hfToken:
+  secretName: ""
+  secretKey: token
+
+# Weights are ~16GB and the model is large; keep them on a PVC so a pod restart is seconds
+# rather than a re-download.
+weights:
+  enabled: true
+  size: 80Gi
+  storageClass: ceph-filesystem
+  accessMode: ReadWriteMany
+
+assets:
+  enabled: true
+  size: 50Gi
+  storageClass: ceph-filesystem
+  accessMode: ReadWriteMany
+
+service:
+  type: ClusterIP
+  port: 80
+
+# How the service is reached from outside the cluster. Exactly ONE of the two below should be on:
+# external-dns (--policy=sync) publishes the hostname of whichever object carries it, and two
+# objects claiming one name fight over the record.
+#
+# ON gh200-1 THE INGRESS IS THE ONE THAT IS ON, and this is a measured choice, not a style one.
+# The platform's `central-gateway` is a ClusterIP (10.100.23.26) with a single plain-HTTP listener:
+# an HTTPRoute there gets a DNS record nobody off-cluster can route to, which is exactly what the
+# previous cluster's recon hostname was (it resolved to a 10.x address and everyone port-forwarded).
+# ingress-nginx here has a MetalLB address on the same 172.16.10.0/24 the platform's public
+# hostnames resolve to, external-dns lists `--source=ingress`, and cert-manager's
+# `letsencrypt-issuer` solves DNS-01 through Cloudflare — so a private address gets a real
+# certificate. Result: an https URL that works from a laptop on the network, no port-forward.
+#
+# THE ROAD NOT TAKEN, for next time: the platform also has `pai-managed-ext-gateway` in the same
+# namespace, at 172.16.10.157 — the address every public platform hostname resolves to. Its Gateway
+# object shows only an `http-mock` listener, but the platform's own HTTPRoutes attach to it and the
+# operator handles TLS, so it is the intended external front door and a route there would keep
+# recon inside the platform's ingress story. It was passed over here on the strength of that
+# listener list alone, which was too quick. Moving means: parentRef `pai-managed-ext-gateway`,
+# turn the Ingress off, and first work out how a non-platform hostname gets its certificate.
+#
+# Anything running IN the cluster should skip both and use the Service: http://recon.default.svc.
+httpRoute:
+  enabled: false
+  parentRefs:
+    - name: central-gateway
+      namespace: patapsco-richard-siomporas-platform
+  hostnames:
+    - recon.richard-siomporas.basedweights.com
+  timeout: 600s
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    # cert-manager's ingress-shim mints `tls[].secretName` from this issuer. It is the PRODUCTION
+    # Let's Encrypt issuer; the platform's own routes use letsencrypt-staging and browsers warn on
+    # them. Production has a rate limit of 5 duplicate certificates a week, which a chart that is
+    # installed and uninstalled repeatedly can hit — the secret survives `helm uninstall` only if
+    # you do not delete it, so leave `recon-tls` alone between reinstalls.
+    cert-manager.io/cluster-issuer: letsencrypt-issuer
+    # A subject's views are a handful of PNGs; 64m is generous. The read timeout covers the poll
+    # endpoints only — jobs are async, so nothing holds a connection for a whole reconstruction.
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+  hosts:
+    - host: recon.richard-siomporas.basedweights.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts: [recon.richard-siomporas.basedweights.com]
+      secretName: recon-tls
+
+# Weight loading takes minutes; the startup probe is what stops the kubelet killing the pod
+# before the model is on the card.
+probes:
+  startupFailureThreshold: 60   # 60 x 15s = 15 minutes
+  startupPeriodSeconds: 15
