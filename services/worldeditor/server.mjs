@@ -52,6 +52,7 @@ import { Basemap } from './basemap.mjs'
 import { Geocoder } from './geocode.mjs'
 import { LAYERS, layersAt, tilesFor, variantOf, tileLevelOf } from './layers.mjs'
 import { K8s } from './k8s.mjs'
+import { jobBackend } from './docker.mjs'
 import { Runs } from './runs.mjs'
 import { Settings } from './settings.mjs'
 import { bboxOf, circleFor } from './geo.mjs'
@@ -201,7 +202,13 @@ const geocoder = new Geocoder(store, {
   url: settings.get('nominatim.url'),
   minIntervalMs: Number(env.PIEDMONT_EDITOR_NOMINATIM_INTERVAL ?? 1100),
 })
-const k8s = new K8s(env)
+/*
+ * WHERE JOBS GO: the Kubernetes API in a cluster, or — PIEDMONT_EDITOR_RUNNER=docker — the Docker Engine
+ * of the host this runs on (deploy/docker, docs/DOCKER.md). Same calls, same shapes, so
+ * `runs`, `training` and `models` below take either without knowing which. Named `k8s` still,
+ * because that is what every call site already calls it.
+ */
+const k8s = jobBackend(env, { K8s, data: DATA, dataClaim: env.PIEDMONT_EDITOR_CLAIM ?? 'piedmont-data', maxParallel: () => Number(settings.get('docker.maxParallel')) })
 // where flux, TRELLIS and qwen are TODAY: discovered through the cluster, never hard-coded
 // (models.mjs). Declared HERE and not beside the other services, because it takes `k8s` and a
 // const used above its own declaration throws on the first request rather than at startup.
@@ -595,6 +602,7 @@ async function api(req, res, seg, q) {
       overpass: { ...ours, using, fellBack: !!(using && using !== overpass.ours), upstreams: fallbacks },
       kubernetes: kube,
       runner: runs.runner,
+      jobs: k8s.describe(),
       assetsvc: assetsvcUrl() || null,
     })
   }
@@ -1547,7 +1555,8 @@ server.listen(PORT, HOST, () => {
   console.log(`  data      ${store.root}`)
   console.log(`  app       ${APP}`)
   console.log(`  overpass  ${overpass.urls[0] ?? '(none)'}`)
-  console.log(`  runner    ${runs.runner}${runs.runner === 'kubernetes' ? ` (${k8s.namespace}, ${runs.cfg.image}, pvc ${runs.cfg.claim})` : ` (${runs.cfg.python})`}`)
+  console.log(`  runner    ${runs.runner}${runs.runner === 'kubernetes' ? ` (${k8s.namespace}, ${runs.cfg.image}, pvc ${runs.cfg.claim})` : runs.runner === 'docker' ? ` (${k8s.socketPath}, network ${k8s.network}, ${runs.cfg.image}, ${k8s.describe().maxParallel} bake(s) at once)` : ` (${runs.cfg.python})`}`)
+  if (env.PIEDMONT_EDITOR_RUNNER === 'docker' && runs.runner !== 'docker') console.warn(`  PIEDMONT_EDITOR_RUNNER=docker, but there is no Docker socket at ${k8s.socketPath}: bakes will run as local subprocesses`)
   console.log(`  assetsvc  ${assetsvcUrl() || 'not configured'}  (${settings.source('assetsvc.url')})`)
   console.log(`  bucket    ${runs.cfg.bucket ? `${runs.cfg.bucket}/${runs.cfg.prefix}` : 'not configured'}`)
   if (adopted.length) console.log(`  adopted   ${adopted.length} run(s) that were live when this last stopped`)

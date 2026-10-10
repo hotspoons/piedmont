@@ -33,6 +33,7 @@ Everything here is about piedmont. The services' and pipelines' own pages sit be
 
 - [DEPLOY.md](DEPLOY.md) — Deploying a world to Cloudflare
 - [CLOUDFLARE.md](CLOUDFLARE.md) — Cloudflare: what the deploy needs from the account
+- [DOCKER.md](DOCKER.md) — The backend on Docker: one host, a DinD core, the Docker runner, the separate AI stack
 
 ## Plans
 

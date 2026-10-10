@@ -1,5 +1,5 @@
 # The checks every push and pull request must pass. The images are built by their own workflows
-# (bake-image, worldeditor-image, assetsvc-image, recon-image, blender-image).
+# (bake-image, worldeditor-image, assetsvc-image, recon-image, blender-image, core-image).
 #
 # ONE STEP PER CHECK, each keeping its output, so a red run says WHICH check and the last step can
 # put only the failures on the run's summary page (scripts/ci-failures.mjs). `shell: bash` is what

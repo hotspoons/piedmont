@@ -1,19 +1,44 @@
-# deploy/docker — the Docker / Docker-in-Docker stack (to be ported)
+# deploy/docker — the whole backend on one Docker host
 
-**Not here yet.** The compose stack — the world editor, the asset service, an Overpass instance and
-a bake runner on one host with `docker compose up`, plus a separate stack for the AI inference
-(flux, TRELLIS) reached by URL so it can be outsourced — is being built on the arcade's
-`agent/docker` branch. It lands here, ported into piedmont's names and layout, rather than in the
-arcade (docs/ORIGIN.md, "Branches still to port").
+The world editor, the asset service, an Overpass instance and the bake runner on one host with one
+`docker compose up`, plus a separate, optional stack for the AI inference (flux.2, TRELLIS.2)
+reached by URL so it can run elsewhere or be outsourced. The design, the volume layout, GPUs,
+upgrades, backups and the traps are in [docs/DOCKER.md](../../docs/DOCKER.md).
 
-Until then:
+> **Status:** built and statically validated (`docker compose config` on every file and profile,
+> hadolint, shellcheck, actionlint, the runner's node:test suite), **not yet run on a host** —
+> see [ACCEPTANCE.md](../../docs/ACCEPTANCE.md). The first run is the smoke test in DOCKER.md.
 
-- the images build with `docker build` inside the dev container (it has its own Docker daemon):
-  `docker build -f services/worldeditor/Dockerfile .`, `docker build bake`,
-  `docker build -f services/assetsvc/Dockerfile .`, `docker build services/recon`,
-  `docker build pipelines/blender`;
-- the cluster deployment is Helm: [deploy/README.md](../README.md).
+| File | What |
+|---|---|
+| [`docker-compose.yml`](docker-compose.yml) | the host: one privileged `core` container (`ghcr.io/hotspoons/piedmont-core`) and its volumes |
+| [`docker-compose.gpu.yml`](docker-compose.gpu.yml) | an override that hands the host's GPUs to the core |
+| [`.env.example`](.env.example) | every setting; copy to `.env` (gitignored) |
+| [`core/Dockerfile`](core/Dockerfile) | the core image: Ubuntu, Docker Engine, the NVIDIA Container Toolkit |
+| [`core/entrypoint.sh`](core/entrypoint.sh) | cgroups, the volume layout, dockerd, registry login, compose up, the watchdog |
+| [`core/stack.yml`](core/stack.yml) | the long-running services, on the core's own daemon (project and network `piedmont`) |
+| [`core/assetsvc-models.json`](core/assetsvc-models.json) | the asset service's model roster; the URLs come from `.env` |
+| [`ai/docker-compose.yml`](ai/docker-compose.yml) | OPTIONAL, separate: flux.2 and TRELLIS.2, one GPU each, behind a keyed gateway |
 
-When the stack arrives it follows the same rules as the charts: every image pulls with policy
-`always` (`pull_policy: always` in compose; `scripts/check-pull-policy.mjs` fails on anything else),
-the data directory is `$PIEDMONT_DATA`, and its smoke test bakes a small world end to end.
+The world editor runs its Jobs (bakes, shards, OSM imports, splat runs) as containers on the core's
+daemon through [`services/worldeditor/docker.mjs`](../../services/worldeditor/docker.mjs)
+(`PIEDMONT_EDITOR_RUNNER=docker`). The core image is published by
+[`.github/workflows/core-image.yml`](../../.github/workflows/core-image.yml).
+
+## Quick start
+
+```bash
+cd deploy/docker
+cp .env.example .env            # GHCR_USER/GHCR_TOKEN if the packages are private; PIEDMONT_HOST_DIR to move the data
+docker compose up -d            # pulls piedmont-core, which pulls and starts everything else
+docker compose logs -f core     # dockerd, the stack, every service's log
+open http://localhost:8780/world.html
+```
+
+From a checkout instead of the published core: `PIEDMONT_CORE_IMAGE=piedmont-core:local` in `.env`,
+then `docker compose up -d --build`. With GPUs:
+`docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d`.
+
+Everything that must survive a restart is under one host directory, `PIEDMONT_HOST_DIR` (default
+`./data` beside this file). The same rules as the charts apply: every image pulls with policy
+`always` (`pull_policy: always`; `scripts/check-pull-policy.mjs` fails on anything else).

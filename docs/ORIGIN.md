@@ -18,6 +18,7 @@ file or path.
 | Commit imported | **`34933bd3904a31e6e01d6ac969c473c7be2fff98`** (`main`, 2026-10-10) |
 | Ported on top | `94da86e` — the world editor's `writeAtomic` takes a unique temp name per write (`services/worldeditor/store.mjs`, `store-atomic.test.mjs`) |
 | | `4f45a7c` — every image pulls with policy `Always` (overpass and recon chart values, the OSM import Job, `runs.mjs`'s OSM import Job, `training.mjs`'s assert-code and gaussworks containers) |
+| | `agent/docker` at `9ca9fb0` — `b75199e` (the Docker runner, `deploy/docker`, the design doc) and `9ca9fb0` (data beside the compose file, AI ports on 127.0.0.1 behind the keyed gateway, the core image's workflow, `pull_policy: always` everywhere). Its `ed371b6` is a cherry-pick of `4f45a7c` and its `d1689be` is `94da86e`, both already above. Renames in [the Docker lane's names](#the-docker-lanes-names) |
 | History | not carried over: piedmont starts with one import commit (the files moved, contents unchanged), then the rename. `git log` in the arcade has the history of every file below. |
 
 The engine packages are not copied: they are still the arcade's, and piedmont links them at a
@@ -45,6 +46,8 @@ pinned ref ([ARCADE.md](ARCADE.md)).
 | `.apex-live.mjs` | `scripts/live.mjs` |
 | `deploy/gh200-1/*`, `deploy/README.md` | `deploy/gh200-1/*`, `deploy/README.md` |
 | `.github/workflows/<old>-image.yml` | `.github/workflows/bake-image.yml` |
+| `.github/workflows/apex-core-image.yml` (branch `agent/docker`) | `.github/workflows/core-image.yml` |
+| `deploy/docker/*`, `docs/<old>/DOCKER.md` (branch `agent/docker`) | `deploy/docker/*`, `docs/DOCKER.md` |
 | `.github/workflows/{worldeditor,assetsvc,recon,blender}-image.yml` | same names |
 | `.github/workflows/lint.yml` | `.github/workflows/ci.yml` (extended) |
 | `.devcontainer/*` | `.devcontainer/*` (extended; see below) |
@@ -73,6 +76,26 @@ diff, then the names in the next section (and run `node scripts/check-names.mjs`
 | images `ghcr.io/hotspoons/{<old>,worldeditor,assetsvc,recon,blender}` | `ghcr.io/hotspoons/piedmont-{bake,worldeditor,assetsvc,recon,blender}` |
 | internal proxy headers `x-<old>-*` | `x-piedmont-*` |
 | just recipes `<old>-view`, `-remote`, `-tunnel`, `-{sites,fetch,export,report}` | `dev`, `remote`, `tunnel`, `bake-{sites,fetch,export,report}` |
+
+### The Docker lane's names
+
+The `agent/docker` branch introduced its own project names under the arcade's `apex` prefix. In
+piedmont they follow the rest:
+
+| Branch `agent/docker` | Piedmont |
+|---|---|
+| env `APEX_*` (`APEX_HOST_DIR`, `APEX_ROOT`, `APEX_CORE_IMAGE`, `APEX_PROFILES`, `APEX_SERVICES`, `APEX_IMAGE_MODEL_URL`, `APEX_AI_DIR`, …) | `PIEDMONT_*` (`PIEDMONT_HOST_DIR`, `PIEDMONT_ROOT`, …) |
+| env `APEX_PORT`, `APEX_BIND` (the editor's port and address on the host) | `PIEDMONT_HOST_PORT`, `PIEDMONT_HOST_BIND` — not `PIEDMONT_PORT`, which is already the game's dev-server port and would be read from the shell by compose |
+| env `WORLDEDITOR_DOCKER_*`, `WORLDEDITOR_RUNNER`, `WORLDEDITOR_IMAGE` | `PIEDMONT_EDITOR_DOCKER_*`, `PIEDMONT_EDITOR_RUNNER`, `PIEDMONT_EDITOR_IMAGE` |
+| `/srv/apex`, `/run/apex`, `/opt/apex`, `/var/log/apex` | `/srv/piedmont`, `/run/piedmont`, `/opt/piedmont`, `/var/log/piedmont` |
+| compose projects `apex-host`, `apex`, `apex-ai`; network `apex`; volume `apex-docker` | `piedmont-host`, `piedmont`, `piedmont-ai`; `piedmont`; `piedmont-docker` |
+| image `ghcr.io/hotspoons/apex-core`, binary `/usr/local/bin/apex-core` | `ghcr.io/hotspoons/piedmont-core`, `/usr/local/bin/piedmont-core` |
+| label `apex.restart-on-unhealthy` | `piedmont.restart-on-unhealthy` |
+| default images `worldeditor`, `assetsvc`, `recon`, `<old>` | `piedmont-worldeditor`, `piedmont-assetsvc`, `piedmont-recon`, `piedmont-bake` |
+| the publish claim and Secret defaults `<old>-data`, `<old>-r2` | `piedmont-data`, `piedmont-r2` |
+
+The runner's own container labels, `worldeditor.docker/{managed,job,pod,stage}`, keep their names,
+as the editor's Job labels `worldeditor/{run,kind}` did in the split.
 
 **One name could not change here.** gaussworks writes each capture's envelope under its own word for
 a capture's band of road, which is `<old>.json`. The game reads that file, so its name is assembled
@@ -138,6 +161,11 @@ needed code to change:
 - **A bake bug found by the first local bake here**: `fetch_site` reused the name `sp` (the spine)
   for the flora summary line, so every single-road bake whose flora found canopy species died at the
   lidar step on `sp["segments"]`. Renamed to `mix`. The same code is in the arcade at 34933bd.
+- **The Docker runner's pull-policy test** (`services/worldeditor/docker.test.mjs`, "every create
+  pulls first") set a non-`Always` policy on its pinned Job in the arcade, to prove the runner pulls
+  anyway. `scripts/check-pull-policy.mjs` bans those values in every tracked file, tests included,
+  so the port leaves the policy unset — Kubernetes' default for a pinned tag or a digest, which
+  likewise would not pull an image already present — and the test still asserts both were pulled.
 - **New checks**: `scripts/check-names.mjs`, `scripts/check-pull-policy.mjs`,
   `scripts/check-links.mjs` (all in the `checks` vitest project and CI), and
   `scripts/boot-check.mjs` (the headless boot).

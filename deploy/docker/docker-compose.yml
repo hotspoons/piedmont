@@ -1,0 +1,68 @@
+# The piedmont backend on one host: world editor, asset service, Overpass, the bake runner.
+#
+#   cd deploy/docker
+#   cp .env.example .env             # optional: GHCR_* if images are private, PIEDMONT_HOST_DIR to move the data
+#   docker compose up -d             # pulls the published core, which pulls and starts everything else
+#   # or, from this checkout: PIEDMONT_CORE_IMAGE=piedmont-core:local in .env, then docker compose up -d --build
+#   open http://localhost:8780/world.html
+#
+# One privileged container (`core`) runs its own Docker daemon. On that daemon it runs the services
+# in core/stack.yml, and the world editor starts bake containers there too. Everything that must
+# outlive a restart is under ONE host directory, PIEDMONT_HOST_DIR: ./data beside this file unless set
+# (no sudo, and inside Docker Desktop's default file sharing). docs/DOCKER.md has the
+# design, the volume layout, GPUs, backups and upgrades.
+#
+# GPUs (for splat training, or anything else that asks for one):
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+# The AI models (flux.2 and TRELLIS.2) are NOT in this file; they are ai/docker-compose.yml, which
+# can run on another machine. Point PIEDMONT_IMAGE_MODEL_URL / PIEDMONT_MESH_MODEL_URL at them.
+
+name: piedmont-host
+
+services:
+  core:
+    # The published image (.github/workflows/core-image.yml), pulled on every `up` like every
+    # other image here. To run a core built from this checkout, give it a LOCAL name
+    # (PIEDMONT_CORE_IMAGE=piedmont-core:local) and `docker compose up -d --build`: a name no registry has is
+    # built instead of pulled, and stays built.
+    image: ${PIEDMONT_CORE_IMAGE:-ghcr.io/hotspoons/piedmont-core:latest}
+    pull_policy: always
+    build:
+      context: ../..
+      dockerfile: deploy/docker/core/Dockerfile
+      args:
+        WITH_NVIDIA: ${PIEDMONT_WITH_NVIDIA:-1}
+    # Docker-in-Docker needs it: its own cgroups, mounts, iptables and devices.
+    privileged: true
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # the shared directory's path INSIDE the core; inner containers bind it at the same path
+      PIEDMONT_ROOT: /srv/piedmont
+    ports:
+      - "${PIEDMONT_HOST_BIND:-0.0.0.0}:${PIEDMONT_HOST_PORT:-8780}:8780"
+      # the MinIO console, when the minio profile is on (PIEDMONT_PROFILES=minio)
+      - "127.0.0.1:${PIEDMONT_MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      # host side: ./data next to this file by default (relative paths resolve against this directory)
+      - ${PIEDMONT_HOST_DIR:-./data}:/srv/piedmont
+      - piedmont-docker:/var/lib/docker
+    # services get 60 s to stop inside, then the daemon itself
+    stop_grace_period: 2m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8780/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10m
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: "5"
+
+volumes:
+  # the inner daemon's image store: rebuildable (every image is pulled again), so not on PIEDMONT_HOST_DIR
+  piedmont-docker:

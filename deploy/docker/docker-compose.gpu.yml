@@ -1,0 +1,24 @@
+# GPUs for the core, and through it for every container its daemon runs.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# The host needs the NVIDIA driver and the NVIDIA Container Toolkit (`nvidia-ctk runtime configure
+# --runtime=docker` on the host, then restart Docker). The core carries the toolkit too, so its own
+# daemon can hand the GPUs on to a splat container as DeviceRequests. Which of them the editor may
+# hand out, one pod per id, is PIEDMONT_EDITOR_DOCKER_GPUS in .env (a count, or ids such as 0,1).
+#
+# To keep some GPUs for the AI stack (ai/docker-compose.yml) on the same machine, replace
+# `count: all` below with the ids the core may have, e.g. `device_ids: ["2", "3"]`; inside the core
+# they are then numbered from 0, which is what PIEDMONT_EDITOR_DOCKER_GPUS counts.
+services:
+  core:
+    environment:
+      # utility for nvidia-smi, compute for CUDA; `all` also brings graphics/video for anyone who wants them
+      NVIDIA_DRIVER_CAPABILITIES: all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

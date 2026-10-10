@@ -1,0 +1,275 @@
+# The long-running services, as the core container's own Docker daemon runs them.
+#
+# THIS FILE IS THE KUBERNETES RELEASES, ONE SERVICE EACH. The core (entrypoint.sh) runs
+# `docker compose -p piedmont -f stack.yml up -d` against the daemon INSIDE it; every name below is the
+# name the cluster's Service had, so `http://overpass/api/interpreter` and `http://assetsvc:8770`
+# resolve for the editor and for every bake container the editor starts on the same network.
+#
+#   cluster (gh200-1)                       here
+#   ─────────────────────────────────────   ──────────────────────────────────────────────────
+#   worldeditor  Deployment + PVC + Role     worldeditor  (PIEDMONT_EDITOR_RUNNER=docker, the daemon socket)
+#   assetsvc     Deployment + PVC            assetsvc
+#   overpass     Deployment + regions        overpass + overpass-regions  (Maryland, on by default)
+#   overpass-na  Deployment + regions        overpass-na + overpass-na-regions  (profile overpass-na)
+#   overpass-eu  Deployment                  overpass-eu  (profile overpass-eu)
+#   (R2, outside)                            minio + minio-setup  (profile minio, optional)
+#   bake / shard / osm-import / splat Jobs   containers the editor creates through docker.mjs
+#
+# Paths: everything persistent is under ${PIEDMONT_ROOT} (the host's shared volume, bound into the core
+# at the same path). A Kubernetes claim <name> is ${PIEDMONT_ROOT}/volumes/<name>; the bake's claim is
+# ${PIEDMONT_ROOT}/data. See docs/DOCKER.md, "The shared volume".
+#
+# Pulls: every service is `pull_policy: always`, as every image in the cluster is (Rich, 2026-10-10:
+# "Policy should be always, always"). Each `compose up` — every core start — pulls each image.
+#
+# Health: every service has a healthcheck. Docker restarts a service that EXITS (restart policy);
+# it does not restart one that is merely unhealthy, so the core's watchdog restarts containers
+# labelled `piedmont.restart-on-unhealthy=true` that stay unhealthy. Overpass is deliberately NOT
+# labelled: its first start is an import that runs for tens of minutes (hours for a continent) with
+# nothing listening, exactly as the chart has no liveness probe for the same reason.
+#
+# Variables come from the core's environment (deploy/docker/.env via the outer compose file).
+# Settings the editor and assetsvc read are passed through env files the core writes with ONLY the
+# variables that are set: the editor reads `Number(env.X ?? default)`, and an empty string there is
+# a zero (PIEDMONT_EDITOR_SHARD_ABOVE_M="" would turn sharding off), not "unset".
+
+name: piedmont
+
+networks:
+  piedmont:
+    name: piedmont
+
+x-overpass-env: &overpass-env
+  OVERPASS_MODE: init
+  OVERPASS_META: "no"
+  OVERPASS_USE_AREAS: "false"
+  OVERPASS_UPDATE_SLEEP: "86400"
+  OVERPASS_MAX_TIMEOUT: "600"
+  OVERPASS_FLUSH_SIZE: "4"
+  OVERPASS_COMPRESSION: "no"
+
+# the regions sidecar's delete filter on the instance's own diffs (services/overpass chart, regions on)
+x-regions-filter: &regions-filter /app/venv/bin/python /opt/regions/defer_deletes.py /db/diffs/changes.osc --self _primary --regions /db/regions
+
+x-overpass-health: &overpass-health
+  test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1/api/status || exit 1"]
+  interval: 60s
+  timeout: 10s
+  retries: 3
+  # the chart's readiness allows an hour; a continent takes a day. Unhealthy here only reports.
+  start_period: 2h
+
+services:
+  worldeditor:
+    image: ${PIEDMONT_EDITOR_IMAGE:-ghcr.io/hotspoons/piedmont-worldeditor:latest}
+    pull_policy: always
+    restart: unless-stopped
+    # the image's own user; 2375 is the group the core gives the daemon socket
+    user: "10001:10001"
+    group_add: ["2375"]
+    networks: [piedmont]
+    ports: ["8780:8780"]
+    labels:
+      app: worldeditor
+      piedmont.restart-on-unhealthy: "true"
+    env_file:
+      - ${PIEDMONT_RUN:-/run/piedmont}/worldeditor.env
+    environment:
+      PIEDMONT_EDITOR_RUNNER: docker
+      PIEDMONT_EDITOR_DATA: ${PIEDMONT_ROOT:-/srv/piedmont}/data
+      PIEDMONT_EDITOR_DOCKER_ROOT: ${PIEDMONT_ROOT:-/srv/piedmont}
+      PIEDMONT_EDITOR_DOCKER_NETWORK: piedmont
+      PIEDMONT_EDITOR_DOCKER_AUTH: /run/piedmont/docker-config.json
+      # the name every Job's data volume carries; the runner maps it to PIEDMONT_EDITOR_DATA
+      PIEDMONT_EDITOR_CLAIM: editor-data
+      # the Secret a bake's envFrom names; the core writes it from PUBLISH_S3_* (secrets/<name>.env)
+      PIEDMONT_EDITOR_S3_SECRET: ${PIEDMONT_EDITOR_S3_SECRET:-publish-s3}
+      PIEDMONT_EDITOR_ASSETSVC: http://assetsvc:8770
+    volumes:
+      # THE SAME PATH INSIDE AS IN THE CORE: the editor names bind sources to the daemon, and the
+      # daemon resolves them in the core's filesystem, so the two views of the volume must agree.
+      - ${PIEDMONT_ROOT:-/srv/piedmont}:${PIEDMONT_ROOT:-/srv/piedmont}
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PIEDMONT_RUN:-/run/piedmont}/docker-config.json:/run/piedmont/docker-config.json:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8780/api/health').then((r)=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    stop_grace_period: 40s
+
+  assetsvc:
+    image: ${ASSETSVC_IMAGE:-ghcr.io/hotspoons/piedmont-assetsvc:latest}
+    pull_policy: always
+    restart: unless-stopped
+    user: "10001:10001"
+    networks: [piedmont]
+    command: ["--models", "/config/models.json"]
+    labels:
+      app: assetsvc
+      piedmont.restart-on-unhealthy: "true"
+    env_file:
+      - ${PIEDMONT_RUN:-/run/piedmont}/assetsvc.env
+    environment:
+      ASSETSVC_DATA: /data
+      ASSETSVC_PORT: "8770"
+    volumes:
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/volumes/assetsvc-data:/data
+      - /opt/piedmont/assetsvc-models.json:/config/models.json:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8770/health').then((r)=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ---- Overpass: Maryland, the chart's default instance ------------------------------------------
+  overpass:
+    image: ${OVERPASS_IMAGE:-wiktorn/overpass-api:latest}
+    pull_policy: always
+    restart: unless-stopped
+    networks: [piedmont]
+    labels:
+      app: overpass
+    # the dispatcher's shared memory, shared with the regions sidecar (ipc: service:overpass)
+    ipc: shareable
+    shm_size: 2gb
+    environment:
+      <<: *overpass-env
+      OVERPASS_PLANET_URL: ${OVERPASS_PLANET_URL:-https://download.geofabrik.de/north-america/us/maryland-latest.osm.pbf}
+      OVERPASS_DIFF_URL: ${OVERPASS_DIFF_URL:-https://download.geofabrik.de/north-america/us/maryland-updates/}
+      OVERPASS_PLANET_PREPROCESS: mv /db/planet.osm.bz2 /db/planet.osm.pbf && osmium cat -o /db/planet.osm.bz2 /db/planet.osm.pbf && rm /db/planet.osm.pbf
+      OVERPASS_RULES_LOAD: "10"
+      OVERPASS_DIFF_PREPROCESS: *regions-filter
+    volumes:
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/volumes/overpass-db:/db
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/configmaps/overpass-regions:/opt/regions:ro
+    healthcheck: *overpass-health
+
+  overpass-regions:
+    image: ${OVERPASS_IMAGE:-wiktorn/overpass-api:latest}
+    pull_policy: always
+    restart: unless-stopped
+    networks: [piedmont]
+    labels:
+      app: overpass-regions
+    entrypoint: ["/bin/bash", "/opt/regions/regions-agent.sh"]
+    ipc: service:overpass
+    depends_on: [overpass]
+    environment:
+      OVERPASS_FLUSH_SIZE: "4"
+      OVERPASS_UPDATE_SLEEP: "86400"
+      PRIMARY_ID: ${OVERPASS_PRIMARY_ID:-us/maryland}
+      PRIMARY_POLY_URL: ${OVERPASS_PRIMARY_POLY:-https://download.geofabrik.de/north-america/us/maryland.poly}
+    volumes:
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/volumes/overpass-db:/db
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/configmaps/overpass-regions:/opt/regions:ro
+
+  # ---- Overpass: North America (profile overpass-na). ~2 TB and most of a day to import. -----------
+  overpass-na:
+    profiles: [overpass-na]
+    image: ${OVERPASS_IMAGE:-wiktorn/overpass-api:latest}
+    pull_policy: always
+    restart: unless-stopped
+    networks: [piedmont]
+    labels:
+      app: overpass-na
+    ipc: shareable
+    shm_size: 2gb
+    environment:
+      <<: *overpass-env
+      OVERPASS_PLANET_URL: https://download.geofabrik.de/north-america-latest.osm.pbf
+      OVERPASS_DIFF_URL: https://download.geofabrik.de/north-america-updates/
+      OVERPASS_PLANET_PREPROCESS: apt-get update -qq && apt-get install -y -qq lbzip2 && mv /db/planet.osm.bz2 /db/planet.osm.pbf && osmium cat -o - -f osm /db/planet.osm.pbf | lbzip2 -c -n 8 > /db/planet.osm.bz2 && rm -f /db/planet.osm.pbf
+      OVERPASS_RULES_LOAD: "0"
+      OVERPASS_DIFF_PREPROCESS: *regions-filter
+    volumes:
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/volumes/overpass-na-db:/db
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/configmaps/overpass-na-regions:/opt/regions:ro
+    healthcheck: *overpass-health
+
+  overpass-na-regions:
+    profiles: [overpass-na]
+    image: ${OVERPASS_IMAGE:-wiktorn/overpass-api:latest}
+    pull_policy: always
+    restart: unless-stopped
+    networks: [piedmont]
+    labels:
+      app: overpass-na-regions
+    entrypoint: ["/bin/bash", "/opt/regions/regions-agent.sh"]
+    ipc: service:overpass-na
+    depends_on: [overpass-na]
+    environment:
+      OVERPASS_FLUSH_SIZE: "4"
+      OVERPASS_UPDATE_SLEEP: "86400"
+      PRIMARY_ID: north-america
+      PRIMARY_POLY_URL: https://download.geofabrik.de/north-america.poly
+    volumes:
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/volumes/overpass-na-db:/db
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/configmaps/overpass-na-regions:/opt/regions:ro
+
+  # ---- Overpass: Europe (profile overpass-eu). ~4 TB, 33 h to import on gh200-1. No regions, as live.
+  overpass-eu:
+    profiles: [overpass-eu]
+    image: ${OVERPASS_IMAGE:-wiktorn/overpass-api:latest}
+    pull_policy: always
+    restart: unless-stopped
+    networks: [piedmont]
+    labels:
+      app: overpass-eu
+    shm_size: 2gb
+    environment:
+      <<: *overpass-env
+      OVERPASS_PLANET_URL: https://download.geofabrik.de/europe-latest.osm.pbf
+      OVERPASS_DIFF_URL: https://download.geofabrik.de/europe-updates/
+      OVERPASS_PLANET_PREPROCESS: apt-get update -qq && apt-get install -y -qq lbzip2 && mv /db/planet.osm.bz2 /db/planet.osm.pbf && osmium cat -o - -f osm /db/planet.osm.pbf | lbzip2 -c -n 8 > /db/planet.osm.bz2 && rm -f /db/planet.osm.pbf
+      OVERPASS_RULES_LOAD: "0"
+    volumes:
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/volumes/overpass-eu-db:/db
+    healthcheck: *overpass-health
+
+  # ---- an S3 store on the box (profile minio). Optional: nothing needs S3 to start. ----------------
+  # The cluster publishes to Cloudflare R2 and assetsvc syncs to a bucket only when one is set.
+  # Turn this on to have both go to a bucket on this host instead; point PIEDMONT_EDITOR_S3_ENDPOINT and
+  # ASSETSVC_S3_ENDPOINT at http://minio:9000 (see .env.example).
+  minio:
+    profiles: [minio]
+    image: ${MINIO_IMAGE:-minio/minio:latest}
+    pull_policy: always
+    restart: unless-stopped
+    networks: [piedmont]
+    labels:
+      app: minio
+      piedmont.restart-on-unhealthy: "true"
+    command: ["server", "/data", "--console-address", ":9001"]
+    ports: ["9001:9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-piedmont}
+      # minio refuses to start without one (8+ characters): the profile fails loudly, nothing else does
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
+    volumes:
+      - ${PIEDMONT_ROOT:-/srv/piedmont}/volumes/minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  minio-setup:
+    profiles: [minio]
+    image: ${MINIO_MC_IMAGE:-minio/mc:latest}
+    pull_policy: always
+    networks: [piedmont]
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-piedmont}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
+      BUCKETS: ${MINIO_BUCKETS:-worlds assets}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" && for b in $$BUCKETS; do mc mb --ignore-existing "local/$$b"; done

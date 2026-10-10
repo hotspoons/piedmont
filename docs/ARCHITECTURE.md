@@ -53,6 +53,7 @@ layers, `plan`/`shard`/`finalize` a sharded bake of a large world ([PLAN-SHARDED
 | asset service | 8770 | [services/assetsvc](../services/assetsvc/README.md) | `piedmont-assetsvc` |
 | Overpass (our own OSM API) | 80 | [services/overpass](../services/overpass/README.md), [OVERPASS-PLANET.md](OVERPASS-PLANET.md) | upstream `wiktorn/overpass-api` |
 | recon (TRELLIS.2, GPU) | 8000 | [services/recon](../services/recon/README.md) | `piedmont-recon` |
+| the Docker install's core (DinD; runs the rows above on one host) | 8780 | [deploy/docker](../deploy/docker/README.md), [DOCKER.md](DOCKER.md) | `piedmont-core` |
 
 - **The world editor** (`services/worldeditor`, Node, no framework) owns the worlds, levels, runs and
   the data volume. It runs bakes as Kubernetes Jobs (or local processes), OSM region imports into an
@@ -92,7 +93,9 @@ in `arcade.json` or from `ext/siomporas-arcade` ([ARCADE.md](ARCADE.md)).
 Helm charts in `deploy/helm/`, per-cluster values in `deploy/<cluster>/` with the namespace as a
 value, applied by `just deploy <cluster>` ([deploy/README.md](../deploy/README.md)). Every image
 pulls with policy `Always`, enforced by `scripts/check-pull-policy.mjs`. The Docker/DinD compose
-stack is [deploy/docker](../deploy/docker/README.md).
+stack is [deploy/docker](../deploy/docker/README.md) (design: [DOCKER.md](DOCKER.md)): one privileged
+`piedmont-core` container runs its own Docker daemon, the services on it, and the world editor's
+Jobs as containers through `services/worldeditor/docker.mjs` (`PIEDMONT_EDITOR_RUNNER=docker`).
 
 ## Checks
 

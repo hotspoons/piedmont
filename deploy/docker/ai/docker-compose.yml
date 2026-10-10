@@ -1,0 +1,149 @@
+# The AI services, SEPARATE from the main stack, so they can run on another machine — or not at all.
+#
+# Rich, 2026-10-10: "For the AI services (trellis and flux2) make those separate from the main docker
+# setup so we can outsource those if people don't have multiple GPUs."
+#
+#   cd deploy/docker/ai
+#   cp .env.example .env          # HF_TOKEN for FLUX.2-dev (a gated model), which GPU each model gets
+#   docker compose up -d          # flux on 127.0.0.1:18090, trellis on 127.0.0.1:8500 — this host only
+#   docker compose --profile gateway up -d   # + :8443 on all interfaces, a bearer key in front of both
+#
+# THE MAIN STACK REACHES THEM THROUGH THE GATEWAY. The direct ports have no authentication and are
+# bound to 127.0.0.1, which the main stack's core cannot reach even on this same host (inside the
+# core, localhost is the core). So set AI_API_KEY here, start the gateway profile, and in the MAIN
+# stack's deploy/docker/.env:
+#   PIEDMONT_IMAGE_MODEL_URL=http://<this host>:8443/flux
+#   PIEDMONT_MESH_MODEL_URL=http://<this host>:8443/trellis
+#   PIEDMONT_IMAGE_MODEL_KEY=<AI_API_KEY>   PIEDMONT_MESH_MODEL_KEY=<AI_API_KEY>
+# AI_BIND=0.0.0.0 opens the direct, unauthenticated ports instead — a trusted network only.
+#
+# THE SAME SERVERS THE CLUSTER RUNS, with the same APIs, so the main stack cannot tell:
+#   flux     vllm/vllm-omni:v0.28.0 serving flux.2-dev — the image behind InferenceDeployment
+#            `high-brine` on gh200-1. OpenAI images API: /v1/models, /v1/images/generations,
+#            /v1/images/edits.
+#   trellis  services/recon (ghcr.io/hotspoons/piedmont-recon), TRELLIS.2-4B — the cluster's `recon`.
+#            POST /reconstruct, GET /jobs/<id>, GET /jobs/<id>/asset, /readyz.
+# Anything else that speaks those APIs can stand in (docs/DOCKER.md, "The AI services").
+#
+# ONE GPU PER MODEL is the common case, and each is pinned with device_ids so the two never share.
+# FLUX.2-dev in bf16 needs an 80 GB-class card (it ran on a GH200 480 GB); on a smaller card use a
+# smaller model (FLUX_ARGS) or outsource it.
+
+name: piedmont-ai
+
+services:
+  flux:
+    image: ${FLUX_IMAGE:-vllm/vllm-omni:v0.28.0}
+    pull_policy: always
+    restart: unless-stopped
+    entrypoint: ["vllm", "serve"]
+    # the served model NAME must be flux.2-dev: assetsvc asks for it by that id
+    command: ${FLUX_ARGS:-black-forest-labs/FLUX.2-dev --omni --host 0.0.0.0 --port 8000 --served-model-name flux.2-dev}
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_HOME: /models
+    volumes:
+      - ${PIEDMONT_AI_DIR:-./data}/flux:/models
+    ports:
+      - "${AI_BIND:-127.0.0.1}:${FLUX_PORT:-18090}:8000"
+    shm_size: 16gb
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FLUX_GPU:-0}"]
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/models', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # the first start downloads ~64 GB of weights
+      start_period: 60m
+
+  trellis:
+    image: ${TRELLIS_IMAGE:-ghcr.io/hotspoons/piedmont-recon:latest}
+    # Pulled on every start, like everything else. If the package cannot be pulled, build it from the
+    # repo (an hour or more: it compiles TRELLIS.2's CUDA extensions) under a LOCAL name, so the next
+    # start does not try to pull it: TRELLIS_IMAGE=recon:local, then
+    # `docker compose build trellis && docker compose up -d`. Set TRELLIS_CUDA_ARCH to your card.
+    build:
+      context: ../../../services/recon
+      args:
+        TORCH_CUDA_ARCH_LIST: ${TRELLIS_CUDA_ARCH:-8.0;8.6;8.9;9.0}
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      ATTN_BACKEND: sdpa
+      SPARSE_ATTN_BACKEND: xformers
+      MODEL_REPO: ${TRELLIS_MODEL_REPO:-microsoft/TRELLIS.2-4B}
+      MODEL_DIR: /weights/model
+      MAX_VIEWS: "8"
+      HF_HOME: /weights
+      ASSET_DIR: /assets
+      # optional: without it the service uses ungated mirrors of two gated helper models and says so
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - ${PIEDMONT_AI_DIR:-./data}/trellis/weights:/weights
+      - ${PIEDMONT_AI_DIR:-./data}/trellis/assets:/assets
+    ports:
+      - "${AI_BIND:-127.0.0.1}:${TRELLIS_PORT:-8500}:8000"
+    shm_size: 16gb
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${TRELLIS_GPU:-1}"]
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30m
+
+  # One port, a bearer key, both models behind it — how the main stack reaches them, from this host
+  # or another. Listens on all interfaces by default (GATEWAY_BIND), because the key is the gate.
+  # Plain HTTP: put TLS in front (a tunnel, Caddy, your ingress) before it crosses an untrusted network.
+  gateway:
+    profiles: [gateway]
+    image: ${GATEWAY_IMAGE:-nginx:1.27-alpine}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on: [flux, trellis]
+    environment:
+      AI_API_KEY: ${AI_API_KEY:-}
+    ports:
+      - "${GATEWAY_BIND:-0.0.0.0}:${GATEWAY_PORT:-8443}:8443"
+    configs:
+      - source: gateway
+        target: /etc/nginx/templates/default.conf.template
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - '[ -n "$$AI_API_KEY" ] || { echo "AI_API_KEY is empty: the gateway will not start without a key"; exit 1; }; exec /docker-entrypoint.sh nginx -g "daemon off;"'
+
+configs:
+  gateway:
+    content: |
+      # flux at /flux/…, trellis at /trellis/…; every request must carry Authorization: Bearer <AI_API_KEY>
+      map $$http_authorization $$piedmont_authorized {
+        default 0;
+        "Bearer ${AI_API_KEY:-}" 1;
+      }
+      server {
+        listen 8443;
+        client_max_body_size 256m;
+        proxy_read_timeout 1800s;
+        proxy_send_timeout 1800s;
+        if ($$piedmont_authorized = 0) { return 401; }
+        location /flux/ {
+          proxy_pass http://flux:8000/;
+          proxy_set_header Authorization "";
+        }
+        location /trellis/ {
+          proxy_pass http://trellis:8000/;
+          proxy_set_header Authorization "";
+        }
+      }

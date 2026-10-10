@@ -1,0 +1,37 @@
+{
+  "$comment": [
+    "assetsvc's model roster for the Docker install. The cluster's roster (deploy/helm/assetsvc",
+    "values.yaml) names in-cluster Services; here there are none, so every url is EMPTY and the",
+    "real one arrives from the environment, which the core writes from deploy/docker/.env:",
+    "",
+    "  PIEDMONT_IMAGE_MODEL_URL  -> ASSETSVC_URL_FLUX2_DEV   an OpenAI-images server (flux.2-dev)",
+    "  PIEDMONT_MESH_MODEL_URL   -> ASSETSVC_URL_TRELLIS2    a recon-service API (TRELLIS.2)",
+    "  PIEDMONT_IMAGE_MODEL_KEY  -> FLUX_API_KEY             sent as Authorization: Bearer, if set",
+    "  PIEDMONT_MESH_MODEL_KEY   -> TRELLIS_API_KEY          sent as Authorization: Bearer, if set",
+    "",
+    "Unset, the model reports `no url configured` and generation is off; nothing else is affected.",
+    "The optional AI stack (deploy/docker/ai) serves both; any host speaking the same API will do.",
+    "See docs/DOCKER.md, 'The AI services'."
+  ],
+  "defaults": {
+    "image": "flux2-dev",
+    "mesh": "trellis2"
+  },
+  "models": {
+    "flux2-dev": {
+      "kind": "image",
+      "model": "flux.2-dev",
+      "url": "",
+      "field": "image",
+      "timeoutMs": 300000,
+      "tokenEnv": "FLUX_API_KEY"
+    },
+    "trellis2": {
+      "kind": "mesh",
+      "url": "",
+      "pollMs": 3000,
+      "timeoutMs": 1800000,
+      "tokenEnv": "TRELLIS_API_KEY"
+    }
+  }
+}

@@ -215,7 +215,7 @@ export interface Config {
 export interface SettingRow {
   key: string
   group: string
-  kind: 'url' | 'string' | 'enum' | 'json' | 'bool'
+  kind: 'url' | 'string' | 'enum' | 'json' | 'bool' | 'int'
   label: string
   note: string | null
   options: string[] | null

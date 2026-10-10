@@ -95,8 +95,19 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
       against the configured AI endpoints; start a splat training run where a GPU is available.**
       *Waits on the deployment.*
 - [ ] **The Docker/DinD compose stack comes up on a host with one `docker compose up` and bakes a
-      small world.** *Blocked:* the stack is on the arcade's `agent/docker` branch, to be ported
-      ([deploy/docker](../deploy/docker/README.md)).
+      small world.** *Built and statically validated, awaiting a host run.* Ported from the arcade's
+      `agent/docker` ([ORIGIN.md](ORIGIN.md)) into [deploy/docker](../deploy/docker/README.md),
+      `services/worldeditor/docker.mjs` and [DOCKER.md](DOCKER.md); on 2026-10-10, with docker
+      28.5.1 and compose v2.40.0 static binaries and no daemon: `docker compose config -q` passed on
+      `docker-compose.yml`, `+ docker-compose.gpu.yml`, `core/stack.yml` with no profile, each of
+      `overpass-na`, `overpass-eu`, `minio` and all three, and `ai/docker-compose.yml` with and
+      without the `gateway` profile; `hadolint deploy/docker/core/Dockerfile`,
+      `shellcheck deploy/docker/core/entrypoint.sh` and `actionlint .github/workflows/core-image.yml`
+      reported nothing; the runner's suite (`docker.test.mjs`, 18 tests against a fake Engine on a
+      unix socket) passes in `npx vitest run`.
+      Prove: on a host with Docker, the smoke test in [DOCKER.md](DOCKER.md#bring-it-up-and-smoke-test-a-tiny-bake)
+      (`docker compose up -d`, `/api/ready` says `runner: docker`, a 600 m world bakes single and
+      sharded). The core image itself is first published by `core-image.yml` on the first push.
 
 ## Docs
 

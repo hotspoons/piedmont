@@ -17,6 +17,11 @@
 // TWO RUNNERS, ONE INTERFACE. In the cluster a run is a Job built to match `deploy/helm/bake`
 // exactly. On a laptop it is a subprocess. Same record, same log file, same endpoints — which is
 // what makes it possible to prove the thing works without booking a GH200.
+//
+// AND THE JOB RUNNER HAS TWO BACKENDS. `this.k8s` is the Kubernetes API (k8s.mjs) or the Docker
+// Engine answering the same calls in the same shapes (docker.mjs, PIEDMONT_EDITOR_RUNNER=docker). The
+// Job specs below are built once and go to whichever it is; the run records say which
+// (`runner: 'kubernetes' | 'docker'`), and nothing here branches on it except to name it.
 
 import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
@@ -75,7 +80,12 @@ export class Runs {
 
   get runner() {
     if (this.cfg.force === 'local') return 'local'
-    return this.k8s.available ? 'kubernetes' : 'local'
+    return this.k8s.available ? (this.k8s.kind ?? 'kubernetes') : 'local'
+  }
+
+  /** A runner that runs Jobs: the cluster, or the Docker Engine standing in for it. */
+  get #jobs() {
+    return this.runner !== 'local'
   }
 
   /* ---- starting ----------------------------------------------------------------------------- */
@@ -214,8 +224,8 @@ export class Runs {
    * not already have: it creates a Job, and reads the instance's pod to learn its node.
    */
   async osmImport({ upstream, region }) {
-    if (this.runner !== 'kubernetes') {
-      throw Object.assign(new Error('an import writes into an Overpass instance in the cluster, and this editor is not running in one'), { status: 409 })
+    if (!this.#jobs) {
+      throw Object.assign(new Error('an import writes into an Overpass instance in the cluster (or on the Docker host, PIEDMONT_EDITOR_RUNNER=docker), and this editor is not running in one'), { status: 409 })
     }
     const pods = await this.k8s.podsByLabel(`app=${upstream}`).catch(() => [])
     const pod = pods.find((p) => p.status?.phase === 'Running' && p.spec?.nodeName)
@@ -232,7 +242,7 @@ export class Runs {
       slug,
       label: `add ${p.name ?? p.id} to ${upstream}`,
       args: [],
-      runner: 'kubernetes',
+      runner: this.runner,
       state: 'starting',
       started: now(),
       finished: null,
@@ -244,7 +254,7 @@ export class Runs {
       osm: { upstream, region: p.id, name: p.name ?? p.id, pbf: p.urls?.pbf ?? null, updates: p.urls?.updates ?? null, node: pod.spec.nodeName },
     }
     await this.store.writeAtomic(this.store.runFile(id), Buffer.from(JSON.stringify(run, null, 1)))
-    await this.store.writeAtomic(this.store.logFile(id), Buffer.from(`=== ${run.label} (kubernetes) ${run.started}\n`))
+    await this.store.writeAtomic(this.store.logFile(id), Buffer.from(`=== ${run.label} (${run.runner}) ${run.started}\n`))
     const spec = osmImportJob({
       name: `osm-import-${short(upstream)}-${short(String(p.id).replace(/\//g, '-'))}-${Date.now().toString(36)}`.slice(0, 60).replace(/-+$/, ''),
       runId: id,
@@ -333,8 +343,8 @@ export class Runs {
     if (kind === 'bake') run.overpass = await this.#overpassFor(slug, id)
     // The world list the bake will read has to be on the volume BEFORE the Job starts.
     await this.store.materialise()
-    if (this.runner === 'kubernetes' && sharded) await this.#startPhase(run)
-    else if (this.runner === 'kubernetes') await this.#startJob(run)
+    if (this.#jobs && sharded) await this.#startPhase(run)
+    else if (this.#jobs) await this.#startJob(run)
     else await this.#startLocal(run)
     return run
   }
@@ -907,7 +917,12 @@ export class Runs {
     for (const run of await this.store.listRuns(200)) {
       if (run.state === 'done' || run.state === 'failed') continue
       const names = run.jobs?.length ? run.jobs : run.job ? [run.job] : []
-      if (run.runner === 'kubernetes' && names.length && this.k8s.available) {
+      if (run.runner !== 'local' && run.runner !== this.runner && names.length) {
+        // started by the other backend: this one cannot see its Jobs, and must not call them gone
+        await this.#finish(run, 'failed', -1, `started on ${run.runner}; this editor now runs ${this.runner} and cannot follow it`)
+        continue
+      }
+      if (run.runner !== 'local' && names.length && this.k8s.available) {
         const jobs = await Promise.all(names.map((n) => this.k8s.getJob(n).catch(() => null)))
         if (jobs.every((j) => !j)) {
           await this.#finish(run, 'failed', -1, 'the Job is gone — the pod restarted and it had already been cleaned up')

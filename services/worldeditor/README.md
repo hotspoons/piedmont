@@ -33,6 +33,7 @@ node services/worldeditor/probe.mjs --api http://localhost:8780 --ui http://loca
 | `geo.mjs` | lon/lat only. Web Mercator, and the smallest circle containing a polygon |
 | `runs.mjs` | a bake or a publish, as a Job or a subprocess, and its log |
 | `k8s.mjs` | the two Kubernetes calls this makes, by hand |
+| `docker.mjs` | the Docker runner: the same Job calls answered by a Docker Engine on one host ([docs/DOCKER.md](../../docs/DOCKER.md)) |
 | `probe.mjs` | every claim below, and a negative for every check |
 
 It does **not** rebuild the asset pipeline (`services/assetsvc` owns that and is proxied), the bake
@@ -252,7 +253,7 @@ Environment only, so the chart and a laptop run the same code.
 | `PIEDMONT_EDITOR_OVERPASS_URL` | comma list, ours first; the public mirrors are appended. A REGIONAL instance must declare what it holds: `https://host/api/interpreter#south/west/north/east` (slashes, because the list itself is comma-separated) |
 | `PIEDMONT_EDITOR_OVERPASS_TIMEOUT` `_DEADLINE` `_DOWN_FOR` | per attempt (120 s), for the whole call (240 s), and how long a failed upstream is skipped (60 s) |
 | `PIEDMONT_EDITOR_ASSETSVC` | the assetsvc base URL, e.g. `http://assetsvc.default.svc` |
-| `PIEDMONT_EDITOR_RUNNER` | force `local`; otherwise Kubernetes when a service-account token is mounted |
+| `PIEDMONT_EDITOR_RUNNER` | force `local`, or `docker` for the Docker runner (`PIEDMONT_EDITOR_DOCKER_*`, [docs/DOCKER.md](../../docs/DOCKER.md)); otherwise Kubernetes when a service-account token is mounted |
 | `PIEDMONT_EDITOR_BAKE_IMAGE` `_CLAIM` `_BAKE_RESOURCES` | what the Job runs, on which PVC, with what |
 | `PIEDMONT_EDITOR_NAMESPACE` | default: the pod's own |
 | `PIEDMONT_EDITOR_S3_BUCKET` `_ENDPOINT` `_REGION` `_PREFIX` `_S3_SECRET` | the publish target |

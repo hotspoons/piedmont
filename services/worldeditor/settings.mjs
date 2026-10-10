@@ -30,7 +30,7 @@ import path from 'node:path'
  * Every setting, with the variable that feeds it and what it is for.
  *
  * `kind` decides the validation and the control: `url` must parse, `enum` must be one of
- * `options`, `json` must parse, `bool` is "true"/"false". Nothing here is free-form except where
+ * `options`, `json` must parse, `bool` is "true"/"false", `int` is a positive whole number. Nothing here is free-form except where
  * the thing really is free-form.
  */
 export const SCHEMA = [
@@ -109,6 +109,18 @@ export const SCHEMA = [
     note: 'Empty means discovered from the nodes (nvidia.com/gpu on gh200-1).',
   },
 
+  /* ---- the Docker runner (PIEDMONT_EDITOR_RUNNER=docker; docs/DOCKER.md) ----
+   * One host has no scheduler to queue a bake until a node is free, so the runner does it: a bake
+   * pod waits until fewer than this many are running. A shard peaks near 139 GiB on dc-metro, so the
+   * right number is the host's memory over that, and 1 is the safe default. Read at every start, so
+   * a change applies to the next pod without a restart. Ignored on Kubernetes.
+   */
+  {
+    key: 'docker.maxParallel', group: 'docker', kind: 'int', env: 'PIEDMONT_EDITOR_DOCKER_MAX_PARALLEL', def: '1',
+    label: 'Bake containers at once',
+    note: 'Docker runner only. Shards past this wait (Pending) until one finishes. Size it to memory: a large shard peaks well over 100 GiB.',
+  },
+
   /* ---- blender, for the rigging pipeline ---- */
   {
     key: 'blender.bin', group: 'blender', kind: 'string', env: 'BLENDER_BIN', def: 'blender',
@@ -137,6 +149,7 @@ export function invalid(spec, value) {
   }
   if (spec.kind === 'enum' && !spec.options.includes(v)) return `${spec.label} must be one of ${spec.options.join(', ')}`
   if (spec.kind === 'bool' && !/^(true|false)$/.test(v)) return `${spec.label} is true or false`
+  if (spec.kind === 'int' && !/^[1-9][0-9]*$/.test(v)) return `${spec.label} is a whole number, 1 or more`
   if (spec.kind === 'json') {
     try {
       const parsed = JSON.parse(v)
@@ -188,6 +201,7 @@ export class Settings {
     const raw = this.get(key)
     if (spec.kind === 'bool') return raw === 'true'
     if (spec.kind === 'json') return raw ? JSON.parse(raw) : null
+    if (spec.kind === 'int') return Number(raw)
     return raw
   }
 

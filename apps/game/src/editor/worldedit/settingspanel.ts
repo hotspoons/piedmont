@@ -29,6 +29,7 @@ const GROUP: Record<string, string> = {
   bake: 'The bake',
   splat: 'Splat training',
   blender: 'Blender (rigging)',
+  docker: 'Docker runner (one-host install)',
   image: 'Image generator',
   mesh: 'Mesh reconstructor (TRELLIS)',
 }

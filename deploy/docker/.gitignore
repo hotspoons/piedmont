@@ -1,0 +1,6 @@
+# credentials and host paths live in these; only the .example files are checked in
+.env
+ai/.env
+# the default data directories (PIEDMONT_HOST_DIR, PIEDMONT_AI_DIR): worlds, databases, weights
+data/
+ai/data/
