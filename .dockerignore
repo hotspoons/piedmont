@@ -1,0 +1,16 @@
+# The worldeditor image builds from the repository root. Keep the context to source: the data
+# directory alone is tens of GB, and vendor/ is a symlink the image replaces with a pinned copy.
+.git
+node_modules
+**/node_modules
+data
+.cache
+vendor
+ext
+**/dist
+shots
+bake/.venv
+pipelines/sounds/.venv
+pipelines/sounds/.cache
+**/__pycache__
+.mcp.json

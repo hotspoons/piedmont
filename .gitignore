@@ -19,73 +19,66 @@ npm-debug.log*
 # Claude Code local state (worktrees, session scratch)
 .claude/
 
+# the arcade packages: vendor/arcade is a LINK made by `npm run setup` (scripts/setup.mjs) to
+# ext/siomporas-arcade or to the pinned ref fetched into .cache/arcade/<ref>. Never committed.
+vendor/
+.cache/
+
+# ext/ holds other repositories checked out beside this one (siomporas-arcade, gaussworks); only
+# its README is ours
+ext/*
+!ext/README.md
+
 # ad-hoc dev probe scripts (throwaway; kept local, never committed)
 probes/*
 !probes/*.mjs
 !probes/*.py
 _*.mjs
 shots/
-shots/
 .tunnel-url*
 apps/*/test/_*.test.ts
 
-ext/*
+# $PIEDMONT_DATA: the bake's downloaded lidar/imagery/OSM cache, the baked sites, levels and splats
+# (tens of GB, rebuildable). Both forms, because the trailing-slash rule matches directories only and
+# a symlink to a shared copy slips past it.
+/data/
+/data
+# the bake's venv and its ktx encoder
+bake/.venv/
+bake/.venv
+bake/.bin
 
-# arcade: mirrored from each game's public/ by scripts/sync-arcade-assets.mjs
-apps/arcade/public/assets/
-apps/arcade/public/fonts/
-
-# corridor: the geo tool's venv and its downloaded lidar/imagery/OSM cache (rebuildable, GBs)
-# both forms, for the reason spelled out under public/surfaces below: the trailing-slash rule
-# matches directories only, and every agent worktree replaces these with a symlink to main's copy.
-tools/corridor/.venv/
-tools/corridor/.venv
-tools/corridor/data/
-tools/corridor/data
-
-# corridor viewer: generated textures (tools/surfaces/gen.py) and generated props (editor
+# the game: generated textures (pipelines/surfaces/gen.py) and generated props (editor
 # probes/editor-assets.mjs) are regenerable and ~100 MB; they will live in a bucket, not in git.
-# catalog.json and the vendored Draco decoder stay.
-# both forms: the trailing-slash rule matches DIRECTORIES only, and a worktree's symlink to main's
-# textures slipped past it, got committed, and on checkout in main replaced the real directory with a
-# link to itself (Vite ELOOP, tunnel dark, 2026-09-21). Keep both lines.
-apps/corridor/public/surfaces/
-apps/corridor/public/surfaces
-apps/corridor/public/assets/*.glb
+# catalog.json and the vendored Draco decoder stay. Both forms: a symlinked directory once got
+# committed past the slash-only rule and replaced the real one with a link to itself.
+apps/game/public/surfaces/
+apps/game/public/surfaces
+apps/game/public/assets/*.glb
 
-# python bytecode: churns on every bake and has been landing in commits
+# python bytecode
 __pycache__/
 *.pyc
 
 # road-and-car: synthetic tiled-site fixture (probes/make-tiles.py), regenerable, not a bake
-apps/corridor/public/testdata/
-tools/corridor/.bin
+apps/game/public/testdata/
 
-# enginesim's wasm is a COMMITTED artefact, not build output to ignore: apps/corridor imports
-# wasm/engines.json at build time, so an image build with it absent fails. Its provenance is in
-# wasm/BUILD.json and its licence beside it.
-!packages/enginesim/wasm/
-
-# packages/enginesim/packs — the baked engine library (npm run bake -w @apex/enginesim).
-#
-# A working artefact, not a source one. The full catalog is twenty engines, 357 loops and about
-# 16 MiB of WAV, and nothing in the game needs twenty engines of traffic — the shipped set will be
-# a handful of archetypes, baked with `--engine` and committed where it is served from. There is
-# no Opus encoder in this container, so a WAV bake of the whole catalog stays local.
-packages/enginesim/packs/
-
-# the local editor's data dir (just worldeditor-local) — a scratch volume, never content
+# the local editor's data dir (just editor-local) — a scratch volume, never content
 .local-editor-data/
 .local-assets/
 
 # the asset service's local catalog — a working store, never content
-tools/assetsvc/data/
+services/assetsvc/data/
 probes/.build/
-.mcp.json
 
-# corridor sound bank: the tool venv and the downloaded source packs (rebuildable; the cuts under
-# apps/corridor/public/sounds ARE committed)
-tools/sounds/.venv/
-tools/sounds/.venv
-tools/sounds/.cache/
-tools/sounds/.cache
+# credentials and per-machine agent config: never committed
+.mcp.json
+.env
+*.kubeconfig
+
+# the sound bank's tool venv and downloaded source packs (rebuildable; the cuts under
+# apps/game/public/sounds ARE committed)
+pipelines/sounds/.venv/
+pipelines/sounds/.venv
+pipelines/sounds/.cache/
+pipelines/sounds/.cache

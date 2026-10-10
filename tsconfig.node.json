@@ -7,5 +7,5 @@
     "module": "esnext",
     "moduleResolution": "bundler"
   },
-  "include": ["vitest.config.ts", "apps/*/vite.config.ts", "apps/*/vitest.config.ts", "packages/*/vitest.config.ts", "packages/engine/src/dev/bridge-plugin.ts"]
+  "include": ["vitest.config.ts", "apps/*/vite.config.ts", "apps/*/vitest.config.ts", "scripts/checks/*.ts"]
 }

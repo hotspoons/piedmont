@@ -2,31 +2,7 @@
   "files": [],
   "references": [
     {
-      "path": "./packages/engine"
-    },
-    {
-      "path": "./packages/enginesim"
-    },
-    {
-      "path": "./packages/stunt-pieces"
-    },
-    {
-      "path": "./apps/conduit"
-    },
-    {
-      "path": "./apps/stuntin"
-    },
-    {
-      "path": "./apps/coast"
-    },
-    {
-      "path": "./apps/arcade"
-    },
-    {
-      "path": "./apps/fighter"
-    },
-    {
-      "path": "./apps/corridor"
+      "path": "./apps/game"
     },
     {
       "path": "./tsconfig.node.json"

@@ -1,0 +1,5 @@
+{
+  "repo": "https://github.com/hotspoons/siomporas-arcade.git",
+  "ref": "34933bd3904a31e6e01d6ac969c473c7be2fff98",
+  "packages": ["engine", "enginesim", "stunt-pieces"]
+}

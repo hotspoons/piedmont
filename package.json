@@ -1,27 +1,32 @@
 {
-  "name": "siomporas-arcade",
+  "name": "piedmont",
   "private": true,
   "version": "0.0.0",
   "license": "Apache-2.0",
   "type": "module",
+  "description": "An open-world driving game on real roads: the game and its editors, the world baker, the services and the asset pipelines.",
   "workspaces": [
-    "packages/*",
+    "vendor/arcade/packages/engine",
+    "vendor/arcade/packages/enginesim",
+    "vendor/arcade/packages/stunt-pieces",
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w apps/conduit",
-    "dev:conduit": "npm run dev -w apps/conduit",
-    "dev:stuntin": "npm run dev -w apps/stuntin",
-    "build": "tsc -b && npm run build -ws --if-present",
+    "setup": "node scripts/setup.mjs",
+    "arcade:bump": "node scripts/arcade-bump.mjs",
+    "preinstall": "node scripts/setup.mjs --check",
+    "dev": "npm run dev -w apps/game",
+    "build": "tsc -b && npm run build -w apps/game",
     "lint": "oxlint",
-    "check:lockfile": "node scripts/check-lockfile.mjs",
-    "fonts": "node scripts/fetch-fonts.mjs",
-    "icons": "node scripts/heroicons.mjs",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "bridge": "node scripts/bridge.mjs",
-    "smoke": "node scripts/smoke.mjs",
-    "dev:coast": "npm run dev -w apps/coast"
+    "check:lockfile": "node scripts/check-lockfile.mjs",
+    "check:names": "node scripts/check-names.mjs",
+    "check:pull-policy": "node scripts/check-pull-policy.mjs",
+    "check:links": "node scripts/check-links.mjs",
+    "icons": "node scripts/heroicons.mjs",
+    "program-types": "node scripts/gen-program-types.mjs",
+    "bridge": "node scripts/bridge.mjs"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.0",
@@ -40,8 +45,6 @@
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vitest": "^5.0.0",
-    "wrangler": "^4.130.0",
     "ws": "^8.18.3"
-  },
-  "description": "A collection of games inspired by my favourites from the 80s and 90s."
+  }
 }
