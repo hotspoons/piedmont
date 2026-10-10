@@ -1,12 +1,18 @@
-name: Lint
+# The checks every push and pull request must pass. The images are built by their own workflows
+# (bake-image, worldeditor-image, assetsvc-image, recon-image, blender-image).
+#
+# ONE STEP PER CHECK, each keeping its output, so a red run says WHICH check and the last step can
+# put only the failures on the run's summary page (scripts/ci-failures.mjs). `shell: bash` is what
+# makes `| tee` keep the exit status: GitHub runs it as `bash -eo pipefail`.
+name: CI
 
 on:
   push:
   pull_request:
 
 jobs:
-  lint:
-    name: Run on Ubuntu
+  node:
+    name: Typecheck, test, build
     runs-on: ubuntu-latest
     steps:
       - name: Clone the code
@@ -18,14 +24,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      # ONE STEP PER CHECK, each keeping its output, so a red run says WHICH check and the last step
-      # can put only the failures on the run's summary page (Rich, 2026-10-10, reading CI from a
-      # phone: "What do you need from ci when it fails?" — the failing test and its error, not the
-      # three thousand lines around it). `shell: bash` is what makes `| tee` keep the exit status:
-      # GitHub runs it as `bash -eo pipefail`.
+      # The arcade packages are workspaces linked in by setup (docs/ARCADE.md): fetch the pinned
+      # ref, link vendor/arcade, then `npm ci` — setup does all three. No gaussworks, no Python here.
       - name: Install
         run: |
-          npm ci
+          node scripts/setup.mjs --ci --no-gaussworks --no-python
           npm run check:lockfile
 
       - id: tsc
@@ -33,19 +36,18 @@ jobs:
         shell: bash
         run: npx tsc -b 2>&1 | tee ci-tsc.log
 
-      # vitest also runs the services' node:test suites and oxlint (the `checks` project,
-      # tools/ci/), so the run on a laptop before a push is the same run as this one. They were
-      # their own steps here and nobody ran them locally, so they went red after every push
-      # (Rich, 2026-10-10, the third time of asking: "add them so they are caught locally").
+      # vitest also runs the services' node:test suites, oxlint, the names check, the pull-policy
+      # check and the link check (the `checks` project, scripts/checks/), so the run on a laptop
+      # before a push is the same run as this one.
       - id: vitest
-        name: vitest (apps, packages, service suites, lint)
+        name: vitest (game, service suites, lint, names, pull policy, links)
         shell: bash
         run: npx vitest run 2>&1 | tee ci-vitest.log
 
       - id: build
         name: Build
         shell: bash
-        run: npm run build -ws --if-present 2>&1 | tee ci-build.log
+        run: npm run build 2>&1 | tee ci-build.log
 
       - name: What failed
         if: failure()
@@ -58,3 +60,43 @@ jobs:
             [ "$outcome" = failure ] && node scripts/ci-failures.mjs "$id" "ci-$id.log" >> "$GITHUB_STEP_SUMMARY"
           done
           exit 0
+
+  # The repository checks again, on their own and without npm: a red names, pull-policy or link
+  # check is visible here even when the install above is what broke.
+  repo:
+    name: Names, pull policy, links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-names.mjs
+      - run: node scripts/check-pull-policy.mjs
+      - run: node scripts/check-links.mjs
+
+  # The bake's own unit tests, in a plain Python with its requirements — the same suite the bake
+  # image runs inside itself before it is published (bake-image.yml).
+  bake:
+    name: Bake unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: bake/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: pip install -r bake/requirements.txt
+      - id: unittests
+        name: python -m unittest discover -s tests
+        shell: bash
+        working-directory: bake
+        run: python -m unittest discover -s tests -v 2>&1 | tee ../ci-unittest.log
+      - name: What failed
+        if: failure() && steps.unittests.outcome == 'failure'
+        run: node scripts/ci-failures.mjs "bake unit tests" ci-unittest.log >> "$GITHUB_STEP_SUMMARY"

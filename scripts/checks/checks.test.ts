@@ -1,15 +1,16 @@
-// The services' own suites (node:test) and the linter, run by vitest so they fail on the laptop
-// before they fail in CI. Each node:test FILE is its own vitest test: a red run names the file and
-// carries its failing TAP block, not three thousand lines of everyone else's output.
+// The services' own suites (node:test), the linter and the repository checks, run by vitest so
+// they fail on the laptop before they fail in CI. Each node:test FILE is its own vitest test: a red
+// run names the file and carries its failing TAP block, not three thousand lines of everyone
+// else's output.
 import { spawn } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error — plain ESM helper with no types; it is what CI's summary step uses
-import { failures } from '../../scripts/ci-failures.mjs'
+import { failures } from '../ci-failures.mjs'
 
 const root = new URL('../..', import.meta.url).pathname
-const suites = ['tools/worldeditor', 'tools/assetsvc', 'scripts'].flatMap((dir) =>
+const suites = ['services/worldeditor', 'services/assetsvc', 'scripts'].flatMap((dir) =>
   readdirSync(join(root, dir))
     .filter((f) => f.endsWith('.test.mjs'))
     .sort()
@@ -47,5 +48,23 @@ describe('lint', () => {
   it('oxlint reports no errors', async () => {
     const r = await run(process.execPath, [join(root, 'node_modules/oxlint/bin/oxlint')])
     expect(r.code, r.out.split('\n').filter((l) => !/warning/.test(l)).slice(-60).join('\n')).toBe(0)
+  })
+})
+
+describe.concurrent('repository checks', () => {
+  // scripts/check-names.mjs: the project's old name nowhere in the repository (docs/ORIGIN.md)
+  it('names', async () => {
+    const r = await run(process.execPath, ['scripts/check-names.mjs'])
+    expect(r.code, r.out).toBe(0)
+  })
+  // scripts/check-pull-policy.mjs: every image pulls with policy Always (deploy/README.md)
+  it('pull policy', async () => {
+    const r = await run(process.execPath, ['scripts/check-pull-policy.mjs'])
+    expect(r.code, r.out).toBe(0)
+  })
+  // scripts/check-links.mjs: every relative link in the docs resolves
+  it('links', async () => {
+    const r = await run(process.execPath, ['scripts/check-links.mjs'])
+    expect(r.code, r.out).toBe(0)
   })
 })
