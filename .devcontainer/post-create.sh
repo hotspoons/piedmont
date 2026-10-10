@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Set up the dev environment for siomporas-arcade: a Vite/TypeScript + three.js
-# game. Idempotent — safe to re-run.
+# Set up the dev environment for piedmont: the game (Vite/TypeScript + three.js), the world baker
+# (Python + GDAL), the services, and the deploy tools (Docker, kubectl, Helm). Based on
+# siomporas-arcade's post-create.sh. Idempotent — safe to re-run.
 set -euo pipefail
 
 # just: the task runner (recipes live in ./justfile).
@@ -10,7 +11,23 @@ if ! command -v just >/dev/null 2>&1; then
     sudo rm -rf /var/lib/apt/lists/*
 fi
 
-npm install
+# The bake's system toolchain, BEFORE `npm run setup` (which makes the bake's venv): GDAL's CLI for
+# warping DEMs, python3-venv for the venv itself, and PDAL where Debian has it. PDAL is not in Debian
+# trixie on arm64, which is why the point-cloud reader is laspy+lazrs and the Entwine octree walk is
+# done in piedmont_bake/lidar.py by hand — the bake never needs it; it is here for working on lidar
+# by hand. rasterio, pyproj, shapely and the rest are wheels, installed into the venv by setup.
+if ! command -v gdalwarp >/dev/null 2>&1 || ! python3 -c 'import venv' 2>/dev/null; then
+    (sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gdal-bin python3-venv python3-pip) \
+        || echo "WARN: gdal/venv install failed — the bake will not run"
+fi
+if ! command -v pdal >/dev/null 2>&1; then
+    (sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pdal) \
+        || echo "NOTE: pdal is not packaged for $(uname -m) here; the bake does not need it"
+fi
+
+# The arcade packages (vendor/arcade -> ext/siomporas-arcade or the pinned ref), gaussworks into
+# ext/gaussworks, `npm install`, and the bake's venv (bake/.venv). See scripts/setup.mjs.
+node scripts/setup.mjs || echo "WARN: npm run setup failed — re-run it: npm run setup"
 
 # Headless Chromium for the Playwright verification loop (agents drive the
 # live dev server with it — see scripts/smoke.mjs). Deps go via sudo apt; the
@@ -42,8 +59,8 @@ EOF
     fi
 fi
 
-# helm: the world editor and the asset service on gh200-1 are Helm releases (tools/*/chart, values in
-# deploy/gh200-1/), and a rollout is `helm upgrade` — without it, re-pinning an image means asking
+# helm: the world editor, the asset service, Overpass and the bake are Helm releases (deploy/helm/*,
+# values in deploy/<cluster>/), and a rollout is `helm upgrade` — without it, re-pinning an image means asking
 # someone with a laptop. The release tarball from get.helm.sh, checked against its published sha256.
 if ! command -v helm >/dev/null 2>&1; then
     case "$(uname -m)" in aarch64|arm64) HELM_ARCH=arm64 ;; *) HELM_ARCH=amd64 ;; esac
@@ -72,28 +89,13 @@ alias ll='ls -alF'
 EOF
 fi
 
-# MAME, which the fighter's tooling drives headlessly: tools/sf2-probe boots the arcade boards,
-# reads their memory and dumps their graphics ROMs, and scripts/rom-sprites.mjs draws the fighters
-# out of what it finds. Nothing else needs it, and nothing breaks without it — but a container
-# rebuild without this line means re-installing it by hand before any of that works again.
-if ! command -v mame >/dev/null 2>&1 && [ ! -x /usr/games/mame ]; then
-    (sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends mame) \
-        || echo "WARN: mame install failed — tools/sf2-probe will not run"
+# Docker-in-Docker comes from the devcontainer feature; say so if its daemon is not up, because
+# `docker build` and `docker compose` are how the images and the local stack are tested here.
+if command -v docker >/dev/null 2>&1; then
+    docker info >/dev/null 2>&1 || echo "NOTE: docker is installed but its daemon is not answering yet (the feature starts it on container start)"
+else
+    echo "WARN: docker not found — the docker-in-docker feature did not install"
 fi
-
-# tools/corridor: the geo pipeline behind the real-road driving game. Python in a venv (this is a
-# Node image; nothing else here wants Python packages) plus GDAL's CLI for warping DEMs. PDAL is
-# not in Debian trixie on arm64, so the point-cloud reader is laspy+lazrs and the Entwine octree
-# walk is done in corridor/lidar.py by hand. Idempotent: pip is a no-op once satisfied.
-if ! command -v gdalwarp >/dev/null 2>&1 || ! python3 -c 'import venv' 2>/dev/null; then
-    (sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gdal-bin python3-venv python3-pip) \
-        || echo "WARN: gdal/venv install failed — tools/corridor will not run"
-fi
-if [ ! -x tools/corridor/.venv/bin/python ]; then
-    python3 -m venv tools/corridor/.venv || echo "WARN: could not create tools/corridor/.venv"
-fi
-[ -x tools/corridor/.venv/bin/pip ] && (tools/corridor/.venv/bin/pip install -q -r tools/corridor/requirements.txt \
-    || echo "WARN: corridor requirements failed — re-run: tools/corridor/.venv/bin/pip install -r tools/corridor/requirements.txt")
 
 # cloudflared for `just tunnel` (anonymous quick tunnels; no account needed).
 if ! command -v cloudflared >/dev/null 2>&1; then
@@ -120,7 +122,7 @@ export PATH="$HOME/.opencode/bin:$PATH"
 EOF
 fi
 
-# Blender, pinned by .devcontainer/blender.env. tools/rigging/rig_character.py needs >= 5.1 and
+# Blender, pinned by .devcontainer/blender.env. pipelines/rigging/rig_character.py needs >= 5.1 and
 # Debian ships 4.3, so this either fetches the official binary (x86_64) or builds from source
 # against Blender's own precompiled libraries (arm64, which blender.org does not ship).
 #
@@ -143,19 +145,19 @@ echo "Blender install/build started in the background (log: ~/.cache/blender-bui
 # Say where that got to on each new shell: a build that died at 3am is otherwise invisible until
 # something tries to rig a character and fails for a reason nobody connects to this.
 if ! grep -q "blender-build-status" ~/.bashrc 2>/dev/null; then
-    cat >>~/.bashrc <<'EOF'
+    sed "s#__BLENDER_ENV__#$_HERE/blender.env#g" >>~/.bashrc <<'EOF'
 
 # blender-build-status: the pinned Blender's state, reported once per shell.
-if [ -f /workspaces/apex-conduit/.devcontainer/blender.env ]; then
-    . /workspaces/apex-conduit/.devcontainer/blender.env
+if [ -f __BLENDER_ENV__ ]; then
+    . __BLENDER_ENV__
     _bl=$(command -v blender >/dev/null 2>&1 && blender --version 2>/dev/null | head -n1 | awk '{print $2}' || true)
     if [ "$_bl" != "$BLENDER_VERSION" ]; then
         if pgrep -f "build-blender.sh" >/dev/null 2>&1; then
-            echo "[arcade] Blender ${BLENDER_VERSION} is still building (found: ${_bl:-none})."
-            echo "[arcade] Watch it:  tail -f ~/.cache/blender-build.log"
+            echo "[piedmont] Blender ${BLENDER_VERSION} is still building (found: ${_bl:-none})."
+            echo "[piedmont] Watch it:  tail -f ~/.cache/blender-build.log"
         else
-            echo "[arcade] Blender ${BLENDER_VERSION} is not installed (found: ${_bl:-none}); tools/rigging needs it."
-            echo "[arcade] Check ~/.cache/blender-build.log, then: just blender"
+            echo "[piedmont] Blender ${BLENDER_VERSION} is not installed (found: ${_bl:-none}); pipelines/rigging needs it."
+            echo "[piedmont] Check ~/.cache/blender-build.log, then: just blender"
         fi
     fi
     unset _bl
@@ -163,4 +165,5 @@ fi
 EOF
 fi
 
-echo "Done. \`just dev\` starts the dev server on :5180; \`just tunnel\` shares it."
+echo "Done. \`just dev\` starts the game on :5185; \`just tunnel\` shares it."
+
