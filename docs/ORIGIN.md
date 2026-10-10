@@ -19,6 +19,8 @@ file or path.
 | Ported on top | `94da86e` — the world editor's `writeAtomic` takes a unique temp name per write (`services/worldeditor/store.mjs`, `store-atomic.test.mjs`) |
 | | `4f45a7c` — every image pulls with policy `Always` (overpass and recon chart values, the OSM import Job, `runs.mjs`'s OSM import Job, `training.mjs`'s assert-code and gaussworks containers) |
 | | `agent/docker` at `9ca9fb0` — `b75199e` (the Docker runner, `deploy/docker`, the design doc) and `9ca9fb0` (data beside the compose file, AI ports on 127.0.0.1 behind the keyed gateway, the core image's workflow, `pull_policy: always` everywhere). Its `ed371b6` is a cherry-pick of `4f45a7c` and its `d1689be` is `94da86e`, both already above. Renames in [the Docker lane's names](#the-docker-lanes-names) |
+| | `agent/full-world` at `b1845aa` — a tiled network bake reads and rasterises the point cloud over its whole region; the streets stay the road band (`bake/piedmont_bake/{export,lidar,lidar_sources,network,network_tiles,shards}.py`, `bake/tests/test_full_world_lidar.py`, the "Superseded 2026-10-10" note in [PLAN-OPEN-WORLD.md](PLAN-OPEN-WORLD.md)) |
+| | `9c250f2` — `fetch_site` no longer clobbers the spine with the flora summary. The same change as piedmont's own `100d2f8` (found here first, below), line for line; nothing further to port |
 | History | not carried over: piedmont starts with one import commit (the files moved, contents unchanged), then the rename. `git log` in the arcade has the history of every file below. |
 
 The engine packages are not copied: they are still the arcade's, and piedmont links them at a
@@ -160,17 +162,25 @@ needed code to change:
   `assetsvc.default.svc`.
 - **A bake bug found by the first local bake here**: `fetch_site` reused the name `sp` (the spine)
   for the flora summary line, so every single-road bake whose flora found canopy species died at the
-  lidar step on `sp["segments"]`. Renamed to `mix`. The same code is in the arcade at 34933bd.
+  lidar step on `sp["segments"]`. Renamed to `mix`. The same code was in the arcade at 34933bd; the
+  arcade then made the identical fix as `9c250f2`.
 - **The Docker runner's pull-policy test** (`services/worldeditor/docker.test.mjs`, "every create
   pulls first") set a non-`Always` policy on its pinned Job in the arcade, to prove the runner pulls
   anyway. `scripts/check-pull-policy.mjs` bans those values in every tracked file, tests included,
   so the port leaves the policy unset — Kubernetes' default for a pinned tag or a digest, which
   likewise would not pull an image already present — and the test still asserts both were pulled.
+- **`network_tiles.lidar_tiled`'s read area is `clip`.** In the arcade its third parameter was
+  `<old>` (the streets, which the split renamed `road_band`), and `agent/full-world` made it the
+  area READ — the whole region — and added a `road_band=` keyword for the streets. Both cannot be
+  `road_band`, so the area read is `clip` here, the name `lidar.point_batches` already gives the
+  same thing; its progress lines say "outside the area" / "pts in the area".
 - **New checks**: `scripts/check-names.mjs`, `scripts/check-pull-policy.mjs`,
   `scripts/check-links.mjs` (all in the `checks` vitest project and CI), and
   `scripts/boot-check.mjs` (the headless boot).
 
-## Branches still to port
+## Branches ported after the import
 
-Open against the arcade when the split began, to be ported here rather than merged there:
-`agent/full-world` and `agent/docker` (the compose stack, [deploy/docker](../deploy/docker/README.md)).
+Open against the arcade when the split began, and ported here rather than merged there (rows in
+[The source](#the-source)): `agent/docker` (the compose stack, [deploy/docker](../deploy/docker/README.md),
+[DOCKER.md](DOCKER.md)) and `agent/full-world` (the point cloud over the whole region). None are
+left.
