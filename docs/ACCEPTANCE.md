@@ -38,7 +38,7 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
       the bake's unit tests and `npm run build` all pass locally and in CI.**
       Prove: `npx tsc -b && npx vitest run && (cd bake && python -m unittest discover -s tests) && npm run build`;
       CI: [.github/workflows/ci.yml](../.github/workflows/ci.yml).
-      *Proved locally* (each exit 0; vitest 76 files / 991 tests: the game, 24 service suites,
+      *Proved locally* (each exit 0; vitest 76 files / 991 tests: the game, 33 node:test suites,
       oxlint, names, pull policy, links; bake 249 tests). *CI:* runs on the first push.
 - [x] **`scripts/check-names.mjs` reports zero references to the old name in tracked files.**
       Prove: `node scripts/check-names.mjs` → `check-names: 0 references`.
@@ -61,12 +61,22 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
       `/api/agent/mcp/config`.
       *Proved locally* for the service: it started on an empty volume, listed 0 worlds, imported a
       `piedmont-worlds` bundle and listed it; MCP answered `initialize` as
-      `piedmont-world-editor` and `tools/list` with 112 tools; `/world.html` served. *Open:* the
-      world editor page driving a bake end to end in a browser.
+      `piedmont-world-editor` and `tools/list` with 112 tools; `/world.html` served, and the site
+      editor booted on a world (above). *Open:* the world editor page driving a bake end to end in a
+      browser, rather than over its API.
 - [ ] **A small world bakes with the local runner, publishes, and plays.**
       Prove: import a ~900 m world, `POST /api/runs/bake {"slug": …}`, then
-      `node scripts/boot-check.mjs http://localhost:5185/#<slug>`; publish needs a bucket.
-      *See the run note below.*
+      `node scripts/boot-check.mjs http://localhost:8780/index.html#<slug>`; publish needs a bucket
+      (`PIEDMONT_EDITOR_S3_*`, `PIEDMONT_S3_*`).
+      *Bakes and plays: proved.* The local service baked `smoke-world` (39.02, −76.68, r 900 m) with
+      the local runner — OSM from Overpass (routed to the public mirrors: the fresh volume's Geofabrik index was the
+      outline-less seed, so the Maryland instance was not credited with the area; a first attempt
+      minutes earlier had failed on the mirrors' 504s),
+      3DEP DEM, NOAA lidar (10.3 M points), NAIP, flora, geology, water — in 27 s on a warm cache,
+      and the production build served by that service booted it headlessly
+      (`boot-check: OK … smoke-world`). The first attempt found a bake bug that is also in the arcade
+      ([ORIGIN.md](ORIGIN.md#changed-during-the-port-not-in-the-arcade)); fixed. *Publish: not
+      proved* — no bucket was used.
 
 ## Images and deploy
 

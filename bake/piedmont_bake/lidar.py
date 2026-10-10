@@ -439,7 +439,7 @@ def check_units(pts: dict, dem_path: Path) -> float:
 def classification_quality(pts: dict) -> dict:
     """Is this vendor's class 17 (bridge deck) believable? USGS's 2014 Sandy NCR delivery has 23% of
     the road band as class 17 and another 23% as class 18 (high noise), at ground height — those bins
-    were used for something else. Anything over 3% deck is not a road road band's bridges. When the
+    were used for something else. Anything over 3% deck is not a road band's bridges. When the
     share is implausible, 17 and 18 are demoted to unassigned before any structure logic runs, and
     the manifest says so; the geometric overhead test still finds real overpasses."""
     cls = pts["cls"]

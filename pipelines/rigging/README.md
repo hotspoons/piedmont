@@ -112,7 +112,7 @@ from a symmetric body. Symmetrising the mesh itself gives her two tails.
 ## What this does not do yet
 
 - **No animation.** A rig that deforms is not a fighter. The sprite poses in
-  `tools/photogrammetry` are the intended source: `lift_poses.py` solves joint rotations from the
+  the arcade's `tools/photogrammetry` are the intended source: `lift_poses.py` solves joint rotations from the
   2D frames, and those rotations want mapping onto these bone names.
 - **Not wired into a game.** Output is a `.glb` on disk. Promoting one is deliberate: copy it into
   the owning game's `public/`, and let the existing sprite bake pick it up.

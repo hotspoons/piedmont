@@ -135,6 +135,9 @@ needed code to change:
   creates it, the world editor's training routes fall back to the pod's own namespace rather than
   `default`, and the asset service is addressed as `http://assetsvc` rather than
   `assetsvc.default.svc`.
+- **A bake bug found by the first local bake here**: `fetch_site` reused the name `sp` (the spine)
+  for the flora summary line, so every single-road bake whose flora found canopy species died at the
+  lidar step on `sp["segments"]`. Renamed to `mix`. The same code is in the arcade at 34933bd.
 - **New checks**: `scripts/check-names.mjs`, `scripts/check-pull-policy.mjs`,
   `scripts/check-links.mjs` (all in the `checks` vitest project and CI), and
   `scripts/boot-check.mjs` (the headless boot).

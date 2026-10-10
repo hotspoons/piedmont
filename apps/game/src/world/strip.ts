@@ -1,4 +1,4 @@
-// The road road band as its own fine terrain: a strip swept along the spine, wide enough to take
+// The road band as its own fine terrain: a strip swept along the spine, wide enough to take
 // in every carriageway and the median plus 40 m of verge each side, sampled 1 m across by 2 m
 // along. Under any pavement it sits at that carriageway's road height; from the pavement edge it
 // blends back to the DEM over 7 m. So there is no coarse triangle to interpolate across the road,

@@ -137,9 +137,10 @@ def fetch_site(site: dict, half_length: float, half_width: float, lidar_half_wid
 
         f = flora_mod.along_spine(line, frame, site, road_band, CACHE, out)
         top = ", ".join(f"{c['name']} {100 * c['share']:.0f}%" for c in f["evt"]["classes"][:3])
-        sp = ", ".join(f"{f['canopy']['ref'][s['key']]['common']} {100 * s['weight']:.0f}%" for s in f["canopy"]["species"][:4])
+        # `mix`, not `sp`: `sp` is the spine, and the lidar block below still reads sp["segments"]
+        mix = ", ".join(f"{f['canopy']['ref'][s['key']]['common']} {100 * s['weight']:.0f}%" for s in f["canopy"]["species"][:4])
         print(f"  flora   {len(f['evt']['classes'])} EVT classes: {top}")
-        print(f"          canopy ({f['canopy']['coverage'] * 100:.0f}% basal-area cover): {sp}")
+        print(f"          canopy ({f['canopy']['coverage'] * 100:.0f}% basal-area cover): {mix}")
         print(f"          ground: " + ", ".join(f"{g['key']} {100 * g['weight']:.0f}%" for g in f["ground"]["classes"][:5]) + f"; summer rain {f['climate']['summer_dry'] * 100:.1f}% of annual")
         manifest["flora"] = {"classes": len(f["evt"]["classes"]), "species": len(f["canopy"]["species"]), "coverage": f["canopy"]["coverage"], "source": f["evt"]["source"], "fetched": f["fetched"]}
 
@@ -574,7 +575,7 @@ def cmd_flora(a: argparse.Namespace) -> None:
         site = json.loads((d / "site.json").read_text())
         frame = geo.Frame.at(site["lon"], site["lat"])
         t0 = time.time()
-        # `region` is the WORLD on a site baked with world: true, and is the road road band on
+        # `region` is the WORLD on a site baked with world: true, and is the road band on
         # every other site -- so vegetation covers whatever that site decided its world is, and
         # trees stop being a function of how near a road you are (PLAN-OPEN-WORLD.md).
         f = flora_mod.along_spine(None, frame, site, shape(site.get("region") or site["road_band"]), CACHE, d)
