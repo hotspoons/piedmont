@@ -18,8 +18,16 @@ This is the design for that handover. It is written against both halves as they 
 |---|---|
 | `world/world.json` | `frame: "enu"`, `origin: {lat, lon}`, `cell_m` (~200 m), and a `tiles[]` list: `{tile, chunk, bounds_enu_m: [x0,y0,x1,y1], centre, gaussians}` |
 | `world/tiles/chunk_xN_yN.ply` | that cell's gaussians, already pruned to the cell it owns and to the capture envelope |
-| `world/<envelope>.json` (gaussworks names it after its own word for a capture's road band; `ENVELOPE_FILE` in `apps/game/src/visuals/splats.ts` holds the real name) | `{frame: "enu", origin: {lat, lon}, radius_m, height_band_m: [lo, hi], passes: [{video, seq_range, points: [[e,n,u], …]}]}` — **where the camera actually was** |
+| `world/envelope.json` (`ENVELOPE_FILE` in `apps/game/src/visuals/splats.ts`; see the note below the table for captures made before 2026-10-10) | `{frame: "enu", origin: {lat, lon}, radius_m, height_band_m: [lo, hi], passes: [{video, seq_range, points: [[e,n,u], …]}]}` — **where the camera actually was** |
 | `world/route.json` | an ordered, deduped chain of passes: a one-way stage centreline |
+
+**Captures from before 2026-10-10 need their envelope renamed.** gaussworks wrote the envelope
+under an older file name until then (it still reads that name itself, but writes `envelope.json`
+now), and the game reads `envelope.json` only. Before such a capture's world is published to a new
+deployment, run gaussworks' `python scripts/rename-envelope.py [--dry-run] <capture or world dir>`:
+it renames every envelope file under the directory and points `world.json` at the new name. A world
+that skips it loads with no envelope: no capture passes and the default radius, so nothing that
+depends on where the camera was.
 
 Two facts make this fit the game at all, and they are not luck: the frame is **ENU about a stated
 lat/lon**, and the road band envelope is a first-class output rather than something we would have to
@@ -88,7 +96,7 @@ the error we care about is not constant: COLMAP's aligner fits a similarity to a
 so there can be a slow drift along the capture.
 
 **The fit, not the assumption.** Both sides independently observed *the middle of the same roads*:
-gaussworks as the envelope file (`ENVELOPE_FILE`) passes, the viewer as the spine and branch splines. So:
+gaussworks as `envelope.json` passes, the viewer as the spine and branch splines. So:
 
 1. bring the passes into site ENU with 2.1;
 2. for each pass point, find the nearest point on the viewer's road network (`edgeInfo` already
@@ -139,7 +147,7 @@ w_have = 1 if the covering tile is resident, else 0      never blank the world f
 w      = w_env · w_have
 ```
 
-`r_core` comes from the envelope file (`ENVELOPE_FILE`)'s own `radius_m` (what the capture actually saw), and `FADE` is
+`r_core` comes from `envelope.json`'s own `radius_m` (what the capture actually saw), and `FADE` is
 a knob (~15 m: half a second at 30 mph, long enough not to snap, short enough not to be a smear).
 The height band clamps it too, so a splat road band does not swallow the world above a bridge.
 
@@ -270,13 +278,13 @@ work is days.
 1. a config for Arrowhead Farms beside `configs/md-backroads.yaml` (bbox, camera profile, spacing);
 2. `ingest` → frames + GPS; **check the GPS before anything expensive** — a neighbourhood under
    canopy is where GPS goes worst, and `poses`' spatial matching leans on those priors;
-3. `chunk` → cells + per-chunk the envelope file (`ENVELOPE_FILE`); `poses`; `train`; `merge`;
+3. `chunk` → cells + per-chunk `envelope.json`; `poses`; `train`; `merge`;
 4. `merge --prune-road-band` so floaters outside the observed envelope never reach the viewer.
 
 **Track B — the seam (viewer), built against a synthetic world.**
 Do not wait for real gaussians. A generated splat world — a few thousand coloured gaussians laid
 along an existing site's road, written as a `.spz` with a hand-made `world.json` and
-the envelope file (`ENVELOPE_FILE`) — exercises every part of this design: the frame transform, the fit, the streaming,
+`envelope.json` — exercises every part of this design: the frame transform, the fit, the streaming,
 the crossfade, the depth interaction, the probes. It also gives the probes something deterministic
 to assert against for ever, which a photoreal capture never will.
 

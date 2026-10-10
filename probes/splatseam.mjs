@@ -9,7 +9,7 @@
 // because gaussians are depth-sorted against the scene and a half-transparent road cannot take
 // part in that order.
 //
-// THIS DOES NOT LOAD ANY GAUSSIANS. The envelope comes from the envelope file (`ENVELOPE_FILE`), which is where the
+// THIS DOES NOT LOAD ANY GAUSSIANS. The envelope comes from `envelope.json`, which is where the
 // camera was, not from the tiles — so the seam can be measured without pulling 1.5 GB of PLY
 // through a software rasteriser. What it measures is the thing that would otherwise be invisible
 // until a tile happened to be resident: that the bake yields, that it yields in the right place,
@@ -28,7 +28,7 @@ await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcon
 /*
  * STOP THE STREAM BEFORE IT STARTS.
  *
- * The seam comes from the envelope file (`ENVELOPE_FILE`) -- where the camera was -- and not from the tiles, so it
+ * The seam comes from `envelope.json` -- where the camera was -- and not from the tiles, so it
  * can be measured without a single gaussian. Letting the tiles load instead pulls 52 MB PLYs into
  * a software rasteriser and kills the tab, which is what happened the first two times this ran.
  * The knob table is published before the captures attach, so this lands in the gap: the envelope

@@ -10,7 +10,7 @@
 // difference:
 //
 //     <out>/world.json     frame "enu", origin {lat, lon}, cell_m, tiles[]
-//     <out>/<ENVELOPE_FILE>  radius_m, height_band_m, passes[{points}]
+//     <out>/envelope.json  radius_m, height_band_m, passes[{points}]
 //     <out>/tiles/*.ply    3DGS PLY (x y z, f_dc_*, opacity, scale_*, rot_*)
 //
 // THE ORIGIN IS DELIBERATELY NOT THE SITE'S ANCHOR. A real capture anchors wherever it started,
@@ -30,9 +30,9 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { geodeticToEcef, ecefToGeodetic, enuBasis } from '../../vendor/arcade/packages/engine/src/geo/wgs84.ts'
 
-// gaussworks' name for the envelope file, assembled for the reason given at ENVELOPE_FILE in
-// apps/game/src/visuals/splats.ts (the names check).
-const ENVELOPE_FILE = ['corr', 'idor', '.json'].join('')
+// gaussworks' name for the envelope file, as the game reads it (ENVELOPE_FILE in
+// apps/game/src/visuals/splats.ts)
+const ENVELOPE_FILE = 'envelope.json'
 
 const args = process.argv.slice(2)
 const slug = args[0] ?? 'crofton-triangle'

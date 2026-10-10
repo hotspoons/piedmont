@@ -150,7 +150,7 @@ conversion after. If you do write the converter, it belongs in gaussworks next t
 **A far LOD** (a decimated copy per tile, say 1/8 by opacity × scale) is the next thing after that,
 because driving shows the road band ahead as well as the cell you are in.
 
-**A sanity check you can do without me.** Your the envelope file (`ENVELOPE_FILE`) passes are ENU about your origin;
+**A sanity check you can do without me.** Your `envelope.json` passes are ENU about your origin;
 the site's anchor is in `data/sites/arrowhead-farms/web/manifest.json` under
 `frame.anchor`. Composing the two frames through ECEF is ten lines —
 `bake/splats/frame-error.mjs` is a worked example using the engine's pyproj-checked
@@ -178,7 +178,7 @@ belongs in your `REPORT.md`.
 
 - every `.360` chapter ingested, with the frame count and the GPS verdict written down;
 - chunks trained, with a per-chunk PSNR in the report, and no chunk silently missing;
-- `world.json` + the envelope file (`ENVELOPE_FILE`) + tiles under `data/splats/arrowhead-2026-09/`;
+- `world.json` + `envelope.json` + tiles under `data/splats/arrowhead-2026-09/`;
 - the capture passes, transformed into `arrowhead-farms`' ENU frame, land on the streets they were
   driven down;
 - a message in my inbox with the path, the altitude semantics, and the camera height.

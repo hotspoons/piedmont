@@ -99,11 +99,14 @@ piedmont they follow the rest:
 The runner's own container labels, `worldeditor.docker/{managed,job,pod,stage}`, keep their names,
 as the editor's Job labels `worldeditor/{run,kind}` did in the split.
 
-**One name could not change here.** gaussworks writes each capture's envelope under its own word for
-a capture's band of road, which is `<old>.json`. The game reads that file, so its name is assembled
-in one place (`ENVELOPE_FILE` in `apps/game/src/visuals/splats.ts`, and the synthetic world writer
-`bake/splats/synth.mjs`) rather than spelled. Renaming the file in gaussworks (to `envelope.json`,
-say) turns both into plain strings.
+**The capture envelope's file name.** gaussworks wrote each capture's envelope under its own word
+for a capture's band of road, `<old>.json`, which the game read through a name assembled in one
+place to keep it out of this repository. Rich chose to rename it in gaussworks (2026-10-10):
+gaussworks now writes `envelope.json` (and still reads the old name itself), and the game reads
+`envelope.json` only — `ENVELOPE_FILE` in `apps/game/src/visuals/splats.ts` and the synthetic world
+writer `bake/splats/synth.mjs` are plain strings, and the names check has no special case.
+**Captures made by the old deployment need gaussworks' `scripts/rename-envelope.py` before
+piedmont reads them** ([PLAN-SPLAT-ROUTES.md](PLAN-SPLAT-ROUTES.md)).
 
 ### What does not carry over (a clean break)
 

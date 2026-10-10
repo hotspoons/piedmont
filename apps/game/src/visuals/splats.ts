@@ -48,11 +48,11 @@ interface SplatWorld {
 
 /**
  * The envelope's file name inside a gaussworks world: where the camera actually was. gaussworks
- * names it after its own word for the band of road a capture covers, and that word is not used in
- * this repository (scripts/check-names.mjs), so it is assembled here, in the one place that reads
- * it. If gaussworks renames the file, this becomes a plain string.
+ * writes `envelope.json` since 2026-10-10; a capture made before that has the envelope under an
+ * older name, and needs gaussworks' `scripts/rename-envelope.py` before it is published here
+ * (docs/PLAN-SPLAT-ROUTES.md). Only this name is read.
  */
-export const ENVELOPE_FILE = ['corr', 'idor', '.json'].join('')
+export const ENVELOPE_FILE = 'envelope.json'
 
 /** the envelope (ENVELOPE_FILE): where the camera actually was */
 interface CaptureEnvelope {
