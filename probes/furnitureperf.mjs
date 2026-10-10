@@ -1,6 +1,6 @@
 // What the furniture costs the frame: the same view with the four layers on and off.
 //
-//   PORT=5205 SLUG=crofton-crownsville node probes/corridor-furnitureperf.mjs
+//   PORT=5205 SLUG=crofton-crownsville node probes/furnitureperf.mjs
 //
 // This box has no GPU, so the absolute number is swiftshader's. The DIFFERENCE between the same
 // frames with the layers on and off is still the right ordered signal, and it is what "within 3 ms
@@ -15,10 +15,10 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
 
 console.log(JSON.stringify(await page.evaluate(async ({ n }) => {
-  const c = window.corridor, site = c.site, L = site.layers
+  const c = window.piedmont, site = c.site, L = site.layers
   if (L.trees) L.trees.visible = false
   if (site.grass) site.grass.mesh.visible = false
   // stand at the busiest junction, where all four groups are in frame at once

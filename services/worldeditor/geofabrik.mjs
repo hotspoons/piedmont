@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 export const INDEX_URL = 'https://download.geofabrik.de/index-v1.json'
-const UA = 'apex-conduit corridor (github.com/hotspoons; road-corridor extraction for a driving game)'
+const UA = 'piedmont (github.com/hotspoons/piedmont; road-band extraction for a driving game)'
 
 export class Geofabrik {
   /**

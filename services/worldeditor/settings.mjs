@@ -36,12 +36,12 @@ import path from 'node:path'
 export const SCHEMA = [
   /* ---- the services this editor reaches ---- */
   {
-    key: 'assetsvc.url', group: 'services', kind: 'url', env: 'WORLDEDITOR_ASSETSVC', def: '',
+    key: 'assetsvc.url', group: 'services', kind: 'url', env: 'PIEDMONT_EDITOR_ASSETSVC', def: '',
     label: 'Asset service',
     note: 'Where the catalog, the generators and the materials live. The browser reaches it through this editor at /assetsvc, never directly.',
   },
   {
-    key: 'overpass.url', group: 'services', kind: 'string', env: 'WORLDEDITOR_OVERPASS_URL', def: '',
+    key: 'overpass.url', group: 'services', kind: 'string', env: 'PIEDMONT_EDITOR_OVERPASS_URL', def: '',
     label: 'Overpass',
     note: 'Comma-separated; the public mirrors follow. Say what each REGIONAL instance holds under "Overpass regions" — out of its extract it answers HTTP 200 with nothing, which reads exactly like "no roads here". A #south/west/north/east box on a URL is still read, for an instance with no regions.',
   },
@@ -50,24 +50,24 @@ export const SCHEMA = [
     // `overpass` said it held them and its Maryland extract did not. Coverage is the extract's own
     // polygon now; this names the Geofabrik region(s) each instance was built from, and the editor
     // reads their outlines from the Geofabrik index (coverage.mjs). Imports add to it on the volume.
-    key: 'overpass.regions', group: 'services', kind: 'string', env: 'WORLDEDITOR_OVERPASS_REGIONS', def: '',
+    key: 'overpass.regions', group: 'services', kind: 'string', env: 'PIEDMONT_EDITOR_OVERPASS_REGIONS', def: '',
     label: 'Overpass regions',
     note: 'What each instance holds, by Geofabrik region id: overpass=us/maryland, overpass-na=north-america. Several on one instance: overpass=us/maryland+us/virginia. Regions added by an import are kept on the volume whatever this says.',
   },
   {
-    key: 'nominatim.url', group: 'services', kind: 'url', env: 'WORLDEDITOR_NOMINATIM', def: 'https://nominatim.openstreetmap.org',
+    key: 'nominatim.url', group: 'services', kind: 'url', env: 'PIEDMONT_EDITOR_NOMINATIM', def: 'https://nominatim.openstreetmap.org',
     label: 'Place search (Nominatim)',
   },
 
   /* ---- the bake ---- */
   {
-    key: 'bake.image', group: 'bake', kind: 'string', env: 'WORLDEDITOR_BAKE_IMAGE', def: 'ghcr.io/hotspoons/corridor:latest',
+    key: 'bake.image', group: 'bake', kind: 'string', env: 'PIEDMONT_EDITOR_BAKE_IMAGE', def: 'ghcr.io/hotspoons/piedmont-bake:latest',
     label: 'Bake image',
     note: 'The container a bake runs in, as a Kubernetes Job.',
   },
 
   {
-    key: 'osm.importImage', group: 'bake', kind: 'string', env: 'WORLDEDITOR_OSM_IMPORT_IMAGE', def: 'wiktorn/overpass-api:latest',
+    key: 'osm.importImage', group: 'bake', kind: 'string', env: 'PIEDMONT_EDITOR_OSM_IMPORT_IMAGE', def: 'wiktorn/overpass-api:latest',
     label: 'OSM import image',
     note: 'The container an osm-import Job runs in: the Overpass instances\' own image, which carries curl, osmium and pyosmium. Pin the digest the instances run.',
   },
@@ -79,32 +79,32 @@ export const SCHEMA = [
    * featured path is misbehaving and you need to know whether it is the operator or the workload.
    */
   {
-    key: 'splat.runner', group: 'splat', kind: 'enum', env: 'WORLDEDITOR_SPLAT_RUNNER', def: 'auto',
+    key: 'splat.runner', group: 'splat', kind: 'enum', env: 'PIEDMONT_EDITOR_SPLAT_RUNNER', def: 'auto',
     options: ['auto', 'training', 'jobset', 'batch'],
     label: 'Runner',
     note: 'auto: TrainingDeployment if the CRD is installed, else JobSet, else plain Jobs.',
   },
   {
-    key: 'splat.image', group: 'splat', kind: 'string', env: 'WORLDEDITOR_SPLAT_IMAGE', def: 'ghcr.io/hotspoons/gaussworks:latest',
+    key: 'splat.image', group: 'splat', kind: 'string', env: 'PIEDMONT_EDITOR_SPLAT_IMAGE', def: 'ghcr.io/hotspoons/gaussworks:latest',
     label: 'Training image',
   },
   {
-    key: 'splat.command', group: 'splat', kind: 'json', env: 'WORLDEDITOR_SPLAT_COMMAND', def: '["splatpipe"]',
+    key: 'splat.command', group: 'splat', kind: 'json', env: 'PIEDMONT_EDITOR_SPLAT_COMMAND', def: '["splatpipe"]',
     label: 'Command',
     note: 'A JSON array. The entrypoint the splats lane published is `splatpipe run --capture … --out … --role leader|worker`.',
   },
   {
-    key: 'splat.args', group: 'splat', kind: 'json', env: 'WORLDEDITOR_SPLAT_ARGS', def: '',
+    key: 'splat.args', group: 'splat', kind: 'json', env: 'PIEDMONT_EDITOR_SPLAT_ARGS', def: '',
     label: 'Extra arguments',
     note: 'A JSON array, appended to what each role is given. Empty is normal.',
   },
   {
-    key: 'splat.storageClass', group: 'splat', kind: 'string', env: 'WORLDEDITOR_SPLAT_STORAGE_CLASS', def: '',
+    key: 'splat.storageClass', group: 'splat', kind: 'string', env: 'PIEDMONT_EDITOR_SPLAT_STORAGE_CLASS', def: '',
     label: 'Output storage class',
     note: 'The RWX class the workers share. Only a JobSet or plain Jobs need it; a TrainingDeployment provisions its own.',
   },
   {
-    key: 'splat.gpuResource', group: 'splat', kind: 'string', env: 'WORLDEDITOR_GPU_RESOURCE', def: '',
+    key: 'splat.gpuResource', group: 'splat', kind: 'string', env: 'PIEDMONT_EDITOR_GPU_RESOURCE', def: '',
     label: 'GPU resource name',
     note: 'Empty means discovered from the nodes (nvidia.com/gpu on gh200-1).',
   },
@@ -115,7 +115,7 @@ export const SCHEMA = [
     label: 'Blender binary',
   },
   {
-    key: 'blender.autostart', group: 'blender', kind: 'bool', env: 'WORLDEDITOR_BLENDER_AUTOSTART', def: 'false',
+    key: 'blender.autostart', group: 'blender', kind: 'bool', env: 'PIEDMONT_EDITOR_BLENDER_AUTOSTART', def: 'false',
     label: 'Keep a live Blender running',
     note: 'The headless session MCP clients and the Blender tab drive. It holds a scene in memory between calls, which is the point and also why it is off unless asked for.',
   },

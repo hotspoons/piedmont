@@ -10,7 +10,7 @@
 // SPECIES, since 2026-09-21, is measured too. It used to be a documented stand-in — `pickVariant`
 // sorted a fixed five presets (oak, ash, aspen) by canopy height alone, so Acadia's spruce-fir and
 // Big Sur's redwoods both came out as a Maryland oak wood, and there was no conifer variant at all.
-// Now the bake (`tools/corridor/corridor/flora.py`) hands over, per 30 m pixel, the LANDFIRE
+// Now the bake (`bake/piedmont_bake/flora.py`) hands over, per 30 m pixel, the LANDFIRE
 // vegetation class and a ranked species mix with weights, and species.ts turns a genus into a
 // silhouette. The height is still an input — it chooses between the large and small build of a
 // silhouette, and it weights the draw toward the species whose measured canopy height it matches —
@@ -67,8 +67,8 @@ const FALLBACK = ['oak', 'hardwood', 'aspen', 'oak-large', 'hardwood-small']
  *
  * Building an ez-tree variant costs a full procedural generate (twice — the full and the thinned
  * leaf set), so the list has to be short. It is chosen by AREA-WEIGHTED BASAL AREA: every EVT class
- * in the corridor contributes its species mix scaled by its share of the ground, the species are
- * mapped to silhouettes, and the heaviest `limit` silhouettes are built. A corridor that is 20 %
+ * in the road band contributes its species mix scaled by its share of the ground, the species are
+ * mapped to silhouettes, and the heaviest `limit` silhouettes are built. A road band that is 20 %
  * red spruce and 14 % paper birch gets a spruce and a birch; one that is 36 % coastal-plain
  * hardwood gets oaks.
  */
@@ -84,7 +84,7 @@ export function paletteFor(flora: Flora | null, heights: number[] = [], limit = 
   // The palette is asked at SEVERAL heights, because a species has more than one build and which
   // one a tree gets depends on how tall that tree is. Asking once at the species' mean height put
   // only `oak-large` in Chesterfield Road's palette, so every oak under 22 m — the understorey and
-  // the young edge — was drawn as a 28 m open-grown oak. The heights are this corridor's own
+  // the young edge — was drawn as a 28 m open-grown oak. The heights are this site's own
   // canopy quartiles, so the question asked is "what silhouettes do the trees that are actually
   // here need", not "what does the average tree of this species look like".
   const hs = heights.length ? heights : [12, 18, 26]
@@ -200,7 +200,7 @@ function buildVariant(a: Archetype, capacity: number, h: number): Variant {
 }
 
 /**
- * How well a measured canopy height matches a species' measured height in this corridor.
+ * How well a measured canopy height matches a species' measured height in this road band.
  *
  * Both numbers are lidar: `h` is the height of THIS tree from the CHM, `hm` is the mean CHM height
  * over the pixels where the bake found that species' basal area. So "a 40 m stem in a redwood mix
@@ -256,7 +256,7 @@ export class NearTrees {
     void radius // live radius is the knob TREE_NEAR_RADIUS
     this.capacity = capacity
     this.group.name = 'near-trees'
-    // this corridor's own canopy quartiles: the archetypes are tuned for the wood they are in, and
+    // this site's own canopy quartiles: the archetypes are tuned for the wood they are in, and
     // the palette is chosen for the range of tree sizes that are actually standing in it
     const hs = trees.map((t) => t.h).sort((a, b) => a - b)
     const q = (f: number) => (hs.length ? hs[Math.min(hs.length - 1, Math.floor(hs.length * f))] : 18)

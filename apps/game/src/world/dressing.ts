@@ -21,7 +21,7 @@
 //
 // Site frame throughout: x east, y north, z up. Yaw is 0 facing north (+y), matching Transform.
 
-/** A part of the kit, as `tools/assetlib/specs/buildings-dressing.json` declares it. */
+/** A part of the kit, as `pipelines/assetlib/specs/buildings-dressing.json` declares it. */
 export interface DressingPart {
   id: string
   attach: {

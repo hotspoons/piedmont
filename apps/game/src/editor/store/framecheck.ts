@@ -6,13 +6,13 @@
 // zones.json is bullshit."*
 //
 // It was. Those five Beltway zones were written over MCP on 2026-10-08, in the ENU frame the bake
-// serves, by a tool that did not stamp a frame (it does now — tools/worldeditor/mcptools.mjs). The
+// serves, by a tool that did not stamp a frame (it does now — services/worldeditor/mcptools.mjs). The
 // old check (`frameMismatch` in schema.ts) took "no stamp" for "maybe before 2026-09-22" and said
 // so to every unstamped file, which is a guess about a date dressed as a fact about coordinates.
 //
 // THE QUESTION IS ANSWERABLE. The only frame change there has ever been is UTM-relative metres →
 // true ENU about the anchor, and the manifest carries the rigid fit between them
-// (`utm_convergence_deg`, `utm_scale` — tools/corridor/corridor/geo.py `enu_fit`; checked against
+// (`utm_convergence_deg`, `utm_scale` — bake/piedmont_bake/geo.py `enu_fit`; checked against
 // pyproj at dc-metro's anchor: 0.24 m at 10 km, 0.6 m at 17 km). So for a document whose frame is
 // unknown, ask the roads: do its shapes sit on them as written, or would they after that turn?
 //

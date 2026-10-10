@@ -10,7 +10,7 @@
 // `preserveDrawingBuffer`), and from then on every frame is two cheap passes on the app's own
 // renderer: that copy, blurred and darkened, as the backdrop; and the turntable over it. So the
 // screen costs LESS GPU than the game it replaces — the world's thousands of draw calls stop, and
-// what is left is a full-screen quad and one car. (Measured numbers: docs/corridor/GAME-MODE.md,
+// what is left is a full-screen quad and one car. (Measured numbers: docs/GAME-MODE.md,
 // "Finishing".) The alternative, a CSS blur over the live world, keeps paying for the world every
 // frame and blurs the car with it.
 //
@@ -495,7 +495,7 @@ export class FinishView {
 
 /**
  * THE STAND-IN, for "character" when the game has no character model — and it has none yet: the
- * library's actors are unrigged (docs/corridor: rigging), and on foot is a camera. A plain
+ * library's actors are unrigged (docs: rigging), and on foot is a camera. A plain
  * mannequin in the interface's slate, the right height (1.8 m), standing at ease. A level with a
  * model it would rather show passes `finish({ model: '<catalog id>' })`.
  */

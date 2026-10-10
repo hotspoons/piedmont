@@ -42,7 +42,7 @@ BUCKET = "https://dataforgood-fb-data.s3.amazonaws.com/forests/v1/alsgedi_global
 INDEX = f"{BUCKET}/tiles.geojson"
 # The index is 15 MB and lists every tile on Earth; it is fetched once and cached like any source.
 session = requests.Session()
-session.headers["User-Agent"] = "apex-conduit corridor (github.com/hotspoons)"
+session.headers["User-Agent"] = "piedmont (github.com/hotspoons)"
 
 # Same as dem.py — GDAL lists the "directory" beside every object without it, which on S3 is a
 # bucket listing per tile.
@@ -132,16 +132,16 @@ def measure(path: Path) -> dict:
 
 
 def main() -> None:
-    """`python -m corridor.canopy <slug>` — add a canopy layer to a site baked without lidar."""
+    """`python -m piedmont_bake.canopy <slug>` — add a canopy layer to a site baked without lidar."""
     import argparse
     import sys
 
-    ap = argparse.ArgumentParser(prog="corridor.canopy", description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(prog="piedmont_bake.canopy", description=__doc__.split("\n")[0])
     ap.add_argument("slug")
-    ap.add_argument("--data", default=os.environ.get("CORRIDOR_DATA"), help="defaults to $CORRIDOR_DATA")
+    ap.add_argument("--data", default=os.environ.get("PIEDMONT_DATA"), help="defaults to $PIEDMONT_DATA")
     ap.add_argument("--res", type=float, default=1.0)
     a = ap.parse_args()
-    data = Path(a.data) if a.data else Path(__file__).resolve().parent.parent / "data"
+    data = Path(a.data) if a.data else Path(__file__).resolve().parents[2] / "data"
     site = data / "sites" / a.slug
     if not (site / "site.json").exists():
         sys.exit(f"no baked site at {site}")

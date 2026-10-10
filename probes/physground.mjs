@@ -1,8 +1,8 @@
 // Does the ground the PHYSICS thinks is there agree with the ground you can see?
 //
-//   node probes/corridor-physground.mjs [site]
+//   node probes/physground.mjs [site]
 //
-// This is step 1 of docs/corridor/PLAN-PHYSICS.md, and it is the only question worth asking before
+// This is step 1 of docs/PLAN-PHYSICS.md, and it is the only question worth asking before
 // there is a car on it. Every bug this app has ever had of the form "the car shakes" or "green
 // stuff on the road" has been two surfaces modelling the same ground at different samplings, and
 // the physics heightfield is a third opportunity to do exactly that. `site.groundAt` is the one
@@ -18,7 +18,7 @@
 import { chromium } from 'playwright'
 
 const site = process.argv[2] ?? 'bowie-racetrack-rd'
-const PORT = process.env.CORRIDOR_PORT ?? '5185'
+const PORT = process.env.PIEDMONT_PORT ?? '5185'
 const SHIFT = 12 // metres: the control offset. Bigger than a tile cell, smaller than a road
 const TOL = 0.05 // metres: what counts as agreement between the two surfaces
 
@@ -29,27 +29,27 @@ const page = await browser.newPage({ viewport: { width: 640, height: 420 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 
-// `window.corridor.site` being non-null is the ready signal. NOT `#status`: the older probes wait
+// `window.piedmont.site` being non-null is the ready signal. NOT `#status`: the older probes wait
 // on a status element that the UI rebuild removed, so that condition can never become true and the
 // probe times out having loaded the world perfectly well.
-const ready = () => page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 240000 })
+const ready = () => page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 240000 })
 
 // `?phys=1`, not the F6 knob. PHYS_ENABLED is read once, when the site builds, and `tune.set`
 // persists NOTHING — measured: set it, reload, and it is back to the default with the physics
 // never started. A load-time knob needs a load-time switch.
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite&phys=1`, { waitUntil: 'load' })
 await ready()
-await page.waitForFunction(() => !!window.corridor.physics, null, { timeout: 120000 })
+await page.waitForFunction(() => !!window.piedmont.physics, null, { timeout: 120000 })
 
 /*
  * Build the tiles by calling `update` directly rather than waiting for frames.
  *
  * Headless swiftshader renders this scene at well under one frame a second, so waiting on the frame
  * loop to build tiles at PHYS_TILE_BUDGET per frame would take minutes and the probe would time out
- * having measured nothing. The same trick corridor-car.mjs uses on the car.
+ * having measured nothing. The same trick car.mjs uses on the car.
  */
 const result = await page.evaluate(({ SHIFT, TOL }) => {
-  const a = window.corridor
+  const a = window.piedmont
   const phys = a.physics
   const site = a.site
 

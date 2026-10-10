@@ -23,8 +23,8 @@
 // And it proves it can fail: with the panel chain broken on purpose (the way it was before the fix:
 // a content-sized panel), the same measurement has to report stranded content.
 //
-//   PORT=5196 WORLD=crofton-triangle node probes/corridor-library-scroll.mjs
-//   (needs WORLDEDITOR=… on the dev server for world.html — see tools/worldeditor/README.md)
+//   PORT=5196 WORLD=crofton-triangle node probes/library-scroll.mjs
+//   (needs PIEDMONT_EDITOR=… on the dev server for world.html — see services/worldeditor/README.md)
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

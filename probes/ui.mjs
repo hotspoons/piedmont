@@ -3,7 +3,7 @@
 // dialog. Also fails loudly on a page error, because a UI that throws on open still screenshots
 // fine — the old panel's markup was replaced wholesale here and a missing element is silent.
 //
-//   node probes/corridor-ui.mjs [slug] [port]
+//   node probes/ui.mjs [slug] [port]
 import { chromium } from 'playwright'
 import { mkdirSync } from 'node:fs'
 
@@ -29,9 +29,9 @@ page.on('response', (r) => {
 await page.route('**/@vite/client', (r) => r.abort())
 
 await page.goto(`http://localhost:${port}/#${slug}`, { waitUntil: 'domcontentloaded', timeout: 180000 })
-// __apex is the dev-bridge context and the one that carries `renderer`; window.corridor exists
+// __apex is the dev-bridge context and the one that carries `renderer`; window.piedmont exists
 // too and probing it 'works' while silently lacking renderer and perf. Prefer the bridge.
-await page.waitForFunction(() => !!(window.__apex ?? window.corridor)?.site, null, { timeout: 300000 })
+await page.waitForFunction(() => !!(window.__apex ?? window.piedmont)?.site, null, { timeout: 300000 })
 await page.waitForTimeout(2500)
 
 const shot = async (name, prep) => {
@@ -42,7 +42,7 @@ const shot = async (name, prep) => {
 }
 
 const only = process.env.ONLY ?? ''
-console.log(`corridor UI — ${slug}${only ? ` (${only} only)` : ''}`)
+console.log(`piedmont UI — ${slug}${only ? ` (${only} only)` : ''}`)
 if (only !== 'editor') {
 await shot('01-scene')
 await shot('02-drawer', () => page.click('.topbar .btn[aria-label="menu"]'))

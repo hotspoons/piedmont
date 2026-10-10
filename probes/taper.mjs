@@ -1,23 +1,23 @@
 // Merge tapers: does an auxiliary lane open and close over a taper, or appear sideways in one quad?
 //
-//   node probes/corridor-taper.mjs [site]
+//   node probes/taper.mjs [site]
 //
 // Clarksburg's OSM has `lanes=4, turn:lanes=|||merge_to_left` for 200 m between two `lanes=3`
 // stretches — an auxiliary lane between interchanges. Measures the paved half width every 2 m
 // through each lane change and reports how far it takes to travel, which IS the taper.
 import { chromium } from 'playwright'
 const site = process.argv[2] ?? 'clarksburg-i270'
-const PORT = process.env.CORRIDOR_PORT ?? '5202'
-const knobs = Object.fromEntries((process.env.CORRIDOR_KNOBS ?? '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, Number(v)] }))
+const PORT = process.env.PIEDMONT_PORT ?? '5202'
+const knobs = Object.fromEntries((process.env.PIEDMONT_KNOBS ?? '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, Number(v)] }))
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 800, height: 560 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite`, { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 240000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 240000 })
 
 console.log(JSON.stringify(await page.evaluate(async ({ knobs }) => {
-  const c = window.corridor
+  const c = window.piedmont
   const keys = (c.tune ?? []).flatMap((t) => t.sections.flatMap((s) => s.keys))
   const applied = {}
   for (const [n, v] of Object.entries(knobs)) { const k = keys.find((q) => q.name === n); if (k) { k.set(v); applied[n] = v } }

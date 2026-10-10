@@ -11,7 +11,7 @@
 // only true if it IS the same screen, so this checks that the class tabs filter one list rather
 // than that a second list exists.
 //
-//   node probes/corridor-assetlib.mjs [world-slug]
+//   node probes/assetlib.mjs [world-slug]
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

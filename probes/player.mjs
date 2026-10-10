@@ -9,11 +9,11 @@
 // library holds rather than a hard-coded roster, and that the choice reaches the document on
 // disk. Whether the VIEWER then drives that car is a separate claim and this does not make it.
 //
-//   node probes/corridor-player.mjs
+//   node probes/player.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'
-const SVC = process.env.WORLDEDITOR ?? 'http://localhost:8780'
+const SVC = process.env.PIEDMONT_EDITOR ?? 'http://localhost:8780'
 const ID = 'zzprobe-player'
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } })

@@ -151,7 +151,7 @@ export async function scan(root, includes = AUTHORED, { limit = 200_000, bakes =
 export function gitattributes(lfsExts) {
   if (!lfsExts.length) return ''
   const lines = [
-    '# Written by the world editor (tools/worldeditor/gitrepo.mjs).',
+    '# Written by the world editor (services/worldeditor/gitrepo.mjs).',
     '# These are the formats actually present on this volume, not a guess at what a game holds.',
     '',
     ...[...lfsExts].sort().map((e) => `*.${e} filter=lfs diff=lfs merge=lfs -text`),
@@ -163,7 +163,7 @@ export function gitattributes(lfsExts) {
 /** The `.gitignore`: everything re-fetchable, plus the bake output unless it was asked for. */
 export function gitignore({ bakes = false } = {}) {
   const lines = [
-    '# Written by the world editor (tools/worldeditor/gitrepo.mjs).',
+    '# Written by the world editor (services/worldeditor/gitrepo.mjs).',
     '# cache/ is re-fetchable downloads — 56 GB of Overpass, NAIP and DEM on the machine this was',
     '# written on. A repository nobody can clone does not preserve anything.',
     ...NEVER.map((p) => p),
@@ -327,7 +327,7 @@ export class GitRepo {
    * Idempotent. Running it again on an existing repo rewrites the generated files and updates the
    * remote, which is what "I added a new asset format" and "we moved the repo" both look like.
    */
-  async init({ remote, branch = 'main', bakes = false, name = 'corridor', email = 'corridor@localhost' } = {}) {
+  async init({ remote, branch = 'main', bakes = false, name = 'piedmont', email = 'piedmont@localhost' } = {}) {
     if (remote) {
       const why = validRemote(remote)
       if (why) throw bad(why)

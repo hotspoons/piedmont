@@ -480,7 +480,7 @@ function* roadMeshGen(st: Station[], lanesAt: (s: number) => number, classAt: (s
   const marksMat = paintMaterial(retro.uniforms, { vertexColors: true })
   retro.add(marksMat, 'paint')
   const marksMesh = new THREE.Mesh(mg, marksMat)
-  marksMesh.name = 'road:markings' // probes read the paint off this geometry (probes/corridor-geometry.mjs)
+  marksMesh.name = 'road:markings' // probes read the paint off this geometry (probes/geometry.mjs)
   // the paint as laid, so a style can repaint it and the realistic style can put it back
   marksMesh.userData.paintAsLaid = Float32Array.from(mcol)
   g.add(marksMesh)
@@ -1530,7 +1530,7 @@ async function serviceSurfaceCatalog(): Promise<{ sets: SurfaceEntry[] }> {
   return { sets }
 }
 
-/** Load tools/surfaces output: a library of variants per class, hex-tiled at real scale. */
+/** Load pipelines/surfaces output: a library of variants per class, hex-tiled at real scale. */
 export async function loadSurfaceSets(base = '/surfaces/'): Promise<Record<string, SurfaceSet>> {
   const out: Record<string, SurfaceSet> = {}
   let cat: { sets: SurfaceEntry[] } = { sets: [] }

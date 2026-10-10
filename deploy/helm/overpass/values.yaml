@@ -2,13 +2,13 @@
 # 2026-09-21, failing every new site bake at step one; this is the fix Rich asked for.
 #
 # The region is a Geofabrik extract. Maryland inits in ~20 minutes and covers every Gambrills /
-# Crownsville / Davidsonville / Bowie / Frederick / Sideling corridor we bake. To cover the
+# Crownsville / Davidsonville / Bowie / Frederick / Sideling road bands we bake. To cover the
 # California, Oregon and Maine sites too, set planetUrl/diffUrl to north-america/us-latest and
 # raise storage to 400Gi — that init is several hours, so do it deliberately, not by accident.
 image:
   repository: wiktorn/overpass-api
   tag: "latest"       # multi-arch; arm64 present, which the GH200 nodes need
-  pullPolicy: IfNotPresent
+  pullPolicy: Always    # every image, every chart (Rich, 2026-10-10)
 
 fullnameOverride: overpass
 
@@ -82,7 +82,7 @@ ingress:
   host: overpass.richard-siomporas.basedweights.com
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-issuer
-    # a corridor query over a 12 km network bbox is big and slow; nginx's defaults are not
+    # a road-band query over a 12 km network bbox is big and slow; nginx's defaults are not
     nginx.ingress.kubernetes.io/proxy-body-size: "16m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
@@ -94,7 +94,7 @@ ingress:
 # On, it adds the `regions` sidecar and the delete filter (templates/deployment.yaml) and the
 # ConfigMap the world editor's osm-import Job runs from. `primary` is the Geofabrik region this
 # instance was BUILT from: its outline is what the delete filter defers to when an imported
-# region's diff deletes something on the shared border. See tools/overpass/README.md.
+# region's diff deletes something on the shared border. See services/overpass/README.md.
 regions:
   enabled: false
   primary:
@@ -105,7 +105,7 @@ regions:
     # an apply of a US state peaked at 1.4 GB measured; a country is more
     limits: { cpu: "8", memory: 8Gi }
 
-# The road not taken, again (see tools/recon-service/README.md): the platform's
+# The road not taken, again (see services/recon/README.md): the platform's
 # pai-managed-ext-gateway at 172.16.10.157 is the intended external front door. This chart uses
 # ingress-nginx because that is what recon proved on this cluster.
 nodeSelector: {}

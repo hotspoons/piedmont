@@ -12,7 +12,7 @@
 // label that selected as text. Existence checks would pass on all of the old behaviour, so these
 // check position, state and effect instead.
 //
-//   node probes/corridor-chrome.mjs
+//   node probes/chrome.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

@@ -2,7 +2,7 @@
 // yaws, then every distant tree is a camera-facing quad showing the cell closest to its viewing
 // angle. Two triangles a tree, tens of thousands of trees, and it is the SAME tree the near
 // field shows up close — so the switch at the LOD boundary is a change of technique, not of
-// species. This is what the coast game does for its roadside sprites, brought to the corridor.
+// species. This is what the coast game does for its roadside sprites, brought to the road band.
 import * as THREE from 'three'
 import { LAMP_PARS, retro } from '../visuals/retro'
 import { SPLAT_MASK_PARS, splatMaskUniforms } from '../visuals/splatmask'

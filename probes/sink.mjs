@@ -1,8 +1,8 @@
 // Is the coarse terrain hidden under the strip everywhere, and does it meet the strip at the rim?
 //
-//   PORT=5201 SLUG=bowie-racetrack-rd node probes/corridor-sink.mjs
+//   PORT=5201 SLUG=bowie-racetrack-rd node probes/sink.mjs
 //
-// Ray-cast both meshes on a dense grid over the corridor. Two failures to look for:
+// Ray-cast both meshes on a dense grid over the road band. Two failures to look for:
 //   POKE-THROUGH  terrain above the strip: the coarse 4 m lattice tears through the 1 m sheet
 //   TRENCH        terrain far below the strip where the strip has ENDED, so nothing covers it —
 //                 a ditch down both sides of the site, which is what the untapered sink left
@@ -14,9 +14,9 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
 console.log(JSON.stringify(await page.evaluate(() => {
-  const site = window.corridor.site, mod = window.corridor.THREE
+  const site = window.piedmont.site, mod = window.piedmont.THREE
   let strip = null
   site.group.traverse((o) => { if (o.name === 'strip') strip = o })
   const cast = (x, z, m) => { const r = new mod.Raycaster(new mod.Vector3(x, 4000, z), new mod.Vector3(0, -1, 0), 0, 8000); const h = r.intersectObject(m, false)[0]; return h ? h.point.y : null }

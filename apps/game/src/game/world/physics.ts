@@ -1,6 +1,6 @@
-// The corridor's physics world: one owner, bound to the site the renderer is already drawing.
+// The game's physics world: one owner, bound to the site the renderer is already drawing.
 //
-// docs/corridor/PLAN-PHYSICS.md §2. The engine module (`@apex/engine/physics/*`) knows nothing
+// docs/PLAN-PHYSICS.md §2. The engine module (`@apex/engine/physics/*`) knows nothing
 // about this app; this file is the whole of what the two know about each other, and it is
 // deliberately small.
 //
@@ -22,7 +22,7 @@
 // WHAT IS NOT HERE YET: the car, the static props, the breakables, the traffic bodies. Step 1 of the
 // plan is the ground and nothing else, because the ground is the thing every other piece stands on
 // and because "does the physics agree with what I can see" is a question worth answering before
-// there is anything else to blame. `probes/corridor-physground.mjs` answers it.
+// there is anything else to blame. `probes/physground.mjs` answers it.
 import * as THREE from 'three'
 import { loadRapier, rapier } from '@apex/engine/physics/rapier'
 import { QUERY } from '@apex/engine/physics/layers'
@@ -38,7 +38,7 @@ import { catalogue, detachInstance, detachedOffset, type PropRecord } from './wo
 import * as T from '../../tuning'
 import { param } from '../../url'
 
-export interface CorridorPhysics {
+export interface WorldPhysics {
   readonly phys: PhysicsWorld
   readonly terrain: Terrain
   /**
@@ -224,7 +224,7 @@ const DOWN = { x: 0, y: -1, z: 0 }
  * setting the knob and reloading comes back to the default and the physics never starts. `?phys=1`
  * is that way, and it matches how `relief`, `season` and `level` are already chosen.
  */
-export async function buildPhysics(site: Site, opts: { enabled?: boolean } = {}): Promise<CorridorPhysics | null> {
+export async function buildPhysics(site: Site, opts: { enabled?: boolean } = {}): Promise<WorldPhysics | null> {
   if (!(opts.enabled ?? T.PHYS_ENABLED > 0)) return null
   await loadRapier()
 
@@ -239,7 +239,7 @@ export async function buildPhysics(site: Site, opts: { enabled?: boolean } = {})
     tile: T.PHYS_TILE_M,
     cells: T.PHYS_TILE_CELLS,
     radius: T.PHYS_RADIUS_M,
-    // A corridor bake is a ribbon: most of a tile grid over it is off the data, and a tile that is
+    // A road-band bake is a ribbon: most of a tile grid over it is off the data, and a tile that is
     // a quarter ground is still worth a collider because the quarter is the road. Lower than the
     // engine's own default for that reason.
     minCoverage: 0.15,
@@ -271,13 +271,13 @@ export async function buildPhysics(site: Site, opts: { enabled?: boolean } = {})
    * `ReturnType<typeof addTree>` RATHER THAN NAMING RAPIER'S TYPE, and this is not style.
    *
    * There are two copies of `@dimforge/rapier3d-compat` in this repo: 0.21 under
-   * `packages/engine/node_modules`, which the engine uses, and 0.12 at the root, which `@types/three`
+   * `vendor/arcade/packages/engine/node_modules`, which the engine uses, and 0.12 at the root, which `@types/three`
    * drags in. An `import('@dimforge/rapier3d-compat').Collider` written HERE resolves to the root's
    * 0.12 and is a DIFFERENT TYPE from the one the engine hands back — tsc says "types have separate
    * declarations of a private property", which is the good outcome. The bad outcome is the same
    * mistake at runtime: handles from one wasm heap passed to the other.
    *
-   * The engine's README says nothing outside `packages/engine/src/physics/` may name that package.
+   * The engine's README says nothing outside `vendor/arcade/packages/engine/src/physics/` may name that package.
    * This line is what obeying it looks like.
    */
   const trees = new Map<string, { collider: ReturnType<typeof addTree>; x: number; z: number }>()

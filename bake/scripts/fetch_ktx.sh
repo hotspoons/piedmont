@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Fetch Khronos' `ktx` encoder into tools/corridor/.bin — used to write the .ktx2 texture twins.
+# Fetch Khronos' `ktx` encoder into bake/.bin — used to write the .ktx2 texture twins.
 #
 # Not vendored: it is a 7 MB binary plus shared libraries and the repo should not carry one. The
 # bake skips KTX2 encoding entirely when it is absent, so this is optional — the .jpg fallback is
-# always written. CORRIDOR_KTX overrides the location.
+# always written. PIEDMONT_KTX overrides the location.
 set -euo pipefail
 VER="${KTX_VERSION:-4.4.2}"
 case "$(uname -m)" in

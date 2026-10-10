@@ -3,7 +3,7 @@
 //
 // Two problems this solves, both real:
 //
-// `tools/assetgen/finish.mjs` is the finisher and stays the finisher — it knows that
+// `pipelines/assetgen/finish.mjs` is the finisher and stays the finisher — it knows that
 // meshoptimizer has to do the simplifying (a collapse decimator rips the UV seams) and that the
 // unlit transform must run before Draco (it decompresses to work, so the other order undoes
 // itself). But its CLI is built around `--id`, resolving `ext/assetgen/<id>/<id>.glb` out of
@@ -16,8 +16,8 @@
 // get a pod killed by its own liveness probe while it is working perfectly. So it runs here, in a
 // child, and the service just waits for the exit code.
 //
-//   node tools/assetsvc/finish-one.mjs --in <raw.glb> --out <finished.glb> [--ratio N] [--texture N] [--lit]
-import { finish } from '../assetgen/finish.mjs'
+//   node services/assetsvc/finish-one.mjs --in <raw.glb> --out <finished.glb> [--ratio N] [--texture N] [--lit]
+import { finish } from '../../pipelines/assetgen/finish.mjs'
 
 const argv = process.argv.slice(2)
 const flag = (n, d) => {

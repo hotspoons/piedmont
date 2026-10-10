@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Bring corridor's world surfaces into the one texture library.
+// Bring the game's world surfaces into the one texture library.
 //
 // Rich, 2026-09-28: "we need to make sure the full world texture library for roads, sidewalks,
 // ground cover, etc. is also in our texture asset library, externalized, and configurable per
 // world with defaults."
 //
-// They were in `apps/corridor/public/surfaces/` — inside the app, gitignored, in a manifest shape
+// They were in `apps/game/public/surfaces/` — inside the app, gitignored, in a manifest shape
 // of their own, and reachable only by being on that server's disk. So there were two texture
 // libraries: the buildings one the editor can browse, and the road one nothing could see.
 //
@@ -15,7 +15,7 @@
 // a field, because "these three are the same surface" is real information and a road that picks
 // between unrelated textures looks wrong in a way that is hard to name.
 //
-//   node tools/assetsvc/import-surfaces.mjs --from apps/corridor/public/surfaces --to <data>/surfaces
+//   node services/assetsvc/import-surfaces.mjs --from apps/game/public/surfaces --to <data>/surfaces
 
 import { mkdir, readdir, readFile, writeFile, symlink, copyFile, rm } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
@@ -25,7 +25,7 @@ import process from 'node:process'
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i === -1 ? d : process.argv[i + 1] }
 const has = (k) => process.argv.includes(`--${k}`)
 
-const FROM = path.resolve(arg('from', 'apps/corridor/public/surfaces'))
+const FROM = path.resolve(arg('from', 'apps/game/public/surfaces'))
 const TO = path.resolve(arg('to', path.join(process.env.ASSETSVC_DATA ?? 'ext/assetsvc', 'surfaces')))
 const COPY = has('copy')
 const DRY = has('dry-run')
@@ -34,7 +34,7 @@ const DRY = has('dry-run')
  * What each surface is FOR.
  *
  * The editor groups the library by category, and "8 things called surfaces" is not a browsable
- * library. These are the roles corridor actually draws them in — derived from the name rather
+ * library. These are the roles the game actually draws them in — derived from the name rather
  * than declared, because the manifest has no such field and inventing one in eight places by hand
  * is how the names and the roles drift apart.
  */
@@ -87,13 +87,13 @@ for (const s of sets) {
     id: s.name,
     category: categoryOf(s.name),
     name: s.name.replace(/_/g, ' '),
-    // `metres` in corridor's manifest, `metres_per_tile` in the library's. One name from here on.
+    // `metres` in the game's manifest, `metres_per_tile` in the library's. One name from here on.
     metres_per_tile: s.metres_per_tile ?? s.metres ?? 1,
     albedo: base(s.albedo),
     normal: base(s.normal),
     roughness: base(s.roughness),
     ...(variants.length > 1 ? { variants } : {}),
-    origin: { library: 'corridor-world', manifest: 'surfaces.json' },
+    origin: { library: 'piedmont-world', manifest: 'surfaces.json' },
   })
 }
 

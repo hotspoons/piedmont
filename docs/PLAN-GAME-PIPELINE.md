@@ -137,7 +137,7 @@ while authoring rather than in a cutscene.
 
 ### Import, export, manage
 
-Same shape as the world bundles that already work: a `.corridor.json` envelope with a `kind`, a
+Same shape as the world bundles that already work: a `.piedmont.json` envelope with a `kind`, a
 version and an array. A preset is a document, so it exports, imports, diffs and round-trips with
 the machinery that is already written and probed.
 
@@ -151,7 +151,7 @@ What shipped, and where it differs from the design above.
 | `lerp` declared per knob | declared where it differs, **derived otherwise**: step 1 over a range of ≤12 is a switch or an enumeration, so `WEATHER` 0..4 and `SEASON` -1..3 come out discrete without a hand-kept list. |
 | `resolve(world, level, session)` | `resolve(...layers)`, key by key. |
 | a named library | `sites/<slug>/presets.json`, beside the site's `tuning.json`, through the same dev middleware and world-editor volume. Not a service: it is a property of the world and has to survive a fresh clone. |
-| `api.preset(id, { over, ease })` | `window.corridor.preset(...)` and the same on the dev bridge, so it can be driven against a real GPU. |
+| `api.preset(id, { over, ease })` | `window.piedmont.preset(...)` and the same on the dev bridge, so it can be driven against a real GPU. |
 | ground state inferred at start | computed from the **documents** — code defaults, then the world's `tuning.json` — and deliberately not read off the live knobs, because the panel has already restored this browser's scratch values by then. |
 | a preset may only hold tweenable knobs | it may hold any world knob; a discrete one **snaps at the midpoint** and the row says which ones will, so an author finds out while authoring. |
 
@@ -325,7 +325,7 @@ So: a **release** is the unit. It names a world, a level, the preset library it 
 assets bound to its entities — and publishing resolves that closure and pushes it as one thing.
 
 ```jsonc
-{ "kind": "corridor-release", "version": 1,
+{ "kind": "piedmont-release", "version": 1,
   "world": "crofton-triangle", "level": "midnight-run",
   "presets": ["dusk-rain", "midwinter"],
   "assets": ["rx7-fd", "roadside-mailbox"],     // resolved from the binding table
@@ -350,21 +350,21 @@ what an agent's loop produces at the end of a run.
 `ext/assetlib` is 4.2 GB and **`ext/*` is gitignored — nothing under it is in the repo.** On a
 fresh clone the tool and the library both vanish. It holds the 3D viewer, the asset browser, the
 materials work and the hero cars; it serves `/api/assets` and `/api/materials`, which is a
-different API from `tools/assetsvc` (`/health`, `/specs`, `/catalog`, `/jobs`). Pointing the
-editor's `WORLDEDITOR_ASSETSVC` at it does nothing but produce the same "not answering" screen,
+different API from `services/assetsvc` (`/health`, `/specs`, `/catalog`, `/jobs`). Pointing the
+editor's `PIEDMONT_EDITOR_ASSETSVC` at it does nothing but produce the same "not answering" screen,
 because the editor probes `/health` and gets a 404.
 
 The fold:
 
 1. **The tool is code and belongs in the repo.** ~2,300 lines across ten files. `viewer.html` and
-   `turntable.mjs` become the 3D preview in the Assets panel — corridor already vendors three and
+   `turntable.mjs` become the 3D preview in the Assets panel — the game already vendors three and
    the Draco decoder, and a DRACOLoader is mandatory because `finish.mjs` emits Draco and
    GLTFLoader rejects rather than warning.
 2. **The pipeline scripts** (`build`, `candidates`, `glass`, `fillholes`, `style`, `materials`)
-   merge into `tools/assetsvc`, which already has the job runner and the model resolver.
+   merge into `services/assetsvc`, which already has the job runner and the model resolver.
 3. **The library is data and belongs on the volume**, addressed like a baked world: import and
    export as an archive, publish to the bucket. 4.1 GB of `out/` is not a git problem to solve.
-4. **One API.** `tools/assetsvc`'s, because the editor and the chart already speak it. assetlib's
+4. **One API.** `services/assetsvc`'s, because the editor and the chart already speak it. assetlib's
    `/api/assets` becomes a view over the same catalog.
 
 Until this is done the Assets panel is showing whichever service it was pointed at, and today that
@@ -377,7 +377,7 @@ was a scratch directory with one test car in it.
 1. **Fold assetlib in.** Nothing else is safe while the content lives outside the repo.
 2. ~~**Presets** — stage 2, the smallest complete vertical slice, and the one that proves the
    three-layer resolve.~~ Done 2026-09-28: `src/presets.ts`, `src/presetstore.ts`,
-   `src/ui/presetpanel.ts`, 33 unit tests, `probes/corridor-presets.mjs`.
+   `src/ui/presetpanel.ts`, 33 unit tests, `probes/presets.mjs`.
 3. **The sandbox preview**, once presets have something to preview.
 4. **ECS config and binding** — stages 4 and 5.
 5. **The program layer** — stage 6, the API surface first and the sandboxing decision with it.
@@ -398,7 +398,7 @@ The queue's input is a document like everything else, so a human writes it, an a
 the editor's form writes one row of it:
 
 ```jsonc
-{ "kind": "corridor-assetlist", "version": 1,
+{ "kind": "piedmont-assetlist", "version": 1,
   "defaults": { "class": "street-furniture", "chroma": "magenta" },
   "assets": [
     { "id": "roadside-mailbox", "subject": "US roadside mailbox on a wooden post" },

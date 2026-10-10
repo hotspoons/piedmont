@@ -9,9 +9,9 @@
 // than a node has, an ingress that refuses the upload halfway through. Every one of those is
 // visible in the cluster's own API before anything is installed.
 //
-//   node tools/worldeditor/preflight.mjs                    # the current kube context
-//   node tools/worldeditor/preflight.mjs --profile spark    # against a profile's demands
-//   node tools/worldeditor/preflight.mjs --json
+//   node services/worldeditor/preflight.mjs                    # the current kube context
+//   node services/worldeditor/preflight.mjs --profile spark    # against a profile's demands
+//   node services/worldeditor/preflight.mjs --json
 //
 // WHAT A "spark" IS HERE. A DGX Spark is a GB10: 20 Arm cores and 128 GB of UNIFIED memory, which
 // the GPU and the CPU share. That last word is the one that matters — on a GH200 the model sits in
@@ -185,7 +185,7 @@ export function checks(cluster, profile) {
       limit >= profile.uploadChunkMiB * 1.5,
       'ingress body limit',
       `${limit} MiB on the worldeditor ingress, and chapter uploads send ${profile.uploadChunkMiB} MiB at a time`,
-      `raise proxy-body-size to at least ${Math.ceil(profile.uploadChunkMiB * 1.5)}m, or lower WORLDEDITOR_UPLOAD_CHUNK_MIB — a chunk over the limit is a 413 three hours into a capture`,
+      `raise proxy-body-size to at least ${Math.ceil(profile.uploadChunkMiB * 1.5)}m, or lower PIEDMONT_EDITOR_UPLOAD_CHUNK_MIB — a chunk over the limit is a 413 three hours into a capture`,
     )
   }
   return out

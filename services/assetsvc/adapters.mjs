@@ -136,7 +136,7 @@ export class OpenAIImagesModel {
  * ------------------------------------------------------------------------------------------- */
 
 /**
- * `tools/recon-service`: POST views to /reconstruct, poll /jobs/<id>, GET the asset.
+ * `services/recon`: POST views to /reconstruct, poll /jobs/<id>, GET the asset.
  *
  * Send KEYED cut-outs where you have them. The service keeps an alpha channel when one is
  * present, and our own chroma key is better than the background remover it would otherwise run —

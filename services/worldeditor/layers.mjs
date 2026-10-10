@@ -25,7 +25,7 @@
 // a cheaper QUESTION over a bigger box beats asking the expensive question over a smaller one.
 //
 // TILES, NOT VIEWPORTS. Every layer is fetched on a fixed grid — the same geographic quadtree as
-// `packages/engine/src/geo/wgs84.ts` and trailworks, so we address the world the way the rest of
+// `vendor/arcade/packages/engine/src/geo/wgs84.ts` and trailworks, so we address the world the way the rest of
 // the project does. Panning re-uses whole tiles instead of asking for a box that has never been
 // asked for before, which is what the viewport-shaped cache did: every pan was a cache miss.
 //

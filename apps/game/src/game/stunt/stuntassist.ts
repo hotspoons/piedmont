@@ -8,7 +8,7 @@
 //
 // So the car has to be told. This module decides, for a position in the world, whether it is on a
 // stunt track and which way that track's surface faces; `Vehicle.stick` does the turning and the
-// pulling. Split there because the geometry belongs to corridor and the forces belong to the engine.
+// pulling. Split there because the geometry belongs to the game and the forces belong to the engine.
 //
 // THE FADE IS THE WHOLE DESIGN. An assist that is either on or off snaps the car upright the moment
 // it clips a fixture's edge and drops it the moment it leaves. Strength falls off with distance from

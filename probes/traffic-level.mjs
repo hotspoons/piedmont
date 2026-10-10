@@ -21,7 +21,7 @@ const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if
 
 // the level, written the way an agent writes it: through the editor's MCP endpoint
 {
-  const EDITOR = process.env.WORLDEDITOR ?? 'http://127.0.0.1:8780'
+  const EDITOR = process.env.PIEDMONT_EDITOR ?? 'http://127.0.0.1:8780'
   const cfg = await (await fetch(`${EDITOR}/api/agent/mcp/config`)).json()
   const level = { id: LEVEL, world: SLUG, mode: 'drive', program: 'probe/traffic.ts', simulations: [{ kind: 'traffic', density: 0.15, seed: 3, max: 150 }] }
   const r = await fetch(`${EDITOR}/api/agent/mcp`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${cfg.auth?.token ?? ''}` },

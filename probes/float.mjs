@@ -1,9 +1,9 @@
 // "The landscape floats a metre or two above the imagery." Which surface is which, and by how much?
 //
-//   PORT=5201 SLUG=bowie-racetrack-rd node probes/corridor-float.mjs
+//   PORT=5201 SLUG=bowie-racetrack-rd node probes/float.mjs
 //
 // No screenshots: the two surfaces that could disagree are both meshes, so ray-cast straight down
-// onto each of them separately over a transect across the corridor and print the numbers. For
+// onto each of them separately over a transect across the road band and print the numbers. For
 // each offset from the spine: the strip mesh's surface, the coarse terrain mesh's surface, the
 // DEM sampler `heightAt` the rest of the code places things with, and `site.groundAt` (what grass
 // and trees actually stand on).
@@ -15,13 +15,13 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
 
 const OFFSETS = process.env.OFFSETS ? process.env.OFFSETS.split(',').map(Number) : null
 if (OFFSETS) await page.evaluate((o) => { window.__offsets = o }, OFFSETS)
 console.log(JSON.stringify(await page.evaluate(async ({ stations }) => {
-  const site = window.corridor.site
-  const mod = window.corridor.THREE
+  const site = window.piedmont.site
+  const mod = window.piedmont.THREE
   let strip = null
   const terrain = site.terrain
   site.group.traverse((o) => { if (o.name === 'strip') strip = o })

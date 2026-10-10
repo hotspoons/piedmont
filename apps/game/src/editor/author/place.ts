@@ -1,7 +1,7 @@
 // Placement: put catalog objects beside the road, free-form.
 //
 // Unlike the Drivin' editor there is no grid and no snapping to a spline — a real roadside is
-// nothing but odd angles and odd setbacks, and the whole reason for shooting these corridors was
+// nothing but odd angles and odd setbacks, and the whole reason for shooting these road bands was
 // to stop inventing that. So: any position, any yaw, any scale, and the only snap is to the
 // ground, which is on by default because nothing beside a road floats.
 //
@@ -11,7 +11,7 @@ import * as THREE from 'three'
 import { TransformControls } from 'three/addons/controls/TransformControls.js'
 import { instanceOf, loadCatalog, tintOf, type Catalog, type CatalogEntry } from './catalog'
 import { frameOf, isGenerated, loadPlacements, nextId, savePlacements, type Placement, type Placements } from '../store/schema'
-import { yawFacingRoad } from './corridor'
+import { yawFacingRoad } from './roadband'
 import { el, paneTabs } from './ui'
 import { frameNotice, guardFrame } from '../store/frameguard'
 import type { FrameVerdict } from '../store/framecheck'

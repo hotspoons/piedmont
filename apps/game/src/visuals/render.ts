@@ -33,8 +33,8 @@ export type AAMode = 'auto' | 'msaa' | 'fxaa' | 'smaa' | 'off'
 
 import { decodeStance, param, worldSlug } from '../url'
 
-const MODE_KEY = 'corridor.aa'
-const CAPTURE_KEY = 'corridor.captureSites'
+const MODE_KEY = 'piedmont.aa'
+const CAPTURE_KEY = 'piedmont.captureSites'
 
 /** `?aa=0` / `?aa=1` win over the stored setting, for a one-off A/B. */
 function fromUrl(): AAMode | null {

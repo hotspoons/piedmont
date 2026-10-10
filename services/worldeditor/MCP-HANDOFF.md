@@ -19,7 +19,7 @@ An outside agent (Claude Code, or anything speaking MCP) drives the editor throu
 ```json
 {
   "mcpServers": {
-    "corridor-world-editor": {
+    "piedmont-world-editor": {
       "type": "http",
       "url": "https://<editor>/api/agent/mcp",
       "headers": { "Authorization": "Bearer aat_…" }
@@ -38,7 +38,7 @@ An outside agent (Claude Code, or anything speaking MCP) drives the editor throu
   the Agent tab with a copy button, overridable, regenerable, and required by default anywhere
   that is not plainly localhost.
 
-`tools/worldeditor/MCP.md` is the full surface and the reasoning. This file is only what you need
+`services/worldeditor/MCP.md` is the full surface and the reasoning. This file is only what you need
 to finish it.
 
 ## THE BLOCKER, and it is not mine
@@ -47,16 +47,16 @@ to finish it.
 the shared checkout at `/workspaces/apex-conduit`:
 
 ```
-apps/corridor/src/ui/actors.ts
-apps/corridor/src/ui/weapons.ts
-apps/corridor/src/ui/vehicles.ts
-apps/corridor/src/weapons.ts
+apps/game/src/ui/actors.ts
+apps/game/src/ui/weapons.ts
+apps/game/src/ui/vehicles.ts
+apps/game/src/weapons.ts
 ```
 
-`apps/corridor/src/ui/assets.ts`, `apps/corridor/src/worldedit/main.ts` and
-`apps/corridor/test/weapons.test.ts` all import them. Consequences:
+`apps/game/src/ui/assets.ts`, `apps/game/src/worldedit/main.ts` and
+`apps/game/test/weapons.test.ts` all import them. Consequences:
 
-- `npx tsc --noEmit -p apps/corridor/tsconfig.json` fails on `main` and on every branch cut from it
+- `npx tsc --noEmit -p apps/game/tsconfig.json` fails on `main` and on every branch cut from it
 - `npx vitest run` — 679 tests pass, `test/weapons.test.ts` cannot load at all
 - **the editor page cannot build for anyone but the lane with those files on disk**
 
@@ -64,7 +64,7 @@ They build for you because your working tree has both the committed and the unco
 nothing distinguishes them when you run. This is the same trap two other lanes hit last week from
 the other side. A worktree makes the gap loud.
 
-`git add apps/corridor/src/{ui/actors.ts,ui/weapons.ts,ui/vehicles.ts,weapons.ts}` is presumably
+`git add apps/game/src/{ui/actors.ts,ui/weapons.ts,ui/vehicles.ts,weapons.ts}` is presumably
 all it wants, but they are yours and I have not read them, so I have not committed them. I did
 borrow them once to try a browser test, found they also need `../actorspecs` and a newer
 `AssetItem`, and backed them out rather than measure a half-merged state that is nobody's reality.
@@ -85,7 +85,7 @@ What IS verified, against a running service and a real socket:
 | `asset_list`, `asset_services`, `material_list` | real data, against a live assetsvc |
 | `shell_exec` with nothing attached | the actionable error, `isError: true` |
 | MCP → bridge → page → back | `shell_exec` and `code_check` answered by an attached page in the same session as `world_list`; a client cannot tell which side ran |
-| `node --test tools/worldeditor/*.test.mjs` | 113/113, including 6 new bridge tests |
+| `node --test services/worldeditor/*.test.mjs` | 113/113, including 6 new bridge tests |
 
 Three of those bridge tests assert **failures**: a wrong token does not open the socket, a page
 that disconnects mid-call fails *that call* instead of hanging to timeout, and an unclaimed tool
@@ -120,12 +120,12 @@ Everything else is new files (`mcpauth.mjs`, `mcpbridge.mjs`, `mcptools.mjs`, `m
 
 | file | lines | what |
 |---|---|---|
-| `tools/worldeditor/mcp.mjs` | +41 | merge three tool sources; route a call by origin |
-| `tools/worldeditor/server.mjs` | +56 | `mcpAuth` + `mcpBridge`, an `apiFetch`, two config routes, one auth check, one `attach` beside your relay |
-| `apps/corridor/src/ui/agentpanel.ts` | +11 | **one** optional `extraSections` hook, called last |
-| `apps/corridor/src/worldedit/api.ts` | +17 | `mcpConfig`, `setMcpToken` |
-| `apps/corridor/src/worldedit/main.ts` | +52 | the bridge and the pane, wired |
-| `apps/corridor/src/ui/ui.css` | +31 | `.mcp-*` and a `.dot` |
+| `services/worldeditor/mcp.mjs` | +41 | merge three tool sources; route a call by origin |
+| `services/worldeditor/server.mjs` | +56 | `mcpAuth` + `mcpBridge`, an `apiFetch`, two config routes, one auth check, one `attach` beside your relay |
+| `apps/game/src/ui/agentpanel.ts` | +11 | **one** optional `extraSections` hook, called last |
+| `apps/game/src/worldedit/api.ts` | +17 | `mcpConfig`, `setMcpToken` |
+| `apps/game/src/worldedit/main.ts` | +52 | the bridge and the pane, wired |
+| `apps/game/src/ui/ui.css` | +31 | `.mcp-*` and a `.dot` |
 
 The `agentpanel.ts` hook is a callback rather than an import on purpose: that panel should keep
 knowing only about the session. The MCP pane is about an agent that is *not* in its transcript.

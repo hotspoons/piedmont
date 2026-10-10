@@ -13,7 +13,7 @@ that still does not land on its own road is a FrameFault, not a note. The export
 a kilometre from the one the file was written in must agree with the export under the file's
 own frame to the rounding, and exporting twice is exporting once.
 
-    tools/corridor/.venv/bin/python -m unittest tests.test_junction_frame
+    bake/.venv/bin/python -m unittest tests.test_junction_frame
 """
 from __future__ import annotations
 
@@ -27,8 +27,8 @@ import numpy as np
 from shapely.geometry import LineString, Point, mapping
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import network  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import network  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
 LON, LAT = -76.685, 39.007
 FRAME_A = Frame.at(LON, LAT)                                               # the frame the vectors were written in

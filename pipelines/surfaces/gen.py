@@ -1,10 +1,10 @@
 """Road surface texture sets from flux, with normal and roughness maps derived here.
 
-    .venv/bin/python tools/surfaces/gen.py                # every set in SETS, skipping ones that exist
-    .venv/bin/python tools/surfaces/gen.py asphalt_new    # one
+    .venv/bin/python pipelines/surfaces/gen.py                # every set in SETS, skipping ones that exist
+    .venv/bin/python pipelines/surfaces/gen.py asphalt_new    # one
 
-Each set lands in apps/corridor/public/surfaces/<name>/ as albedo.jpg, normal.png, roughness.jpg,
-plus surfaces.json cataloguing them with the class label tools/corridor's surface.py emits — that
+Each set lands in apps/game/public/surfaces/<name>/ as albedo.jpg, normal.png, roughness.jpg,
+plus surfaces.json cataloguing them with the class label bake's surface.py emits — that
 is the join: the bake says `asphalt_aged` at a station, the viewer looks up `asphalt_aged` here.
 
 TILEABILITY. flux does not make seamless tiles on request reliably, so the albedo is made tileable
@@ -39,7 +39,7 @@ from PIL import Image, ImageFilter
 from scipy import ndimage
 
 FLUX = os.environ.get("FLUX_URL", "https://high-brine.richard-siomporas.basedweights.com")
-OUT = Path(__file__).resolve().parent.parent.parent / "apps" / "corridor" / "public" / "surfaces"
+OUT = Path(__file__).resolve().parent.parent.parent / "apps" / "game" / "public" / "surfaces"
 SIZE = 1024
 BAND = 96  # seam blend width, px
 

@@ -1,8 +1,8 @@
-// The tuning surface, in corridor's own design language.
+// The tuning surface, in the game's own design language.
 //
 // WHY NOT @apex/engine's TunePanel. That component is shared with conduit, stuntin and coast, and
 // restyling it would drag three other games into this change. What it *does* that matters is kept
-// here exactly: the same localStorage keys (`apex-corridor-<tab>.tune.v1`), so knobs saved from the
+// here exactly: the same localStorage keys (`piedmont-<tab>.tune.v1`), so knobs saved from the
 // old panel are still there after this change; Copy JSON with the stance as context, which is how
 // a number gets from Rich's drive back into tuning.ts's defaults; and Reset.
 //
@@ -13,7 +13,7 @@ import { Dialog, Tabs, button, toast, type Tab } from './shell'
 import { bodyOf, group, slider } from './controls'
 import { buildPresetPanel, type PresetPanelOpts } from './presetpanel'
 
-const storeKey = (tab: string) => `apex-corridor-${tab}.tune.v1`
+const storeKey = (tab: string) => `piedmont-${tab}.tune.v1`
 
 export interface TuneUIOpts {
   /** camera / site / season, recorded beside a copied number so the report is a repro */
@@ -121,7 +121,7 @@ export class TuneUI {
       button({ label: 'Copy JSON', icon: 'link', title: 'every knob that differs from the default, plus the stance — paste this back into tuning.ts', onClick: () => this.copy() }),
       button({ label: 'Reset tab', icon: 'arrow-path', title: 'put this tab’s knobs back to the code defaults', onClick: () => this.resetTab() }),
       button({ label: 'Clear site file', icon: 'trash', title: 'empty this site’s tuning.json and put its knobs back', onClick: () => this.o.onClearSite() }),
-      button({ label: 'Save to site', icon: 'document-arrow-down', variant: 'primary', title: 'write the changed knobs into tools/corridor/data/sites/<slug>/tuning.json', onClick: () => this.o.onSaveSite() }),
+      button({ label: 'Save to site', icon: 'document-arrow-down', variant: 'primary', title: 'write the changed knobs into data/sites/<slug>/tuning.json', onClick: () => this.o.onSaveSite() }),
     )
   }
 
@@ -225,7 +225,7 @@ export class TuneUI {
   private copy() {
     const changed: Record<string, number> = {}
     for (const [name, k] of this.keys) if (k.get() !== k.default) changed[name] = Number(k.get().toFixed(4))
-    const payload = { game: 'corridor', ...this.o.context(), tune: changed }
+    const payload = { game: 'piedmont', ...this.o.context(), tune: changed }
     const text = JSON.stringify(payload, null, 2)
     navigator.clipboard
       ?.writeText(text)

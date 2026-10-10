@@ -1,13 +1,13 @@
 // THE FIRST QUESTION ABOUT SPLATS IN THIS VIEWER: does a gaussian splat obey the depth buffer in a
-// renderer built with logarithmicDepthBuffer? Everything in docs/corridor/PLAN-SPLAT-CORRIDORS.md
+// renderer built with logarithmicDepthBuffer? Everything in docs/PLAN-SPLAT-ROUTES.md
 // rests on the answer.
 //
-// It is asked on a page with three objects and no time (apps/corridor/splatdepth.html): an opaque
+// It is asked on a page with three objects and no time (apps/game/splatdepth.html): an opaque
 // wall, the splat in front of it, the splat behind it. An earlier version of this probe differenced
 // two frames of the LIVING viewer and spent its life measuring something else moving — the clock
 // advancing the sun, grass sway, an animated stream, the lazy build pump, the canopy shade easing
 // after a camera move. A question about depth does not need a world.
-//   PORT=5185 node probes/corridor-splatdepth.mjs
+//   PORT=5185 node probes/splatdepth.mjs
 import { chromium } from 'playwright'
 const PORT = process.env.PORT ?? '5185'
 const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })

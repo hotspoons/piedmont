@@ -20,8 +20,8 @@ test('a bare server on a laptop is plain http on its Host', () => {
 
 test('the operator’s public URL wins, with or without a trailing slash', () => {
   const h = { host: 'x', 'x-forwarded-proto': 'https' }
-  assert.equal(publicMcpUrl(h, { WORLDEDITOR_PUBLIC_URL: 'https://we.example.com/' }, 8780), 'https://we.example.com/api/agent/mcp')
-  assert.equal(publicMcpUrl(h, { WORLDEDITOR_PUBLIC_URL: 'https://we.example.com' }, 8780), 'https://we.example.com/api/agent/mcp')
+  assert.equal(publicMcpUrl(h, { PIEDMONT_EDITOR_PUBLIC_URL: 'https://we.example.com/' }, 8780), 'https://we.example.com/api/agent/mcp')
+  assert.equal(publicMcpUrl(h, { PIEDMONT_EDITOR_PUBLIC_URL: 'https://we.example.com' }, 8780), 'https://we.example.com/api/agent/mcp')
 })
 
 test('a scheme that is not a scheme falls back to http rather than being echoed', () => {

@@ -17,7 +17,7 @@
 //   a BAKED WORLD  hundreds of megabytes of raster. This is how you hand them the RESULT without
 //                  the eight hours.
 //
-// The backend has had both routes for a while (tools/worldeditor/server.mjs) and nothing in the
+// The backend has had both routes for a while (services/worldeditor/server.mjs) and nothing in the
 // page had ever called them, which is a feature that exists only for whoever reads the source.
 
 import { api, type World } from './api'
@@ -85,7 +85,7 @@ export function worldMenuTransfer(o: TransferOpts, close: () => void): HTMLEleme
     return b
   }
 
-  row('Import a world…', 'a .corridor.json bundle', async () => {
+  row('Import a world…', 'a .piedmont.json bundle', async () => {
     const file = await pickFile('.json,application/json')
     if (!file) return
     let bundle: unknown

@@ -1,9 +1,9 @@
 // What the three bake-side precomputes of PERF-RIG.md ("For the bake") cost the frame, measured
 // under the test rig on this box — the CPU half, because the agent box has no GPU.
 //
-//   node probes/corridor-bakephases.mjs <site> --phase cpu   [--port 5193] [--secs 40] [--speed 78]
-//   node probes/corridor-bakephases.mjs <site> --phase ktx2  [--port 5193] [--secs 40] [--speed 78]
-//   node probes/corridor-bakephases.mjs <site> --phase cpu --prove     # the negatives
+//   node probes/bakephases.mjs <site> --phase cpu   [--port 5193] [--secs 40] [--speed 78]
+//   node probes/bakephases.mjs <site> --phase ktx2  [--port 5193] [--secs 40] [--speed 78]
+//   node probes/bakephases.mjs <site> --phase cpu --prove     # the negatives
 //
 // `cpu` is the tree replant (nearPerf.treesPlant, the replant's own parts, and how many records
 // the replant WALKED against how many it holds) and the grass generator (grass.perf.genMs, and the
@@ -33,7 +33,7 @@ import { chromium } from 'playwright'
 const args = process.argv.slice(2)
 const site = args.find((a) => !a.startsWith('--')) ?? 'crofton-triangle'
 const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt }
-const PORT = opt('--port', process.env.CORRIDOR_PORT ?? '5193')
+const PORT = opt('--port', process.env.PIEDMONT_PORT ?? '5193')
 const PHASE = opt('--phase', 'cpu')
 const SECS = +opt('--secs', '40')
 const WARM = +opt('--warm', '10')
@@ -54,13 +54,13 @@ page.on('pageerror', (e) => { errors.push(e.message); console.log('pageerror', e
 const knobs = PROVE && PHASE === 'cpu' ? { TREE_PATCH: 0, TREE_PLANT_RADIUS_M: 300, TREE_SPARE_M: 0 } : {}
 await page.addInitScript((knobs) => {
   try {
-    localStorage.setItem('apex-corridor.settings.v1', JSON.stringify({ detail: 'low' }))
-    localStorage.setItem('apex-corridor-visuals.tune.v1', JSON.stringify({ v: 2, values: knobs, touched: Object.keys(knobs) }))
+    localStorage.setItem('piedmont.settings.v1', JSON.stringify({ detail: 'low' }))
+    localStorage.setItem('piedmont-visuals.tune.v1', JSON.stringify({ v: 2, values: knobs, touched: Object.keys(knobs) }))
   } catch {}
 }, knobs)
 const t0 = Date.now()
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?${LITE ? 'lite' : ''}`, { waitUntil: 'load' })
-await page.waitForFunction(() => !!window.corridor?.site && !!window.__apex, null, { timeout: 900000 })
+await page.waitForFunction(() => !!window.piedmont?.site && !!window.__apex, null, { timeout: 900000 })
 if (errors.length) throw new Error(`page errors during boot: ${errors.join(' | ')}`)
 console.log(`booted ${site} in ${((Date.now() - t0) / 1000).toFixed(1)} s (${LITE ? 'lite' : 'full'}, Low)`)
 await page.waitForTimeout(6000)
@@ -69,7 +69,7 @@ const q = (a, p) => { const s = [...a].sort((x, y) => x - y); return s.length ? 
 const stat = (a) => ({ n: a.length, p50: +q(a, 0.5).toFixed(2), p90: +q(a, 0.9).toFixed(2), p99: +q(a, 0.99).toFixed(2), max: +(a.length ? Math.max(...a) : 0).toFixed(2) })
 
 const info = await page.evaluate(() => {
-  const s = window.corridor.site
+  const s = window.piedmont.site
   const P = s.manifest.layers.pyramid
   return { pyramid: P ? { zmin: P.zmin, zmax: P.zmax, tiles: P.list.length, texture: P.texture, ktx2: P.texture_ktx2 ?? null, graded: !!P.graded, grass: P.grass ?? null } : null, trees: s.treePlanting().count }
 })
@@ -86,17 +86,17 @@ await page.evaluate(() => {
   const tick = () => {
     const now = performance.now()
     const fp = window.__apex.framePerf
-    const np = window.corridor.site.nearPerf
-    const g = window.corridor.site.grass
-    const tp = window.corridor.site.treePlanting()
-    const py = window.corridor.site.pyramid?.()
+    const np = window.piedmont.site.nearPerf
+    const g = window.piedmont.site.grass
+    const tp = window.piedmont.site.treePlanting()
+    const py = window.piedmont.site.pyramid?.()
     rows.push({ dt: now - last, render: fp.render, world: fp.world, physics: fp.physics, treesPlant: np.treesPlant, treesPump: np.treesPump, treesPatch: np.treesPatch, grass: np.grass, pyr: np.pyr, genMs: g?.perf?.genMs ?? 0, replants: tp.replants, lastMs: tp.lastMs, parts: tp.parts, walked: tp.walked, movedMs: tp.movedMs, blocks: tp.blocks, count: tp.count, records: tp.records, pyrLoads: py?.loads ?? 0, photos: py?.photos ?? 0, askMs: g?.perf?.questionsMs ?? 0, askN: g?.perf?.cellsAsked ?? 0, askRej: g?.perf?.cellsRejected ?? 0, genTotalMs: g?.perf?.genTotalMs ?? 0 })
     last = now
     requestAnimationFrame(tick)
   }
   requestAnimationFrame(tick)
 })
-const startRig = () => page.evaluate((speed) => window.corridor.rig.start({ speed, fireEvery: 0 }), SPEED)
+const startRig = () => page.evaluate((speed) => window.piedmont.rig.start({ speed, fireEvery: 0 }), SPEED)
 console.log('rig started', await startRig())
 const keepDriving = setInterval(async () => {
   try {
@@ -108,7 +108,7 @@ await page.waitForTimeout(RUN_WARM * 1000)
 await page.evaluate(() => { window.__rows.length = 0 })
 await page.waitForTimeout(RUN_SECS * 1000)
 clearInterval(keepDriving)
-const out = await page.evaluate(() => { const r = window.__rows; const st = window.corridor.rig.stats(); window.corridor.rig.stop(); return { rows: r, rig: st, trees: window.corridor.site.treePlanting(), pyr: window.corridor.site.pyramid?.() } })
+const out = await page.evaluate(() => { const r = window.__rows; const st = window.piedmont.rig.stats(); window.piedmont.rig.stop(); return { rows: r, rig: st, trees: window.piedmont.site.treePlanting(), pyr: window.piedmont.site.pyramid?.() } })
 const rows = out.rows
 // the sampler lives on the page: no rows means the page RELOADED under the run (a source file
 // saved while it ran — Vite reloads every attached tab), and nothing below would be a measurement
@@ -147,7 +147,7 @@ if (PHASE === 'ktx2' || PHASE === 'orient') {
   console.log('pyramid', JSON.stringify(out.pyr))
   // the operation itself, in isolation: upload + mipmaps of a decoded tile, jpg against ktx2
   const iso = await page.evaluate(async (n) => {
-    const s = window.corridor.site
+    const s = window.piedmont.site
     const P = s.manifest.layers.pyramid
     const base = `/sites/${s.manifest.slug}/web/${P.dir}/`
     const r = window.__apex.renderer

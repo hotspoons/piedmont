@@ -43,9 +43,9 @@ put('fetch-all.log', 1000)
 
 const PORT = 8791
 const TOKEN = 'ghp_probeTOKEN_must_never_leave_the_server'
-const service = spawn('node', ['tools/worldeditor/server.mjs'], {
+const service = spawn('node', ['services/worldeditor/server.mjs'], {
   cwd: path.resolve(import.meta.dirname, '..'),
-  env: { ...process.env, WORLDEDITOR_DATA: root, WORLDEDITOR_PORT: String(PORT), WORLDEDITOR_RUNNER: 'local' },
+  env: { ...process.env, PIEDMONT_EDITOR_DATA: root, PIEDMONT_EDITOR_PORT: String(PORT), PIEDMONT_EDITOR_RUNNER: 'local' },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 const logs = []

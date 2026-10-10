@@ -4,7 +4,7 @@
 // right, saves, loads, plays — and the event never fires, with nothing anywhere saying why. Every
 // other check here is shape; that one is the reason the validator exists.
 //
-//   node tools/worldeditor/levels.test.mjs
+//   node services/worldeditor/levels.test.mjs
 import { validate, withDefaults, blank, FACTS, PROFILES } from './levels.mjs'
 import { readFileSync } from 'node:fs'
 
@@ -98,7 +98,7 @@ check('  and nothing is said about a rig', player({ vehicle: 'a-car-with-no-skel
    strings, so `PROFILES` is a copy — and an unguarded copy is how two lists stop agreeing with
    nobody finding out. This reads the real one off disk. */
 {
-  const src = readFileSync(new URL('../../packages/engine/src/physics/profiles.ts', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../../vendor/arcade/packages/engine/src/physics/profiles.ts', import.meta.url), 'utf8')
   const block = src.slice(src.indexOf('export const PROFILES'), src.indexOf('export type ProfileId'))
   const real = [...block.matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1])
   // if the parse breaks, this says so instead of quietly comparing two empty lists

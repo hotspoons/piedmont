@@ -1,8 +1,8 @@
-"""USGS 3DEP 1 m DEM for the corridor bbox, warped onto the site's UTM lattice.
+"""USGS 3DEP 1 m DEM for the road band bbox, warped onto the site's UTM lattice.
 
 Ported from trailworks `pipeline/ingest/sources.py::_fetch_1m` — the TNM API path only. Trailworks
 also indexes the whole prd-tnm S3 bucket for API-free discovery; that is worth it when you bake a
-state, not for nine corridors. Source GeoTIFFs are 10 km tiles at 300+ MB each and are cached so
+state, not for nine road bands. Source GeoTIFFs are 10 km tiles at 300+ MB each and are cached so
 neighbouring sites reuse them.
 
 The DEM is the bare earth: bridges and trees are removed by the vendor. That is what makes it the
@@ -25,7 +25,7 @@ from . import rastercache
 
 TNM = "https://tnmaccess.nationalmap.gov/api/v1/products"
 session = requests.Session()
-session.headers["User-Agent"] = "apex-conduit corridor (github.com/hotspoons)"
+session.headers["User-Agent"] = "piedmont (github.com/hotspoons)"
 
 
 # The TNM API and rockyweb are a politeness-limited front for a public S3 bucket, and the bucket is

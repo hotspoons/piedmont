@@ -2,7 +2,7 @@
 //
 // Ported from Turbo Radrun (apps/coast/src/app/menus.ts) on the engine's MenuStack — the same
 // screens-as-data, the same keyboard/pad/mouse navigation, the same tap-to-set / hold-to-add
-// rebinding. What is corridor's own is the HOST: the menu knows nothing about the car, the sky or
+// rebinding. What is the game's own is the HOST: the menu knows nothing about the car, the sky or
 // the layers, it asks `GameMenuHost` for a getter and a setter per setting and draws whatever it
 // is handed. `main.ts` implements the host over the viewer's real state; a test can hand it a
 // fake and press the buttons.

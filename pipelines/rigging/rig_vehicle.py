@@ -2,16 +2,16 @@
 """
 Rig a reconstructed car: free the wheels from the body, and give each one a bone it spins on.
 
-    blender --background --factory-startup --python tools/rigging/rig_vehicle.py -- \
+    blender --background --factory-startup --python pipelines/rigging/rig_vehicle.py -- \
         --in mesh.finished.glb --out rigged.glb [--renders shots/]
 
-WHAT THIS IS FOR. `docs/corridor/PLAN-RIGGING.md`: the engine has never needed bones — it places
+WHAT THIS IS FOR. `docs/PLAN-RIGGING.md`: the engine has never needed bones — it places
 four raycast wheels from the wheelbase and the track — so this is a VISUAL feature. An unrigged car
 drives exactly as well; its wheel meshes just do not turn. Nothing in here may make an unrigged car
 worse, and the script refuses rather than half-rigging.
 
 THE ORDER IS FL, FR, RL, RR and it is the only thing here that cannot be checked downstream.
-`apps/corridor/src/vehicles.ts` reads `rig.roles.wheel` in that order; four bones in the wrong
+`apps/game/src/vehicles.ts` reads `rig.roles.wheel` in that order; four bones in the wrong
 sequence build a car that steers with its back wheels, which reads as "the handling feels weird"
 and gets blamed on the profile. Front/rear cannot be known from geometry — a rectangle has no front
 — so it is stated in the output for a person to confirm, alongside the guess.
@@ -356,7 +356,7 @@ def separate(obj, found, li, ti):
     return out
 
 
-# FL, FR, RL, RR — the order `apps/corridor/src/vehicles.ts` reads out of `rig.roles.wheel`.
+# FL, FR, RL, RR — the order `apps/game/src/vehicles.ts` reads out of `rig.roles.wheel`.
 SLOTS = ("FL", "FR", "RL", "RR")
 
 

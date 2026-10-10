@@ -11,7 +11,7 @@
 // size, in the right place, and covered. Height told us nothing; so would `[hidden]`, so would
 // `display`. What is actually on top of the middle of the thing is the question.
 //
-//   node probes/corridor-panelchrome.mjs
+//   node probes/panelchrome.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

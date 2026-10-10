@@ -45,7 +45,7 @@ export interface McpConfig {
 
 /** Where the token came from, said in a way that tells you whether you may change it. */
 const SOURCE_NOTE: Record<string, string> = {
-  env: 'set by WORLDEDITOR_MCP_TOKEN on the service — change it there, not here',
+  env: 'set by PIEDMONT_EDITOR_MCP_TOKEN on the service — change it there, not here',
   file: 'kept on the editor’s volume',
   minted: 'generated the first time the service started',
   none: 'no token',
@@ -195,7 +195,7 @@ export class McpPanel {
     const snippet = JSON.stringify(
       {
         mcpServers: {
-          'corridor-world-editor': {
+          'piedmont-world-editor': {
             type: 'http',
             url: sameOriginScheme(cfg.url),
             ...(cfg.auth.required ? { headers: { Authorization: `Bearer ${input.value}` } } : {}),

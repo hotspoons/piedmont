@@ -7,10 +7,10 @@ const p = await b.newPage({ viewport: { width: 900, height: 600 } })
 await p.route('**/@vite/client', (r) => r.abort())
 p.on('pageerror', (e) => console.log('pageerror', e.message))
 await p.goto(`http://localhost:5207/editor.html#${slug}:grow`, { waitUntil: 'load' })
-await p.waitForFunction(() => document.querySelector('#status')?.textContent === '' && !!window.corridor?.site, null, { timeout: 300000 })
+await p.waitForFunction(() => document.querySelector('#status')?.textContent === '' && !!window.piedmont?.site, null, { timeout: 300000 })
 const out = await p.evaluate(async () => {
   const ag = await import('/src/editor/autogen.ts')
-  const { site, place, grow } = window.corridor
+  const { site, place, grow } = window.piedmont
   const m = site.manifest
   const ctx = ag.contextOf(m, site)
   const rows = []

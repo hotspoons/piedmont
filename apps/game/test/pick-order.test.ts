@@ -1,6 +1,6 @@
 // Which thing a click on the map means. Rich, 2026-10-10: "The active tab's items should … be
 // first on selection when clicking" — and the canopy-area case that made the old rule
-// smallest-wins (a loop inside a corridor-wide area could never be clicked from the Areas tab) is
+// smallest-wins (a loop inside a road-band-wide area could never be clicked from the Areas tab) is
 // still reachable: a second click on the same spot goes to the next thing there.
 import { describe, expect, it } from 'vitest'
 import { ClickCycle, rankHits, type PickHit } from '../src/editor/view/pickorder'

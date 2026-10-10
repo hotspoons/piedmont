@@ -4,8 +4,8 @@
 // CRD. So the Kubernetes API is stood in for: the CLUSTER'S REAL ANSWERS are recorded below as
 // fixtures, and each rung of the ladder is tested by taking away the rung above it.
 //
-//   node tools/worldeditor/models.test.mjs
-//   node tools/worldeditor/models.test.mjs --live    # against the real cluster, through k8s.mjs
+//   node services/worldeditor/models.test.mjs
+//   node services/worldeditor/models.test.mjs --live    # against the real cluster, through k8s.mjs
 import { ModelResolver } from './models.mjs'
 
 /* ---- fixtures: what `kubectl get` actually returned on gh200-1, 2026-09-27 ----------------- */

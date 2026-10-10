@@ -18,7 +18,7 @@
 //
 //   "we need to be able to set the catagory like traffic, hero car, furnature, etc."
 //
-//   node probes/corridor-catalog.mjs
+//   node probes/catalog.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

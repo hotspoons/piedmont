@@ -315,7 +315,7 @@ const shellPanel = new ShellPanel({
  * This page dials the service and offers the tools that cannot live on it: the wasm shell and
  * Monaco's TypeScript service. Everything else an outside agent can reach — worlds, levels,
  * programs, the catalog, the runs, the splats — is a server-side tool and works with this tab shut
- * (tools/worldeditor/mcptools.mjs). So this is not "the agent's access"; it is the part of it that
+ * (services/worldeditor/mcptools.mjs). So this is not "the agent's access"; it is the part of it that
  * needs a browser.
  */
 const mcpSection = el('div', 'mcp-section')
@@ -404,7 +404,7 @@ const map = new MapView({
  * What replaced a single "fetch every drivable way in this box" is a stack the SERVER decides:
  * `/api/osm/plan` says which layers apply at this zoom and which tiles of each cover the view, and
  * this fetches them one at a time, newest-view-first, drawing as they land. Zoom numbers live in
- * `tools/worldeditor/layers.mjs` beside the queries they select, because a client that hard-coded
+ * `services/worldeditor/layers.mjs` beside the queries they select, because a client that hard-coded
  * them would drift from the questions they stand for.
  *
  * WHY TILES. The old cache was viewport-shaped, so every pan was a box nobody had ever asked for
@@ -940,7 +940,7 @@ function buildAppearance(host: HTMLElement) {
   host.append(
     select({
       label: 'Theme',
-      value: (localStorage.getItem('corridor.theme') as 'dark' | 'light') ?? 'dark',
+      value: (localStorage.getItem('piedmont.theme') as 'dark' | 'light') ?? 'dark',
       options: [
         { value: 'dark', label: 'Dark' },
         { value: 'light', label: 'Light' },
@@ -948,7 +948,7 @@ function buildAppearance(host: HTMLElement) {
       onChange: (v) => {
         document.documentElement.dataset.theme = v
         try {
-          localStorage.setItem('corridor.theme', v)
+          localStorage.setItem('piedmont.theme', v)
         } catch {
           /* a private window has no storage; the theme still applies for this session */
         }
@@ -1388,7 +1388,7 @@ async function refreshWorlds() {
 }
 
 async function boot() {
-  document.documentElement.dataset.theme = localStorage.getItem('corridor.theme') ?? 'dark'
+  document.documentElement.dataset.theme = localStorage.getItem('piedmont.theme') ?? 'dark'
   buildBar()
   buildDrawer()
   installShellKeys(() => drawer)
@@ -1470,7 +1470,7 @@ let booted = false
 /**
  * The handle a probe or a console session drives this page by: `window.__we`.
  *
- * NOT `window.__apex`, and not `window.corridor`. Those two both exist on the viewer and the
+ * NOT `window.__apex`, and not `window.piedmont`. Those two both exist on the viewer and the
  * editor and both carry `site`/`scene`/`camera`, which is how someone probes the wrong one and
  * gets true answers about the wrong object for an afternoon. This page has no three.js scene and
  * no renderer, so it gets its own name and holds only what it really has.

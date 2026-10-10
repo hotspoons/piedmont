@@ -1,5 +1,5 @@
 // What the primary strip's shader is actually fed: uniforms, textures, and the canopy attribute.
-//   PORT=5185 node probes/corridor-stripstate.mjs <stance url>
+//   PORT=5185 node probes/stripstate.mjs <stance url>
 import { chromium } from 'playwright'
 const [, , url] = process.argv
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
@@ -7,9 +7,9 @@ const page = await browser.newPage({ viewport: { width: 800, height: 500 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 300000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 300000 })
 console.log(await page.evaluate(() => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const out = []
   site.group.traverse((o) => {
     if (o.name !== 'strip') return

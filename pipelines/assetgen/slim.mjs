@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Bring a shipped model down to a face count a sprite can actually resolve.
 //
-//   node tools/assetgen/slim.mjs --check                  # what every model costs now
-//   node tools/assetgen/slim.mjs --all                    # rewrite them in place
-//   node tools/assetgen/slim.mjs --all --faces 12000
+//   node pipelines/assetgen/slim.mjs --check                  # what every model costs now
+//   node pipelines/assetgen/slim.mjs --all                    # rewrite them in place
+//   node pipelines/assetgen/slim.mjs --all --faces 12000
 //
 // WHY THIS EXISTS, given `finish.mjs` already simplifies. Two reasons, and the second is the one
 // that matters.

@@ -15,7 +15,7 @@ import type { FrameVerdict } from '../store/framecheck'
 import { labelAt } from '../view/labels'
 import { areaOf, frameOf, inside, loadAdjustments, nextId, saveAdjustments, CROP_FIELDS, NEUTRAL, PICKERS, SLIDERS, type Adjust, type Adjustments, type Area } from '../store/schema'
 import type { Site } from '../../world/scene'
-import { bearingOf, nearestStation, normDeg } from './corridor'
+import { bearingOf, nearestStation, normDeg } from './roadband'
 import { dragChip, el, paneTabs, slider } from './ui'
 
 const COLOR = { idle: 0x5c93c4, edited: 0xffdc00, selected: 0x2ee6c0, draw: 0xff8a2b }
@@ -31,7 +31,7 @@ export class AreaMode {
 
   private slug = ''
   private h: HeightAt = () => 0
-  /** only for corridor-frame defaults (the crop-row heading); areas themselves are site-frame */
+  /** only for road-band-frame defaults (the crop-row heading); areas themselves are site-frame */
   private site: Site | null = null
   private meshes = new Map<string, { fill: THREE.Mesh; outline: Line2 }>()
   private handles = new THREE.Group()
@@ -381,7 +381,7 @@ export class AreaMode {
       row.ondblclick = () => go(a)
       list.append(row)
     }
-    if (!this.doc.areas.length) list.append(el('p', 'dim', 'No areas yet. Draw one, or seed this site with `python -m corridor areas <slug>`.'))
+    if (!this.doc.areas.length) list.append(el('p', 'dim', 'No areas yet. Draw one, or seed this site with `python -m piedmont_bake areas <slug>`.'))
     root.append(list)
 
     const a = this.doc.areas.find((x) => x.id === this.selected)

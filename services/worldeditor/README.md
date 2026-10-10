@@ -12,14 +12,14 @@ on the cluster, and **the browser knows exactly one origin: this service.**
 ```
 
 ```bash
-# development: the app on 5212, this service on 8780, both against the corridor data directory
-node tools/worldeditor/server.mjs --port 8780 --data tools/corridor/data
-CORRIDOR_PORT=5212 WORLDEDITOR=http://localhost:8780 npm run dev -w apps/corridor
+# development: the app on 5212, this service on 8780, both against the road-band data directory
+node services/worldeditor/server.mjs --port 8780 --data data
+PIEDMONT_PORT=5212 PIEDMONT_EDITOR=http://localhost:8780 npm run dev -w apps/game
 #   -> http://localhost:5212/world.html
 
-node tools/worldeditor/probe.mjs                              # everything that needs no service
-node tools/worldeditor/probe.mjs --prove                      # the checks, broken on purpose
-node tools/worldeditor/probe.mjs --api http://localhost:8780 --ui http://localhost:5212/world.html
+node services/worldeditor/probe.mjs                              # everything that needs no service
+node services/worldeditor/probe.mjs --prove                      # the checks, broken on purpose
+node services/worldeditor/probe.mjs --api http://localhost:8780 --ui http://localhost:5212/world.html
 ```
 
 ## What it is made of, and what it deliberately is not
@@ -35,15 +35,15 @@ node tools/worldeditor/probe.mjs --api http://localhost:8780 --ui http://localho
 | `k8s.mjs` | the two Kubernetes calls this makes, by hand |
 | `probe.mjs` | every claim below, and a negative for every check |
 
-It does **not** rebuild the asset pipeline (`tools/assetsvc` owns that and is proxied), the bake
-(`tools/corridor`), the publish (`corridor publish`), or the design system (`apps/corridor/src/ui`).
+It does **not** rebuild the asset pipeline (`services/assetsvc` owns that and is proxied), the bake
+(`bake`), the publish (`piedmont_bake publish`), or the design system (`apps/game/src/ui`).
 
 ## The five things worth knowing
 
 ### 1. The editor's save path exists in a pod now, and the editor did not change
 
-`apps/corridor/src/editor/schema.ts` saves by `PUT /sites/<slug>/<name>.json`, and in development
-that is answered by a middleware inside `apps/corridor/vite.config.ts`. **There is no Vite in a
+`apps/game/src/editor/schema.ts` saves by `PUT /sites/<slug>/<name>.json`, and in development
+that is answered by a middleware inside `apps/game/vite.config.ts`. **There is no Vite in a
 pod.** So this service implements the same contract against the volume: the same paths, the same
 five-name whitelist (`adjustments`, `placements`, `structures`, `dead_ends`, `tuning`), the same
 `{ok, bytes}` reply, the same atomic tmp-and-rename, and the same refusal to fall through to an
@@ -89,7 +89,7 @@ the volume** rather than committed: 89 kB of borders and 36 kB of world cities o
 then local for ever. If the fetch fails there are no borders and the panel says so.
 
 **Tiles, not viewports.** Every Overpass layer is fetched on the same geographic quadtree as
-`packages/engine/src/geo/wgs84.ts` and trailworks. The old cache was viewport-shaped, so every pan
+`vendor/arcade/packages/engine/src/geo/wgs84.ts` and trailworks. The old cache was viewport-shaped, so every pan
 was a box nobody had asked for and therefore a miss. Tiles make panning free after the first look,
 bound the cache, and let two people share the work. `GET /api/osm/plan` is what the client asks:
 which layers apply at this zoom, and which tiles of each cover the view, nearest the middle first.
@@ -149,7 +149,7 @@ motorway that the bake then chains straight through their town.
 The preview's own box is a **geodetic** square, not the bake's UTM one, and it is not going to
 become one: reimplementing UTM here to match a cache key is exactly the guess that rotated four
 lanes' work by 1.06° on 2026-09-21. Instead the difference is measured, against the real
-`corridor.geo.Frame`, and the probe fails if it ever goes the wrong way:
+`piedmont_bake.geo.Frame`, and the probe fails if it ever goes the wrong way:
 
 | site | EPSG | R | margin the bake adds |
 |---|---|---|---|
@@ -199,7 +199,7 @@ for the hash rather than recomputing it in JavaScript, so the two cannot drift.
 The browser never sends Overpass QL. This module owns two queries — the drivable network in a box
 (`network.roads`' `all_streets` branch verbatim, including its post-query drop list) and a
 place-name search — and builds them itself. A page that could post arbitrary QL could put our own
-extract on the floor, which is the thing `tools/overpass` exists to prevent.
+extract on the floor, which is the thing `services/overpass` exists to prevent.
 
 Ours first, the public mirrors behind it, same list and same order as `osm.py`, because our
 extract is one region and a California site still needs a mirror.
@@ -246,29 +246,29 @@ Environment only, so the chart and a laptop run the same code.
 
 | | |
 |---|---|
-| `WORLDEDITOR_PORT` `_HOST` | where to listen (`--port`, `--host`) |
-| `WORLDEDITOR_DATA` | the volume (`--data`). Default `tools/corridor/data` |
-| `WORLDEDITOR_APP` | the built app to serve (`--app`). Default `apps/corridor/dist` |
-| `WORLDEDITOR_OVERPASS_URL` | comma list, ours first; the public mirrors are appended. A REGIONAL instance must declare what it holds: `https://host/api/interpreter#south/west/north/east` (slashes, because the list itself is comma-separated) |
-| `WORLDEDITOR_OVERPASS_TIMEOUT` `_DEADLINE` `_DOWN_FOR` | per attempt (120 s), for the whole call (240 s), and how long a failed upstream is skipped (60 s) |
-| `WORLDEDITOR_ASSETSVC` | the assetsvc base URL, e.g. `http://assetsvc.default.svc` |
-| `WORLDEDITOR_RUNNER` | force `local`; otherwise Kubernetes when a service-account token is mounted |
-| `WORLDEDITOR_BAKE_IMAGE` `_CLAIM` `_BAKE_RESOURCES` | what the Job runs, on which PVC, with what |
-| `WORLDEDITOR_NAMESPACE` | default: the pod's own |
-| `WORLDEDITOR_S3_BUCKET` `_ENDPOINT` `_REGION` `_PREFIX` `_S3_SECRET` | the publish target |
-| `WORLDEDITOR_PYTHON` `_CORRIDOR` | the local runner's interpreter and working directory |
-| `WORLDEDITOR_SEED_SITES` | a `sites.json` to seed the worlds from on an empty volume |
-| `WORLDEDITOR_CORS` | allowed origin, `*` by default, which is for development |
+| `PIEDMONT_EDITOR_PORT` `_HOST` | where to listen (`--port`, `--host`) |
+| `PIEDMONT_EDITOR_DATA` | the volume (`--data`). Default `data` |
+| `PIEDMONT_EDITOR_APP` | the built app to serve (`--app`). Default `apps/game/dist` |
+| `PIEDMONT_EDITOR_OVERPASS_URL` | comma list, ours first; the public mirrors are appended. A REGIONAL instance must declare what it holds: `https://host/api/interpreter#south/west/north/east` (slashes, because the list itself is comma-separated) |
+| `PIEDMONT_EDITOR_OVERPASS_TIMEOUT` `_DEADLINE` `_DOWN_FOR` | per attempt (120 s), for the whole call (240 s), and how long a failed upstream is skipped (60 s) |
+| `PIEDMONT_EDITOR_ASSETSVC` | the assetsvc base URL, e.g. `http://assetsvc.default.svc` |
+| `PIEDMONT_EDITOR_RUNNER` | force `local`; otherwise Kubernetes when a service-account token is mounted |
+| `PIEDMONT_EDITOR_BAKE_IMAGE` `_CLAIM` `_BAKE_RESOURCES` | what the Job runs, on which PVC, with what |
+| `PIEDMONT_EDITOR_NAMESPACE` | default: the pod's own |
+| `PIEDMONT_EDITOR_S3_BUCKET` `_ENDPOINT` `_REGION` `_PREFIX` `_S3_SECRET` | the publish target |
+| `PIEDMONT_EDITOR_PYTHON` `_BAKE_DIR` | the local runner's interpreter and working directory |
+| `PIEDMONT_EDITOR_SEED_SITES` | a `sites.json` to seed the worlds from on an empty volume |
+| `PIEDMONT_EDITOR_CORS` | allowed origin, `*` by default, which is for development |
 
 ## In the cluster
 
 ```bash
-helm upgrade --install worldeditor tools/worldeditor/chart -n default --set enabled=true \
-  --set data.existingClaim=corridor-data
-kubectl port-forward -n default svc/worldeditor 8780:80     # until a route is turned on
+helm upgrade --install worldeditor deploy/helm/worldeditor -n "$NAMESPACE" --set enabled=true \
+  --set data.existingClaim=piedmont-data
+kubectl port-forward -n "$NAMESPACE" svc/worldeditor 8780:80     # until a route is turned on
 ```
 
-`enabled: false` is the default and is the point: nothing in corridor requires this, and a pod that
+`enabled: false` is the default and is the point: nothing in the game requires this, and a pod that
 can create Jobs is something you turn on deliberately.
 
 What the chart makes:
@@ -277,7 +277,7 @@ What the chart makes:
 |---|---|
 | Deployment | `Recreate`, one replica. Two processes watching one run's Job would both write its log |
 | Service | `worldeditor:80` → the pod's 8780 |
-| PVC | **the bake's volume**, RWX — `data.existingClaim: corridor-data` shares it with the bake Job, which is the whole design. The chart will make its own only if you ask it to |
+| PVC | **the bake's volume**, RWX — `data.existingClaim: piedmont-data` shares it with the bake Job, which is the whole design. The chart will make its own only if you ask it to |
 | ServiceAccount + Role + RoleBinding | `jobs: create/get/list/watch/delete` and `pods: get/list` + `pods/log: get`, in one namespace. Nothing cluster-scoped, nothing on secrets |
 | Ingress / HTTPRoute | both **off**, and exactly one should ever be on: external-dns publishes whichever object carries the hostname, and two claiming one name fight over the record |
 
@@ -292,7 +292,7 @@ restarts prints itself twice and looks like a hang.
 
 **Which front door.** Both gateways on gh200-1 are Programmed, but `central-gateway` is a ClusterIP,
 so an HTTPRoute there gets a DNS record nobody off-cluster can route to. The nginx Ingress is the
-proven path and is what `tools/overpass` and `tools/recon-service` both use.
+proven path and is what `services/overpass` and `services/recon` both use.
 
 ## Traps, measured
 
@@ -310,14 +310,14 @@ bar: invisible until you try to click a road there. The bar is measured into `--
 
 **`spawn` reports a missing interpreter on the next tick.** An `await` between `spawn` and
 `child.on('error')` means the handler is not attached when it fires, and an unhandled `'error'` on
-a ChildProcess throws — so a wrong `WORLDEDITOR_PYTHON` took the whole service down instead of
+a ChildProcess throws — so a wrong `PIEDMONT_EDITOR_PYTHON` took the whole service down instead of
 failing one run. Every handler is attached before the first await now.
 
 **`waitUntil: 'networkidle'` never settles on a page that polls.** The run list and the roads are
 both timers, so the first UI probe timed out on a page that had loaded perfectly. The honest signal
 is the app saying it is up: `waitForFunction(() => !!window.__we)`.
 
-**The probe's handle is `window.__we`.** Not `window.__apex`, and not `window.corridor` — those
+**The probe's handle is `window.__we`.** Not `window.__apex`, and not `window.piedmont` — those
 both exist on the viewer and the editor and both carry `site`/`scene`/`camera`, which is how
 someone probes the wrong one and gets true answers about the wrong object for an afternoon. This
 page has no scene and no renderer, so it gets its own name and holds only what it really has.
@@ -345,7 +345,7 @@ a superseded request's `finally` wiped the message its own replacement had just 
 error: a success with nothing in it, byte-identical to a legitimately empty answer over the sea. A
 rotation that turns on an exception or a non-2xx does not fire, so a regional instance placed first
 silently reports that Italy has no roads. Found and measured by the overpass lane
-(`docs/corridor/OVERPASS-PLANET.md`); guarded here two ways — an upstream may declare what it holds
+(`docs/OVERPASS-PLANET.md`); guarded here two ways — an upstream may declare what it holds
 (`#south/west/north/east`) and is skipped for anything else, and, needing no configuration at all,
 **an empty answer from an upstream that is not the last one is treated as inconclusive** and the
 next one is tried before it is believed.

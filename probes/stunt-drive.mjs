@@ -9,7 +9,7 @@ import { chromium } from 'playwright'
 import { writeFileSync, unlinkSync, existsSync } from 'node:fs'
 
 const SLUG = process.env.SLUG ?? 'bowie-racetrack-rd'
-const FILE = `/workspaces/apex-conduit/tools/corridor/data/sites/${SLUG}/stunts.json`
+const FILE = `/workspaces/piedmont/data/sites/${SLUG}/stunts.json`
 const VIEWER = process.env.VIEWER ?? 'http://127.0.0.1:5185/index.html'
 
 // author a fixture on the spine, the way the editor would
@@ -175,7 +175,7 @@ if (!linked.error) {
   check(linked.onTheJoin !== null, `the curve between them is there to drive on (${linked.gap} m of join)`)
   /*
    * AND THE CONTROL IS THE SAME RAY, 120 m TO THE SIDE. Out here there is no heightfield at all —
-   * the terrain collider follows the corridor and this is three hundred metres off it — so a ray
+   * the terrain collider follows the road band and this is three hundred metres off it — so a ray
    * that finds a surface on the join and nothing beside it can only have found the connector.
    * Asserting "above the terrain" instead would be wrong: two pieces standing on flat ground are
    * joined by a curve that lies ON that ground, which is what the numbers say.

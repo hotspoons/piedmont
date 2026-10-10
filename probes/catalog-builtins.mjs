@@ -8,7 +8,7 @@
 // must be a row. Then the two Rich named, by the words he used, through the search box — and the
 // detail of one, which must say where it comes from and show its model.
 //
-//   PORT=5196 WORLD=crofton-triangle SHOTS=/tmp/shots node probes/corridor-catalog-builtins.mjs
+//   PORT=5196 WORLD=crofton-triangle SHOTS=/tmp/shots node probes/catalog-builtins.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

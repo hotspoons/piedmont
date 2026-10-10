@@ -1,6 +1,6 @@
 // A LOOK at one stop sign and one street-name post, from the kerb, on a box with no GPU.
 //
-//   PORT=5185 node probes/corridor-signshot.mjs <out-prefix>
+//   PORT=5185 node probes/signshot.mjs <out-prefix>
 //
 // Finds the first placed stop sign (furniture:sign:stop, instance 0) and the nearest blade post,
 // stands the camera 7 m in front of the sign at eye height looking at it, and shoots small. This
@@ -15,12 +15,12 @@ const page = await browser.newPage({ viewport: { width: 900, height: 560 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
 await page.keyboard.press('m')
 const shots = ['sign', 'blades']
 for (const which of shots) {
   const info = await page.evaluate((which) => {
-    const c = window.corridor, site = c.site, THREE = c.THREE
+    const c = window.piedmont, site = c.site, THREE = c.THREE
     c.tune.set('GRASS_RADIUS', 30); c.tune.set('GRASS_SPRITE_RADIUS', 80); c.tune.set('GRASS_MOWN_PER_M2', 20); c.tune.set('GRASS_ROUGH_PER_M2', 10)
     let mesh = null
     site.group.traverse((o) => { if (!mesh && o.name === 'furniture:sign:stop') mesh = o })

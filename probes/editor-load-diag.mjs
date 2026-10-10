@@ -9,7 +9,7 @@ const t0 = Date.now()
 await p.goto(`http://localhost:5207/editor.html#${slug}`, { waitUntil: 'load' })
 for (let i = 0; i < 30; i++) {
   await p.waitForTimeout(15000)
-  const s = await p.evaluate(() => ({ st: document.querySelector('#status')?.textContent, site: !!window.corridor?.site }))
+  const s = await p.evaluate(() => ({ st: document.querySelector('#status')?.textContent, site: !!window.piedmont?.site }))
   console.log(`${Math.round((Date.now() - t0) / 1000)}s  status=${JSON.stringify(s.st)}  site=${s.site}`)
   if (s.site) break
 }

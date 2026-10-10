@@ -14,7 +14,7 @@
 // WHICH IS WHY THIS ASKS WHETHER THE PAGE IS STILL ANSWERING as well as whether the dialog is
 // gone. A wedged tab and a dialog that declined to close are the same thing to a selector.
 //
-//   node probes/corridor-dialogs.mjs
+//   node probes/dialogs.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

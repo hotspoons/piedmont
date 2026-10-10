@@ -8,7 +8,7 @@
 //
 // So there are three layers, and this file is the join between them:
 //
-//   1. THE BANK — `public/sounds/bank.json`, written by tools/sounds/build.py from CC0 sources
+//   1. THE BANK — `public/sounds/bank.json`, written by pipelines/sounds/build.py from CC0 sources
 //      (CREDITS.md beside it). It is a map of SLOT → clips. A slot is named for what the game
 //      wants to say (`gun.hit` is "a round landed on a car"), never for where the file came from.
 //   2. OVERRIDES — a vehicle, an actor or a world may replace any slot with its own clips. They

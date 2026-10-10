@@ -1,10 +1,10 @@
-# worldeditor: the pod where a person turns OSM into a corridor world.
+# worldeditor: the pod where a person turns OSM into a game world.
 #
-# OFF BY DEFAULT, and that is the point twice over. Nothing in corridor requires this — the viewer
+# OFF BY DEFAULT, and that is the point twice over. Nothing in the game requires this — the viewer
 # and the editor work exactly as before without it — and a pod that can create Jobs on a shared
 # cluster is something you turn on deliberately, not something that arrives with a merge.
 #
-#   helm upgrade --install worldeditor tools/worldeditor/chart -n default \
+#   helm upgrade --install worldeditor deploy/helm/worldeditor -n "$NAMESPACE" \
 #     --set enabled=true --set ingress.enabled=true
 #
 # That one command is the whole deployment: it makes the volume, the pod, the role that lets a
@@ -15,19 +15,19 @@
 enabled: false
 
 image:
-  repository: ghcr.io/hotspoons/worldeditor
+  repository: ghcr.io/hotspoons/piedmont-worldeditor
   tag: "latest"
   pullPolicy: Always
 
 # A BLANK WORLD MAP MEANS BLANK. Empty is the default and a populated editor is a choice.
 #
-# The image used to come up holding thirty-one Maryland corridors — somebody else's worlds on
+# The image used to come up holding thirty-one Maryland road bands — somebody else's worlds on
 # somebody else's fresh volume. The way in is to draw an area or import a definition, not to
 # inherit a list (Rich, 2026-09-27: "I want to reset the image so it ships with zero built in
 # configs and we can start by importing crofton or crownsville or arrowhead").
 #
 # The list is still IN the image, so opting back in is a flag rather than a rebuild:
-#   --set seedSites=/app/tools/corridor/sites.json
+#   --set seedSites=/app/bake/sites.json
 # It only ever applies to a volume with no worlds on it; it cannot overwrite what you have.
 seedSites: ""
 
@@ -38,11 +38,11 @@ replicaCount: 1
 # this pod hold it at the same time, which is the normal state, not the exception.
 #
 # LEAVE `existingClaim` EMPTY unless you are sharing a volume with a separately-installed
-# `tools/corridor/chart`. The bake Jobs this service launches mount WORLDEDITOR_CLAIM, which the
+# `deploy/helm/bake`. The bake Jobs this service launches mount PIEDMONT_EDITOR_CLAIM, which the
 # deployment sets to whatever claim this chart is using — so a claim of its own is not a half
 # setup, it is the self-contained one, and the pod and its bakes are on the same volume either
 # way. Set `existingClaim` only to ADOPT an existing bake volume; the two-worlds problem it avoids
-# is the corridor chart's Job writing somewhere this pod cannot see, which only arises if you run
+# is the bake chart's Job writing somewhere this pod cannot see, which only arises if you run
 # that chart's Job at all.
 #
 # The claim carries `helm.sh/resource-policy: keep`, so worlds outlive `helm uninstall`.
@@ -66,7 +66,7 @@ overpassUrl: https://overpass.richard-siomporas.basedweights.com/api/interpreter
 
 # WHAT EACH INSTANCE ABOVE HOLDS, by Geofabrik region id: `overpass=us/maryland,
 # overpass-na=north-america` (several on one: `overpass=us/maryland+us/virginia`). Routing is by the
-# extract's own outline, read from the Geofabrik index (tools/worldeditor/coverage.mjs). An instance
+# extract's own outline, read from the Geofabrik index (services/worldeditor/coverage.mjs). An instance
 # left out here, with no `#s/w/n/e` box on its URL either, is treated as holding the whole planet —
 # right for a planet instance, and the silent empty for a regional one. Regions added by an
 # osm-import are kept on the volume whatever this says.
@@ -79,19 +79,19 @@ osmImportImage: ""
 
 # The asset backend, in-cluster. The BROWSER never sees this: the service reverse-proxies it at
 # /assetsvc so the page knows one origin. Empty means the asset panels report "no service", which
-# is a normal state — generation is off by default (tools/assetsvc/chart).
-assetsvcUrl: http://assetsvc.default.svc
+# is a normal state — generation is off by default (deploy/helm/assetsvc).
+assetsvcUrl: http://assetsvc   # the asset service in the same namespace as this release
 
 bake:
-  # What a bake Job runs. The same image tools/corridor/chart uses, because it IS that Job.
-  image: ghcr.io/hotspoons/corridor:latest
+  # What a bake Job runs. The same image deploy/helm/bake uses, because it IS that Job.
+  image: ghcr.io/hotspoons/piedmont-bake:latest
   # A site is ~100 M points held in numpy while rasters are built; 16 Gi is the observed floor.
   #
   # A BIG NETWORK IS THE HARD CASE, and bake 495 is the proof. 495 is the Capital Beltway
   # `kind: network` world (514 km², 10,138 chains); it keeps EVERY near-road return for the
-  # structure tests, so `lidar/corridor.laz` alone is 669,055,397 points (3.5 GB compressed).
+  # structure tests, so `lidar/road_band.laz` alone is 669,055,397 points (3.5 GB compressed).
   #
-  # 48 Gi died in the lidar ASSEMBLY just before corridor.laz was written (all 643 tiles and their
+  # 48 Gi died in the lidar ASSEMBLY just before road_band.laz was written (all 643 tiles and their
   # VRTs already on disk). That is cut at the source now: network_tiles.lidar_tiled drops the tile
   # accumulators once the VRTs exist, assembles the near-road cloud in one preallocated block and
   # frees each batch behind it, so the peak is ~1x the cloud rather than ~2x it plus the tiles.
@@ -105,7 +105,7 @@ bake:
   #
   # CPU IS THE OTHER HALF. The bake was single-threaded through its two longest stages (10,137
   # branch profiles, then surface.measure): ~71 of these nodes' 72 cores sat idle for ~9 h. Those
-  # offline stages now run in a FORKED pool sized by CORRIDOR_JOBS (default min(cpu_count, 32)) —
+  # offline stages now run in a FORKED pool sized by PIEDMONT_JOBS (default min(cpu_count, 32)) —
   # forked so the 669 M-point cloud is inherited copy-on-write, not pickled per task — so the CPU
   # limit is raised to match. 384 GiB / 64 CPU fit a 573 GiB, 72-core node, and no LimitRange or
   # ResourceQuota caps this namespace; the request stays small so a bake still schedules beside the
@@ -117,8 +117,8 @@ bake:
   ttlSecondsAfterFinished: 604800
   horizonRadiusM: 30000
 
-# Publishing runs `python -m corridor publish` in a Job with this Secret attached.
-#   kubectl create secret generic corridor-r2 --from-literal=AWS_ACCESS_KEY_ID=... --from-literal=AWS_SECRET_ACCESS_KEY=...
+# Publishing runs `python -m piedmont_bake publish` in a Job with this Secret attached.
+#   kubectl create secret generic piedmont-r2 --from-literal=AWS_ACCESS_KEY_ID=... --from-literal=AWS_SECRET_ACCESS_KEY=...
 # The Deploy panel's Cloudflare token, from a Secret with the key CLOUDFLARE_API_TOKEN:
 #   kubectl create secret generic cloudflare --from-literal=CLOUDFLARE_API_TOKEN=<token>
 # Empty: the token is typed into the panel and held in memory until the pod restarts.
@@ -129,8 +129,8 @@ publish:
   bucket: ""
   endpoint: ""      # R2: https://<account-id>.r2.cloudflarestorage.com ; empty for AWS
   region: auto
-  prefix: corridor
-  secretName: corridor-r2
+  prefix: piedmont
+  secretName: piedmont-r2
 
 # THE SMALLEST ROLE THAT WORKS, and the reason it exists is that a person should be able to start a
 # bake without a kubeconfig. Namespaced, no secrets, no cluster scope, and the only thing it can
@@ -166,7 +166,7 @@ blender:
 
 # Turn on EITHER ingress or httpRoute, never both: external-dns publishes whichever object carries
 # the hostname and two objects claiming one name fight over the record. The nginx Ingress is the
-# proven path on gh200-1 (see tools/overpass and tools/recon-service); central-gateway is a
+# proven path on gh200-1 (see services/overpass and services/recon); central-gateway is a
 # ClusterIP, so an HTTPRoute there gets a DNS record nobody off-cluster can route to.
 ingress:
   enabled: false
@@ -176,7 +176,7 @@ ingress:
     # A world's manifest is megabytes of JSON and a bake log is long-lived; nginx's defaults are not.
     #
     # THIS NUMBER AND THE SERVER'S OWN CAP HAVE TO AGREE. The service accepts an uploaded baked
-    # world up to WORLDEDITOR_ARCHIVE_MAX_MB (1536 MiB), and this used to say 64m — so importing a
+    # world up to PIEDMONT_EDITOR_ARCHIVE_MAX_MB (1536 MiB), and this used to say 64m — so importing a
     # real world through the ingress died at the proxy, twenty-four times earlier than the limit
     # the service declares and reports. `0` turns nginx's body check off entirely and lets the
     # service be the single place that says no, with a message that explains itself. Capture

@@ -1,6 +1,6 @@
 // The roster, and the recipe that turns one of its entries into a prompt.
 //
-// `tools/assetlib` holds both: 120 vehicle specs plus the building materials, and `style.mjs`,
+// `pipelines/assetlib` holds both: 120 vehicle specs plus the building materials, and `style.mjs`,
 // which knows the things that were found by building the same car repeatedly and looking at it —
 // that era has to lead or flux defaults every 1990s car to a mid-80s coupe, that the backdrop
 // decides which glass keys can survive, that the key must be chosen by hue distance from the paint
@@ -23,7 +23,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO = path.resolve(HERE, '../..')
 
 /** Where the specs are: the volume in a pod, beside the code in a checkout. */
-export const SPEC_DIR = process.env.ASSETLIB_SPECS ?? path.join(process.env.ASSETLIB_DATA ?? path.join(REPO, 'tools/assetlib'), 'specs')
+export const SPEC_DIR = process.env.ASSETLIB_SPECS ?? path.join(process.env.ASSETLIB_DATA ?? path.join(REPO, 'pipelines/assetlib'), 'specs')
 
 let cached = null
 
@@ -111,7 +111,7 @@ export function promptFor(recipe, body = {}) {
 export async function recipeFor(id, opts = {}) {
   const s = await spec(id)
   if (!s) return null
-  const style = await import('../assetlib/style.mjs')
+  const style = await import('../../pipelines/assetlib/style.mjs')
   const chroma = opts.chroma ?? style.chromaForPaint(s).chroma
   const glassKey = opts.glassKey ?? style.glassKeyFor(s, chroma)
   const clash = style.paintClash?.(s) ?? null

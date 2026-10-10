@@ -1,7 +1,7 @@
 # Generating original assets from a described design language
 
 Turbo Radrun's hero car is a hand-built pile of boxes in
-[`procgen.ts`](../../apps/coast/src/render/procgen.ts), and it reads as one specific car: the
+[`procgen.ts`](https://github.com/hotspoons/siomporas-arcade/blob/main/apps/coast/src/render/procgen.ts) (in the arcade), and it reads as one specific car: the
 wedge-and-fin silhouette lands somewhere near an Adams Brothers Probe 16 rather than the late-60s
 endurance prototype it is aiming at. The rest of the world is Kenney's CC0 kits, which are good and
 free and look like Kenney's CC0 kits.
@@ -33,7 +33,7 @@ writes into a game.
 
 **The two servers are port-forwards, not public URLs.** `FLUX_HOST` (default `:18090`) wants
 flux.2-dev — not the klein the fighter pipeline uses, and the two take their attachments under
-different field names. `RECON_HOST` is `tools/recon-service`.
+different field names. `RECON_HOST` is `services/recon`.
 
 ## Why the specs describe a language and not a car
 
@@ -167,7 +167,7 @@ reports what actually came out of the file: triangles, materials, whether textur
 dimensions.
 
 
-## A second confirmation, from the corridor props (2026-09-21)
+## A second confirmation, from the game's props (2026-09-21)
 
 The editor agent generating roadside buildings hit the same wall from the other side: a **tall**
 subject (a water tower) came back with its legs cropped off the bottom edge, and TRELLIS invented
@@ -175,4 +175,4 @@ them. Rewording the prompt to name a margin size and the bottom of the object ma
 subject *narrower* and cropped it by exactly as much. flux.2-dev's framing prior for a tall
 subject does not move for words; wide subjects (a barn, a diner) frame themselves. Same shape as
 the proportion finding above — the fix is an attached reference, not a better sentence. Recorded
-in `apps/corridor/src/editor/README.md` and `probes/editor-assets.mjs`.
+in `apps/game/src/editor/README.md` and `probes/editor-assets.mjs`.

@@ -23,7 +23,7 @@
 // to the GPU. `uploads.marked` against `uploads.sent` is the half the matrices cannot show: they
 // diverge by exactly the writes that were dropped.
 //
-//   PORT=5185 node probes/corridor-treecards.mjs [slug] [steps] [step_m]
+//   PORT=5185 node probes/treecards.mjs [slug] [steps] [step_m]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const STEPS = Number(process.argv[3] ?? 40)
@@ -34,13 +34,13 @@ const page = await browser.newPage({ viewport: { width: 700, height: 450 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await page.waitForTimeout(4000)
 
 const out = await page.evaluate(
   ({ STEPS, STEP_M }) => {
-    const site = window.corridor.site
-    const THREE = window.corridor.THREE
+    const site = window.piedmont.site
+    const THREE = window.piedmont.THREE
     if (!site.treeCards) return { error: 'no treeCards accessor' }
     const sp = site.manifest.spine.coords
     // walk the spine, which is what driving does: a straight line off the road would leave the
@@ -69,7 +69,7 @@ const out = await page.evaluate(
       // DRAW between steps, because an upload happens when the renderer next draws the mesh — not
       // every frame and not on a timer. Without this nothing is ever uploaded and `sent` lags
       // `marked` for a reason that is not the bug.
-      window.corridor.drawFrame?.()
+      window.piedmont.drawFrame?.()
       const c = site.treeCards()
       samples.push(c)
       if (c.doubled > worst.doubled) worst = { ...c, at: [Math.round(px), Math.round(py)] }

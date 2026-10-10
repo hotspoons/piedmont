@@ -4,7 +4,7 @@
 // Need a detail panel for each texture where we can capture prompts and edit them and regenerate
 // textures (don't blow away old copies until an explicit save operation happens!)"
 //
-// A PORT OF tools/surfaces/gen.py, not a new idea. That script has been making the road surfaces
+// A PORT OF pipelines/surfaces/gen.py, not a new idea. That script has been making the road surfaces
 // this game drives on for weeks and its three decisions are the ones worth keeping:
 //
 //   TILEABILITY IS MADE, NOT ASKED FOR. flux does not reliably return a seamless tile however

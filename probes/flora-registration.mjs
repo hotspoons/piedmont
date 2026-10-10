@@ -14,13 +14,13 @@
 //
 // So this probe does not check the arithmetic against itself, and it does not settle the question
 // with a threshold either. It uses an INDEPENDENT fact — the bake writes 255 for every pixel
-// outside the corridor polygon, and the corridor polygon is the road network — and it SCORES ALL
+// outside the road-band polygon, and the road-band polygon is the road network — and it SCORES ALL
 // FOUR conventions against it: stand on a road and the grid must know you are inside the
-// corridor; stand a kilometre and a half from any road and it must say you are outside. Then it
+// road band; stand a kilometre and a half from any road and it must say you are outside. Then it
 // asserts that the one the code actually uses is the best of them. Reading the two ends of the
 // pipeline argued for a vertical flip and the argument was wrong; the data was not.
 //
-//   PORT=5185 node probes/corridor-flora-registration.mjs [slug]
+//   PORT=5185 node probes/flora-registration.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -29,11 +29,11 @@ const page = await browser.newPage({ viewport: { width: 700, height: 450 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await page.waitForTimeout(3000)
 
 const out = await page.evaluate(() => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const m = site.manifest
   // `canopyAt` is fed by the CHM, not the EVT; the EVT class is what picks the mix, and the
   // viewer exposes it through the site's flora
@@ -41,7 +41,7 @@ const out = await page.evaluate(() => {
   if (!fl || !fl.at) return { error: 'this site has no flora block' }
   const at = (x, y) => fl.at(x, y)
 
-  // ON the corridor: the spine's own centreline, end to end
+  // ON the road band: the spine's own centreline, end to end
   let onN = 0
   let onKnown = 0
   const L = m.spine.length_m
@@ -63,9 +63,9 @@ const out = await page.evaluate(() => {
     if (at(x, y)) offKnown++
   }
   /*
-   * WHICH ORIENTATION IS RIGHT, decided by the corridor mask rather than by reasoning.
+   * WHICH ORIENTATION IS RIGHT, decided by the road-band mask rather than by reasoning.
    *
-   * The bake sets every pixel outside the corridor polygon to 255, and the corridor polygon is
+   * The bake sets every pixel outside the road-band polygon to 255, and the road-band polygon is
    * the road network. So the correct convention is the one that says "inside" along the spine and
    * "outside" a kilometre and a half from any road. Four candidates are scored, plus the old
    * bounding-box indexing for comparison, and the numbers are printed so the choice is visible
@@ -111,8 +111,8 @@ const fail = (m) => { console.error(`FAIL: ${m}`); process.exitCode = 1 }
 if (out.error) fail(out.error)
 else if (!out.onN) fail('no spine points sampled — nothing was measured')
 else if (!out.offN) fail('found no point 1.5 km from every road on this site, so the negative half of the test never ran')
-// the corridor mask: on the road, the grid must know where it is
-else if (!(out.onKnown > out.onN * 0.95)) fail(`the vegetation grid claims ${out.onN - out.onKnown} of ${out.onN} points on the spine's own centreline are OUTSIDE the corridor it was cut to — the grid is being sampled in the wrong place`)
+// the road-band mask: on the road, the grid must know where it is
+else if (!(out.onKnown > out.onN * 0.95)) fail(`the vegetation grid claims ${out.onN - out.onKnown} of ${out.onN} points on the spine's own centreline are OUTSIDE the road band it was cut to — the grid is being sampled in the wrong place`)
 else {
   // the live convention must beat every alternative on BOTH measures, or the orientation is wrong
   const live = out.options['lattice v (no flip)']
@@ -121,5 +121,5 @@ else {
   // liveness: the fix must actually have moved something, or it is untested
   if (!(out.oldDiff > out.cmp * 0.5)) fail(`only ${out.oldDiff} of ${out.cmp} spine samples land in a different cell than the old bounding-box indexing — the fix changed almost nothing, so this run does not test it`)
   else if (beaten.length) fail(`a different orientation scores better than the one the code uses (${JSON.stringify(live)}): ${beaten.map(([k, r]) => `${k} ${JSON.stringify(r)}`).join('; ')}`)
-  else console.log(`PASS: ${live.onPct}% of spine points inside the corridor mask, ${live.offPct}% of points 1.5 km away — the best of ${Object.keys(out.options).length} orientations tried. ${out.oldDiff} of ${out.cmp} samples moved cell from the old bounding-box indexing.`)
+  else console.log(`PASS: ${live.onPct}% of spine points inside the road-band mask, ${live.offPct}% of points 1.5 km away — the best of ${Object.keys(out.options).length} orientations tried. ${out.oldDiff} of ${out.cmp} samples moved cell from the old bounding-box indexing.`)
 }

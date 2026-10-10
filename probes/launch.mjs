@@ -1,6 +1,6 @@
 // Launch probe: do the wheels leave the ground only over real crests, and only at speed?
 //
-//   node probes/corridor-launch.mjs [site] [offset_m]     (CORRIDOR_PORT, default :5202)
+//   node probes/launch.mjs [site] [offset_m]     (PIEDMONT_PORT, default :5202)
 //
 // Two independent measurements of the same thing, so a disagreement is informative:
 //
@@ -21,24 +21,24 @@ import { chromium } from 'playwright'
 
 const site = process.argv[2] ?? 'bacon-ridge-rd'
 const offset = Number(process.argv[3] ?? 0) // metres right of the centreline: 0 road, ~6 verge
-const PORT = process.env.CORRIDOR_PORT ?? '5202'
-// CORRIDOR_SPEEDS=45,55  CORRIDOR_KNOBS=CAR_LAUNCH_MAX_RISE:1000
-const speeds = (process.env.CORRIDOR_SPEEDS ?? '13,22,30,40').split(',').map(Number)
-const crestOverride = process.env.CORRIDOR_CREST ? Number(process.env.CORRIDOR_CREST) : null
-const knobs = Object.fromEntries((process.env.CORRIDOR_KNOBS ?? '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, Number(v)] }))
+const PORT = process.env.PIEDMONT_PORT ?? '5202'
+// PIEDMONT_SPEEDS=45,55  PIEDMONT_KNOBS=CAR_LAUNCH_MAX_RISE:1000
+const speeds = (process.env.PIEDMONT_SPEEDS ?? '13,22,30,40').split(',').map(Number)
+const crestOverride = process.env.PIEDMONT_CREST ? Number(process.env.PIEDMONT_CREST) : null
+const knobs = Object.fromEntries((process.env.PIEDMONT_KNOBS ?? '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, Number(v)] }))
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 900, height: 600 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite`, { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 240000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 240000 })
 await page.keyboard.press('Tab')
 
 const r = await page.evaluate(({ offset, speeds, knobs, crestOverride }) => {
-  const { drive, site } = window.corridor
+  const { drive, site } = window.piedmont
   const car = drive.car
-  // knobs through the same setters the F6 panel uses (window.corridor.tune === TUNE_TABS)
-  const allKeys = (window.corridor.tune ?? []).flatMap((t) => t.sections.flatMap((sec) => sec.keys))
+  // knobs through the same setters the F6 panel uses (window.piedmont.tune === TUNE_TABS)
+  const allKeys = (window.piedmont.tune ?? []).flatMap((t) => t.sections.flatMap((sec) => sec.keys))
   const knobOf = (n) => allKeys.find((k) => k.name === n)
   const applied = {}
   for (const [n, v] of Object.entries(knobs)) { const k = knobOf(n); if (k) { k.set(v); applied[n] = v } }

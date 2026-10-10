@@ -16,7 +16,7 @@
 // Everything slow is a JOB (jobs.mjs): POST starts one, GET polls it. Nothing holds a connection
 // open through an ingress for the two minutes a reconstruction takes.
 //
-//   node tools/assetsvc/server.mjs --port 8770
+//   node services/assetsvc/server.mjs --port 8770
 //
 // Configuration is environment; see models.example.json and README.md.
 
@@ -57,7 +57,7 @@ const arg = (name, dflt) => {
  * carries `for: vehicle | actor | weapon` and the picker filters on it; three near-identical files
  * would drift.
  *
- * `facades` is the SHARED DEFAULT per building class (apps/corridor/src/world/facades.ts): one
+ * `facades` is the SHARED DEFAULT per building class (apps/game/src/world/facades.ts): one
  * record per class id — its wall and roof pools of material ids with weights, and how it takes the
  * light. The same file shape as the builds (a dozen records, keyed by id, merged on PUT), which is
  * why it rides this route rather than having one of its own. A world's own choices are not here:
@@ -68,14 +68,14 @@ const BUILD_KINDS = ['vehicles', 'actors', 'weapons', 'presets', 'traffic', 'fac
 const PORT = Number(arg('port', process.env.ASSETSVC_PORT ?? 8770))
 const HOST = arg('host', process.env.ASSETSVC_HOST ?? '0.0.0.0')
 /*
- * `tools/assetsvc/data`, NOT `ext/assetsvc`.
+ * `services/assetsvc/data`, NOT `ext/assetsvc`.
  *
  * `ext/*` is gitignored, so the old default pointed a fresh clone at a directory that does not
  * exist — and worse, implied the library lived outside the repo, which is the arrangement this
  * work exists to end. In a pod the chart sets ASSETSVC_DATA and none of this applies; locally,
  * a predictable path beside the code is what somebody running it for the first time wants.
  */
-const DATA = path.resolve(arg('data', process.env.ASSETSVC_DATA ?? path.join(REPO, 'tools/assetsvc/data')))
+const DATA = path.resolve(arg('data', process.env.ASSETSVC_DATA ?? path.join(REPO, 'services/assetsvc/data')))
 const CONFIG = arg('models', process.env.ASSETSVC_MODELS ?? path.join(HERE, 'models.example.json'))
 
 const config = existsSync(CONFIG) ? JSON.parse(await readFile(CONFIG, 'utf8')) : { models: {}, defaults: {} }
@@ -215,7 +215,7 @@ function startMesh(id, opts) {
 /**
  * Hand the raw reconstruction to the existing finisher rather than reimplementing it.
  *
- * `tools/assetgen/finish.mjs` knows the things that took someone a week — that meshoptimizer must
+ * `pipelines/assetgen/finish.mjs` knows the things that took someone a week — that meshoptimizer must
  * do the simplifying because a collapse decimator rips the UV seams, and that the unlit transform
  * has to run BEFORE Draco or it decompresses and undoes itself. It is not called through its own
  * CLI, which resolves paths out of assets.json by `--id` and cannot address a catalog file; it is
@@ -228,7 +228,7 @@ function startMesh(id, opts) {
  */
 async function finish(id) {
   const script = path.join(HERE, 'finish-one.mjs')
-  if (!existsSync(path.join(REPO, 'tools/assetgen/finish.mjs'))) return { skipped: 'tools/assetgen/finish.mjs not present' }
+  if (!existsSync(path.join(REPO, 'pipelines/assetgen/finish.mjs'))) return { skipped: 'pipelines/assetgen/finish.mjs not present' }
   const dir = catalog.dir(id)
   return new Promise((resolve, reject) => {
     const p = spawn(process.execPath, [script, '--in', path.join(dir, 'mesh.glb'), '--out', path.join(dir, 'mesh.finished.glb')], {
@@ -293,7 +293,7 @@ const server = http.createServer(async (req, res) => {
     /*
      * ---- the roster, and drawing from it ------------------------------------------------------
      *
-     * The recipe lives in tools/assetlib and this calls it (specs.mjs). What the editor needs on
+     * The recipe lives in pipelines/assetlib and this calls it (specs.mjs). What the editor needs on
      * top is the asymmetry made visible: an image is ten seconds and a mesh is thirty to forty on
      * one serialised GPU, so you draw SEVERAL and a human picks one, and only then is a GPU spent
      * on geometry. Pick from pictures, commit to meshes.
@@ -687,7 +687,7 @@ server.listen(PORT, HOST, () => {
 /*
  * SHUT DOWN WHEN ASKED, because as PID 1 nothing else will.
  *
- * The same trap as tools/worldeditor/server.mjs, which is where it was found and measured. This
+ * The same trap as services/worldeditor/server.mjs, which is where it was found and measured. This
  * is the container's entrypoint, so `node` is process 1, and the kernel does not apply default
  * signal dispositions to PID 1 — a signal with no handler is IGNORED there, the opposite of what
  * happens for every other process. Kubernetes then waits out the whole termination grace period

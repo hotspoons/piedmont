@@ -1,6 +1,6 @@
 // Weather: is anything falling, does it settle, and does it let go of the road?
 //
-//   PORT=5201 SLUG=bowie-racetrack-rd node probes/corridor-weather.mjs
+//   PORT=5201 SLUG=bowie-racetrack-rd node probes/weather.mjs
 //
 // For each weather: the particle count actually drawn, the fog and sky the scene ended up with,
 // the grip left for car.ts, and — the one that needs time rather than a frame — how far the
@@ -14,10 +14,10 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
 
 console.log(JSON.stringify(await page.evaluate(() => {
-  const c = window.corridor, site = c.site, tune = c.tune
+  const c = window.piedmont, site = c.site, tune = c.tune
   const rows = []
   const hex = (col) => '#' + col.getHexString()
   let t = 0

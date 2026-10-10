@@ -64,7 +64,7 @@ spec:
             periodSeconds: 30
             failureThreshold: 120
         {{- if .Values.regions.enabled }}
-        # ADDING A REGION TO THIS INSTANCE, and keeping it current (tools/overpass/README.md).
+        # ADDING A REGION TO THIS INSTANCE, and keeping it current (services/overpass/README.md).
         #
         # A SIDECAR because the write has to go through the dispatcher, and the dispatcher's shared
         # memory is this pod's /dev/shm: only a container in this pod can reach it. Same image, so

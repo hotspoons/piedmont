@@ -2,18 +2,18 @@
 // could not check, because `main` did not build.
 //
 // TWO HALVES, and only the second needs a page. The 61 server-side tools answer with no browser
-// open and are covered by `tools/worldeditor/mcpbridge.test.mjs`. What is unverified is: does the
+// open and are covered by `services/worldeditor/mcpbridge.test.mjs`. What is unverified is: does the
 // pane render, does a page attach, and does a tool that can only run in the page come back with a
 // real answer rather than the "no editor connected" error that a detached bridge gives.
 //
 // So this drives a real editor page and then calls MCP from OUTSIDE it, which is the only way to
 // tell those two apart: a probe that asked the page directly would pass with the bridge unplugged.
 //
-//   node probes/corridor-mcp.mjs
+//   node probes/mcp.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'
-const SVC = process.env.WORLDEDITOR ?? 'http://localhost:8780'
+const SVC = process.env.PIEDMONT_EDITOR ?? 'http://localhost:8780'
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } })
 const errs = []

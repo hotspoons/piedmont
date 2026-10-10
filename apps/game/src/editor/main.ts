@@ -1,4 +1,4 @@
-// corridor editor: correct what the data inferred, and put things beside the road.
+// site editor: correct what the data inferred, and put things beside the road.
 //
 // The viewer (index.html) is read-only by design — it shows the bake. This page is the other
 // half: the same scene, from above, with two authoring modes over it. AREAS draw polygons that
@@ -298,7 +298,7 @@ async function loadSite(slug: string, quality: 'edit' | 'preview' = 'edit'): Pro
   siteHasImpostors = quality === 'preview'
   sitePredatesEdits = false
   scene.add(site.group)
-  // NOT site.heightAt. `groundAt` is the graded corridor strip near the road and the DEM beyond —
+  // NOT site.heightAt. `groundAt` is the graded road-band strip near the road and the DEM beyond —
   // the surface the game actually drives on. Beside the pavement the two differ by metres, so
   // draping an area or standing a diner on the raw DEM would author against a surface nobody sees.
   const ground = (x: number, y: number) => site!.groundAt(x, -y) ?? site!.heightAt(x, y)
@@ -316,7 +316,7 @@ async function loadSite(slug: string, quality: 'edit' | 'preview' = 'edit'): Pro
   footprints.attach(site)
   rail.lat = site.manifest.frame?.anchor?.lat ?? 39
   grow.adopt()
-  ;(window as unknown as { corridor: unknown }).corridor = {
+  ;(window as unknown as { piedmont: unknown }).piedmont = {
     site, scene, camera, areas, place, grow, preview, orbitTarget: orbit.target,
     /*
      * FOR PROBES: which tool has the pointer, and where a screen pixel lands on the ground.
@@ -345,18 +345,18 @@ async function loadSite(slug: string, quality: 'edit' | 'preview' = 'edit'): Pro
     groundAtPixel: (clientX: number, clientY: number) =>
       groundAt({ clientX, clientY } as PointerEvent),
   } // probes
-  ;(window as unknown as { corridor: { structs: unknown } }).corridor.structs = structs
+  ;(window as unknown as { piedmont: { structs: unknown } }).piedmont.structs = structs
   /*
    * The traffic mode and the `Zones` class it writes for, so a probe can author a zone and then ask
    * the lookup whether it actually covers the road. "The file was written" is not the question —
    * a polygon drawn beside the road saves perfectly and does nothing.
    */
-  ;(window as unknown as { corridor: { traffic: unknown; zonesModule: unknown } }).corridor.traffic = traffic
-  ;(window as unknown as { corridor: { zonesModule: unknown } }).corridor.zonesModule = { Zones }
-  ;(window as unknown as { corridor: { stunts: unknown } }).corridor.stunts = stunts
-  ;(window as unknown as { corridor: { races: unknown } }).corridor.races = races
-  ;(window as unknown as { corridor: { points: unknown } }).corridor.points = points
-  ;(window as unknown as { corridor: { layers: unknown } }).corridor.layers = {
+  ;(window as unknown as { piedmont: { traffic: unknown; zonesModule: unknown } }).piedmont.traffic = traffic
+  ;(window as unknown as { piedmont: { zonesModule: unknown } }).piedmont.zonesModule = { Zones }
+  ;(window as unknown as { piedmont: { stunts: unknown } }).piedmont.stunts = stunts
+  ;(window as unknown as { piedmont: { races: unknown } }).piedmont.races = races
+  ;(window as unknown as { piedmont: { points: unknown } }).piedmont.points = points
+  ;(window as unknown as { piedmont: { layers: unknown } }).piedmont.layers = {
     /** what a click at a ground point would choose, in order — the active mode's first */
     hitsAt: (pt: { x: number; y: number }) => rankHits(hitsAt(pt), mode),
     /** the names drawn on the map right now */
@@ -406,7 +406,7 @@ function applyLayers() {
   footprints.on = on('buildings')
 }
 
-/** Straight down, north up, high enough that the whole baked corridor is in frame — both extents,
+/** Straight down, north up, high enough that the whole baked road band is in frame — both extents,
  *  not just the long one: some sites are wider than they are long. `animate` eases there (`T`). */
 function toTop(animate = false) {
   if (!site) return
@@ -824,7 +824,7 @@ function worldPanel(root: HTMLElement) {
   root.append(el('h2', '', 'road cross-section'))
   roadWidth.panelInto(root)
 }
-// the same handle the viewer exposes as window.corridor, so probes can drive the editor too
+// the same handle the viewer exposes as window.piedmont, so probes can drive the editor too
 ;(window as unknown as { __ed: unknown }).__ed = { scene, camera, orbit, tune: TUNE_TABS, get site() { return site } }
 
 // Held keys, not key repeat: the navigation integrates them on the frame (view/nav.ts).
@@ -1214,7 +1214,7 @@ async function doSave() {
     return
   }
   if (rebuild && site) {
-    // SAY SO. A rebuild is seconds on a corridor and over a minute on a network site, and an
+    // SAY SO. A rebuild is seconds on a road band and over a minute on a network site, and an
     // editor that goes quiet for a minute after a save looks like an editor that has crashed.
     status('saved — rebuilding the world with your edits…')
     try {
@@ -1323,7 +1323,7 @@ function frame() {
 }
 /**
  * What the navigation and the map cost, frame by frame: the camera and map work on this thread,
- * the render call, and the draw calls it issued. For probes (`corridor.mapPerf()`): "it is fast" is
+ * the render call, and the draw calls it issued. For probes (`piedmont.mapPerf()`): "it is fast" is
  * a percentile, not an impression.
  */
 const MAP_PERF_N = 600

@@ -161,7 +161,7 @@ export function loadMonaco(): Promise<MonacoApi> {
     for (const [uri, text] of Object.entries(doc.libs)) ts.typescriptDefaults.addExtraLib(text, uri)
     registerImportPaths(monaco, Object.keys(doc.alias))
 
-    api.editor.defineTheme('corridor', {
+    api.editor.defineTheme('piedmont', {
       base: 'vs-dark',
       inherit: true,
       rules: [],
@@ -353,7 +353,7 @@ export class CodeEditor {
     if (this.model.getValue() !== this.o.value) this.model.setValue(this.o.value)
     this.editor = monaco.editor.create(this.o.host, {
       model: this.model,
-      theme: 'corridor',
+      theme: 'piedmont',
       automaticLayout: true,
       fontSize: 13,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',

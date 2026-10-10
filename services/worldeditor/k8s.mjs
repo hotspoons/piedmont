@@ -25,7 +25,7 @@ export class K8s {
     this.port = env.KUBERNETES_SERVICE_PORT_HTTPS ?? env.KUBERNETES_SERVICE_PORT ?? '443'
     this.token = read(`${SA}/token`)
     this.ca = read(`${SA}/ca.crt`)
-    this.namespace = env.WORLDEDITOR_NAMESPACE || read(`${SA}/namespace`) || 'default'
+    this.namespace = env.PIEDMONT_EDITOR_NAMESPACE || read(`${SA}/namespace`) || 'default'
   }
 
   /** In-cluster and holding a token. Off-cluster this is false and the local runner takes over. */

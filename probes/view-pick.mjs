@@ -7,8 +7,8 @@
 // what the page highlights. A card that lights up while the service still meshes the first one is
 // exactly the bug being fixed. Needs an image model that answers; a recorder is enough:
 //
-//   ASSETSVC_URL_FLUX2_DEV=http://localhost:8799 node tools/assetsvc/server.mjs --port 8790
-//   PORT=5186 node probes/corridor-view-pick.mjs
+//   ASSETSVC_URL_FLUX2_DEV=http://localhost:8799 node services/assetsvc/server.mjs --port 8790
+//   PORT=5186 node probes/view-pick.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

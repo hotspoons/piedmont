@@ -12,7 +12,7 @@ import { existsSync, unlinkSync } from 'node:fs'
 
 const SLUG = process.env.SLUG ?? 'bowie-racetrack-rd'
 const EDITOR = process.env.EDITOR ?? 'http://127.0.0.1:5185/editor.html'
-const FILE = `/workspaces/apex-conduit/tools/corridor/data/sites/${SLUG}/stunts.json`
+const FILE = `/workspaces/piedmont/data/sites/${SLUG}/stunts.json`
 const SHOT = '/tmp/claude-1000/-workspaces-apex-conduit/12eaed6d-83ff-4605-9fb1-f5c0b0bc5019/scratchpad/preview-stunt.png'
 
 if (existsSync(FILE)) unlinkSync(FILE)
@@ -43,7 +43,7 @@ let bad = 0
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++ }
 
 await p.goto(`${EDITOR}#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 180000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 180000 })
 await p.waitForTimeout(6000)
 
 /*
@@ -51,11 +51,11 @@ await p.waitForTimeout(6000)
  * hand-written car, no physics, no 4.3 MB import and no grid of heightfield colliders.
  */
 await p.keyboard.press('v')
-await p.waitForFunction(() => window.corridor.preview?.open === true, null, { timeout: 240000 })
+await p.waitForFunction(() => window.piedmont.preview?.open === true, null, { timeout: 240000 })
 await p.waitForTimeout(2500)
 const plain = await p.evaluate(() => ({
-  physics: !!window.corridor.preview.physics,
-  car: window.corridor.preview.car?.constructor?.name ?? null,
+  physics: !!window.piedmont.preview.physics,
+  car: window.piedmont.preview.car?.constructor?.name ?? null,
 }))
 console.log('no stunts', JSON.stringify(plain))
 check(!plain.physics, 'a world with no stunts previews with no physics, as it always has')
@@ -65,8 +65,8 @@ await p.waitForTimeout(1200)
 
 // now place one, on the road, a little way ahead of where the preview starts you
 const placed = await p.evaluate(() => {
-  const st = window.corridor.stunts
-  const site = window.corridor.site
+  const st = window.piedmont.stunts
+  const site = window.piedmont.site
   const at = site.spineAt(site.manifest.spine.photo_s + 250).pos
   st.arm('hump')
   const id = st.placeAt({ x: at.x, y: -at.z })
@@ -76,11 +76,11 @@ console.log('placed', JSON.stringify(placed))
 check(!!placed.id, 'a fixture is on the road')
 
 await p.keyboard.press('v')
-await p.waitForFunction(() => window.corridor.preview?.open === true, null, { timeout: 240000 })
+await p.waitForFunction(() => window.piedmont.preview?.open === true, null, { timeout: 240000 })
 await p.waitForTimeout(3500)
 
 const ready = await p.evaluate(() => {
-  const pv = window.corridor.preview
+  const pv = window.piedmont.preview
   return {
     physics: !!pv.physics, surfaces: pv.surfaces, car: pv.car?.constructor?.name ?? null, mode: pv.mode,
     profile: pv.profileId,
@@ -108,7 +108,7 @@ check(ready.options.includes('handling model'), `and a picker to change it live 
  * a change to the car you would get next time.
  */
 const swapped = await p.evaluate(() => {
-  const pv = window.corridor.preview
+  const pv = window.piedmont.preview
   const before = pv.car.profile.powerPerKg
   pv.setProfile('sim')
   const after = pv.car.profile.powerPerKg
@@ -124,8 +124,8 @@ check(swapped.after !== swapped.before && swapped.back === swapped.before,
  * own `tick` stepping the world. Nothing here reaches past the preview into the physics.
  */
 const drove = await p.evaluate(() => {
-  const pv = window.corridor.preview
-  const site = window.corridor.site
+  const pv = window.piedmont.preview
+  const site = window.piedmont.site
   const dt = 1 / 60
   pv.keys.add('KeyW')
   /*
@@ -172,10 +172,10 @@ check(/car ·/.test(drove.hud ?? ''), 'and the HUD says which car you are in')
  * across half a mile of county road.
  */
 const dropped = await p.evaluate(async () => {
-  const pv = window.corridor.preview
-  const site = window.corridor.site
+  const pv = window.piedmont.preview
+  const site = window.piedmont.site
   const { fixturePath, standOn } = await import('/src/stunts.ts')
-  const f = window.corridor.stunts.doc.fixtures[0]
+  const f = window.piedmont.stunts.doc.fixtures[0]
   const ground = (x, y) => site.groundAt(x, -y) ?? site.heightAt(x, y) ?? 0
   const apex = fixturePath(f, 48, standOn(f, ground)).reduce((hi, q) => (q.z > hi.z ? q : hi))
   const terrain = ground(apex.x, apex.y)

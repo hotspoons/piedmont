@@ -18,8 +18,8 @@ import rasterio
 from rasterio.transform import from_origin
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import network_tiles, pyramid  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import network_tiles, pyramid  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
 CRS = "EPSG:32618"
 # 2 km square near Rockville; the lidar covers the WEST half only

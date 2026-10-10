@@ -7,7 +7,7 @@
 // checking it works would prove nothing about whether `placements.ts` calls it — which is the
 // entire question, and was the answer "no" for a day.
 //
-//   node probes/corridor-placed-glass.mjs [world-slug]
+//   node probes/placed-glass.mjs [world-slug]
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

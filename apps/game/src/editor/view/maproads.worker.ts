@@ -2,7 +2,7 @@
  * The map's roads, off the main thread: fetch the bake's `context.json`, project every road into
  * the site frame, and hand back merged segment buckets and label anchors.
  *
- * `context.json` is the bake's compact projection of the OSM extract (tools/corridor/corridor/
+ * `context.json` is the bake's compact projection of the OSM extract (bake/piedmont_bake/
  * osm.py `context`): every road in the world with its class already resolved and its name. The
  * game's minimap reads the same file in its own worker (game/move/minimap.worker.ts) — on
  * dc-metro-take-2 it is 47 MB of JSON and 875 k vertices, a parse that has no business on the

@@ -141,7 +141,7 @@ export function serverTools({ apiFetch, root, siteDoc }) {
      * Two different stores, and they are not the same thing. `catalog` is what this editor places:
      * the models it knows about. `assetsvc` is where an asset is GENERATED — a described prop in,
      * a textured glb out — and it is proxied through this service so the browser never reaches a
-     * GPU. See tools/assetsvc/README.md.
+     * GPU. See services/assetsvc/README.md.
      *
      * THE PROXY IS AT `/assetsvc/…`, NOT UNDER `/api`. Writing these by analogy with every other
      * tool here produced a 404 from the ROUTER rather than a 503 from the proxy, which is the
@@ -266,7 +266,7 @@ export function serverTools({ apiFetch, root, siteDoc }) {
     ),
     T(
       'osm_import',
-      'Add a Geofabrik region\'s OSM data to an Overpass instance that is already serving, as a run (follow it with run_get / run_log). The instance keeps answering throughout. Downloads the region\'s .pbf onto the instance\'s volume and applies it through the instance itself; on success the instance\'s coverage gains the region and worlds there route to it. Takes minutes for a US state and hours for a country; one import per instance at a time. Needs the instance\'s `regions` sidecar (tools/overpass chart, regions.enabled) — without it the run fails and says so.',
+      'Add a Geofabrik region\'s OSM data to an Overpass instance that is already serving, as a run (follow it with run_get / run_log). The instance keeps answering throughout. Downloads the region\'s .pbf onto the instance\'s volume and applies it through the instance itself; on success the instance\'s coverage gains the region and worlds there route to it. Takes minutes for a US state and hours for a country; one import per instance at a time. Needs the instance\'s `regions` sidecar (services/overpass chart, regions.enabled) — without it the run fails and says so.',
       { upstream: str('the instance, by its name in osm_coverage, e.g. "overpass"'), region: str('a Geofabrik region id from osm_regions, e.g. "us/virginia"') },
       ['upstream', 'region'],
       (a) => post('/api/osm/imports', { upstream: a.upstream, region: a.region }),
@@ -881,7 +881,7 @@ async function frameOf(root, slug) {
 /**
  * Stamp a site document with the frame its coordinates are in — the bake's, which is what every
  * tool here speaks (site_project, site_roads, site_road_polygon). The same block the place editor
- * writes on save (apps/corridor/src/editor/store/schema.ts `frameOf`).
+ * writes on save (apps/game/src/editor/store/schema.ts `frameOf`).
  *
  * WITHOUT IT THE EDITOR HAD TO GUESS. dc-metro-take-2's five Beltway zones were written by
  * traffic_zone_add on 2026-10-08 in exactly the bake's ENU frame, carried no stamp, and the editor

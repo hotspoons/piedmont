@@ -17,7 +17,7 @@ let bad = 0
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++ }
 
 await p.goto(`${EDITOR}#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 180000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 180000 })
 await p.waitForTimeout(6000)
 
 const out = await p.evaluate(async () => {
@@ -25,7 +25,7 @@ const out = await p.evaluate(async () => {
   const { buildFixture } = await import('/src/stuntmesh.ts')
   // NO `import('three')` here: a bare specifier does not resolve in the page, and nothing in this
   // probe needs the library — the camera maths is four lines of arithmetic.
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const len = site.manifest.spine.length_m
 
   // Put it on the road, facing the way the road runs, straddling the midpoint.
@@ -51,7 +51,7 @@ const out = await p.evaluate(async () => {
   const ground = (x, y) => site.groundAt(x, -y) ?? site.heightAt(x, y) ?? 0
   const parts = connectFixture(fixture, road, { groundAt: ground })
   const built = buildFixture(fixture, parts)
-  window.corridor.scene.add(built.group)
+  window.piedmont.scene.add(built.group)
 
   // --- measure the ribbon rather than trust it ------------------------------------------------
   const through = parts.through
@@ -70,12 +70,12 @@ const out = await p.evaluate(async () => {
   const groundHere = ground(fixture.at[0], fixture.at[1])
 
   // point the camera at it from the side, low down, so the loop reads as a loop
-  const cam = window.corridor.camera
+  const cam = window.piedmont.camera
   const tx = here.x, ty = here.y + 20, tz = here.z
   const sx = -Math.sin(heading), sz = -Math.cos(heading)
   cam.position.set(tx + sx * 190, here.y + 55, tz + sz * 190)
   cam.lookAt(tx, ty, tz)
-  window.corridor.orbitTarget.set(tx, ty, tz)
+  window.piedmont.orbitTarget.set(tx, ty, tz)
 
   return {
     problems: parts.problems,

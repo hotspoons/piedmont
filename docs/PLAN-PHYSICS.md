@@ -1,6 +1,6 @@
 # Physics: Rapier in the engine, and what it is for
 
-**Status:** the engine module is **built and tested**; corridor wiring **steps 1 and 2 done, step 3
+**Status:** the engine module is **built and tested**; the game wiring **steps 1 and 2 done, step 3
 started** (2026-09-29). `?phys=1&car=rapier&profile=stunts` drives the viewer's own car on Rapier, through the
 same chase camera, cockpit, HUD and engine sound as before. Steps 3–7 are designed here and not
 built.
@@ -12,7 +12,7 @@ editor's side.
 
 ## What Rich asked for
 
-> I want to integrate rapier into the corridor world simulator, and make a few profiles for driving
+> I want to integrate rapier into the game world simulator, and make a few profiles for driving
 > (1990 stunts/4d racing ported from what we have now, arcade racer like crazy taxi, gta4/5ish
 > physics, arcade racer like san fransico rush, then simulator) — no need for tire patch simulation
 > or anything but I would like it to feel nice.
@@ -30,7 +30,7 @@ equations. The whole design is the seam between those.
 
 ---
 
-## 1. What is built, in `packages/engine/src/physics/`
+## 1. What is built, in `vendor/arcade/packages/engine/src/physics/`
 
 Nine files, 117 passing headless tests, no browser needed. `README.md` in that directory is the
 reference; this section is why each piece exists.
@@ -60,7 +60,7 @@ yawAssist 1.0   you decide; the tyres only say how much             Stunts 1990
 ```
 
 `yawGripLimited` is the second half and it is what makes the Stunts port faithful rather than merely
-twitchy. In `apps/corridor/src/car.ts` the wheel asks for a yaw rate, the tyres deliver
+twitchy. In `apps/game/src/car.ts` the wheel asks for a yaw rate, the tyres deliver
 `clamp(demand, ±grip)`, and **above the limit the car turns LESS** — a slide is never *added* by
 cornering. That is why a 1990 car understeers off the outside of a bend instead of spinning, and it
 survives as a cap on the imposed yaw rather than as a model of what rubber does.
@@ -91,7 +91,7 @@ way a ragdoll folds — is Rapier doing real rigid-body dynamics at 120 Hz.
 
 ### Traps that were found the hard way
 
-All seven are written up in `packages/engine/src/physics/README.md` and at the code that deals with
+All seven are written up in `vendor/arcade/packages/engine/src/physics/README.md` and at the code that deals with
 them. The four that cost real time, because **every one of them fails silently**:
 
 1. **`addForce` is persistent, not per-step.** 142 N of aero drag applied once per step at 120 Hz
@@ -109,11 +109,11 @@ them. The four that cost real time, because **every one of them fails silently**
 
 ---
 
-## 2. Wiring it into the corridor
+## 2. Wiring it into the road band
 
 Not done. This is the design, in the order it should be built.
 
-### 2.1 `apps/corridor/src/physics.ts` — one owner
+### 2.1 `apps/game/src/physics.ts` — one owner
 
 A single module that owns the `PhysicsWorld` and binds it to the site:
 
@@ -123,7 +123,7 @@ const terrain = new Terrain(phys, site.groundAt, { tile: 64, cells: 64, radius: 
 ```
 
 `site.groundAt` is already the one height function the strip, the grass, the furniture and the car
-all stand on ("One surface, one height function", `apps/corridor/README.md`). Handing `Terrain` the
+all stand on ("One surface, one height function", `apps/game/README.md`). Handing `Terrain` the
 *function* rather than the mesh is what makes the physics ground and the drawn ground the same
 surface by construction, with no second sampling to drift.
 
@@ -166,7 +166,7 @@ equivalent register keyed by the same tile grid.
 
 ### 2.4 The instancing problem, which is the real work
 
-Every sign, pole and light in the corridor is one instance in an `InstancedMesh`. A broken one has
+Every sign, pole and light in the road band is one instance in an `InstancedMesh`. A broken one has
 to leave that buffer and become its own mesh. `Breakables` reports the break with whatever `tag` the
 caller attached — an instance index, an ECS entity, a catalog id — and deliberately does not touch
 the renderer.
@@ -222,10 +222,10 @@ fast", which is why those two are `machine` scope.
 
 ### 2.8 Step 1, as built and measured
 
-`apps/corridor/src/physics.ts` owns a `PhysicsWorld` and a `Terrain` bound to `site.groundAt`. It is
+`apps/game/src/physics.ts` owns a `PhysicsWorld` and a `Terrain` bound to `site.groundAt`. It is
 built after `buildSite`, freed when the site changes, updated once a frame from the car's position
 (not the camera's — the chase camera sits eight metres behind, which at the edge of the radius is
-the difference between ground and a hole), and exposed on `window.corridor.physics` and the dev
+the difference between ground and a hole), and exposed on `window.piedmont.physics` and the dev
 bridge. A `physics` tab in the F6 panel carries eleven knobs.
 
 **`?phys=1`, not the knob.** `PHYS_ENABLED` is read once, when the site is built, so it needs to be
@@ -233,7 +233,7 @@ set *before* a load — and the F6 panel cannot do that: measured, `tune.set` mo
 **persists nothing**, so setting the knob and reloading comes back to the default with the physics
 never started. `?phys=1` is the switch, the same shape as `relief`, `season` and `level`.
 
-**`probes/corridor-physground.mjs`** is the acceptance test, and it is the one that matters: does the
+**`probes/physground.mjs`** is the acceptance test, and it is the one that matters: does the
 ground the physics thinks is there agree with the ground you can see? On `bowie-racetrack-rd`, 123
 samples along a 160 m transect of the spine, on the crown and 3 m either side:
 
@@ -271,7 +271,7 @@ remember to wire `edgeDistance` would eventually not. The hook is a RAMP over a 
 the edge rather than a step, because two wheels on tarmac and two on grass is the interesting case
 and a hard step makes the car snatch at a line it cannot see.
 
-`probes/corridor-physcar.mjs` drives all five at full throttle for six seconds along the spine at
+`probes/physcar.mjs` drives all five at full throttle for six seconds along the spine at
 `bowie-racetrack-rd`, on the real heightfield:
 
 | profile | metres in 6 s | m/s at the end | sank | sideways |
@@ -305,7 +305,7 @@ are the knobs, and the URL beats them because both are read once, when drive mod
 is never called: it is the MESH — the silhouette, the glasshouse, the lamps, the beams, the dash and
 the wheels, forty lines of geometry apiece — and this poses it every frame from the rigid body. The
 alternative was extracting six hundred lines into a third file, which would also have broken
-`probes/corridor-carpose.mjs`, which reads two specific lines out of `car.ts` **by name** and
+`probes/carpose.mjs`, which reads two specific lines out of `car.ts` **by name** and
 evaluates them against a ground normal. The only change to `car.ts` is a public `poseParts(steer,
 spin)` for the wheels and the steering wheel, split out of `updateMesh` without moving those lines.
 
@@ -320,7 +320,7 @@ the nose goes over.
 world, so the car is freed before the world; the other way round hands wasm-freed handles to
 `vehicle.free()`.
 
-`probes/corridor-carswap.mjs` drives both through the viewer's own Tab key and controls. Same spot,
+`probes/carswap.mjs` drives both through the viewer's own Tab key and controls. Same spot,
 same three seconds at full throttle, on `bowie-racetrack-rd`:
 
 | | metres | m/s at the end | mesh gap | worst yaw step |

@@ -8,7 +8,7 @@
 // three settings of the knob — so the claim "it is adjustable" is a measurement rather than the
 // existence of a slider.
 //
-//   PORT=5185 node probes/corridor-flyspeed.mjs [slug]
+//   PORT=5185 node probes/flyspeed.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -17,7 +17,7 @@ const page = await browser.newPage({ viewport: { width: 800, height: 560 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 160)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 900000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 900000 })
 
 const fails = []
 const ok = (name, cond, detail) => { console.log(`${cond ? 'ok  ' : 'FAIL'}  ${name} — ${detail}`); if (!cond) fails.push(name) }
@@ -38,7 +38,7 @@ const ok = (name, cond, detail) => { console.log(`${cond ? 'ok  ' : 'FAIL'}  ${n
  * a probe agreeing with itself about nothing.
  */
 const speedAt = (DIST, dt = 1 / 60) => page.evaluate(([DIST, dt]) => {
-  const c = window.corridor
+  const c = window.piedmont
   c.orbit.target.set(c.camera.position.x, c.camera.position.y - DIST * 0.7, c.camera.position.z - DIST * 0.7)
   const from = c.camera.position.clone()
   const press = (type) => dispatchEvent(new KeyboardEvent(type, { code: 'KeyW', bubbles: true }))
@@ -56,12 +56,12 @@ const speedAt = (DIST, dt = 1 / 60) => page.evaluate(([DIST, dt]) => {
 }, [DIST, dt])
 
 // The knob has to exist under the name the panel shows, or nothing below means anything.
-const names = await page.evaluate(() => window.corridor.tune.names())
+const names = await page.evaluate(() => window.piedmont.tune.names())
 for (const k of ['FLY_SPEED', 'FLY_SPEED_FLOOR_M', 'FLY_SPRINT_X', 'WALK_SPEED']) {
   ok(`the panel has ${k}`, names.includes(k), names.includes(k) ? 'present' : 'MISSING from the tuning panel')
 }
 
-const set = (k, v) => page.evaluate(([k, v]) => window.corridor.tune.set(k, v), [k, v])
+const set = (k, v) => page.evaluate(([k, v]) => window.piedmont.tune.set(k, v), [k, v])
 await set('FLY_SPEED_FLOOR_M', 40)
 
 const runs = []

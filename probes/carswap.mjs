@@ -1,6 +1,6 @@
 // The two driving models, side by side — driven BY THE KEYBOARD, through the viewer's own frame loop.
 //
-//   node probes/corridor-carswap.mjs [site]
+//   node probes/carswap.mjs [site]
 //
 // WHY THE KEYBOARD AND NOT `car.tick()`. The first version of this probe called `car.tick(dt, input)`
 // itself, and passed while the car was completely undriveable in the real viewer. Two bugs got
@@ -19,7 +19,7 @@
 // steps** — about four frames. So the check is SPEED, not distance: a car that has been accelerating
 // for a tenth of a second has barely moved but is unambiguously being driven, and asserting metres
 // would fail on a healthy car for reasons that have nothing to do with the car. The handling
-// comparison across the five profiles is `corridor-physcar.mjs`, which drives the vehicle directly
+// comparison across the five profiles is `physcar.mjs`, which drives the vehicle directly
 // and is the fast one.
 //
 // WHAT IT ASSERTS:
@@ -32,7 +32,7 @@
 import { chromium } from 'playwright'
 
 const site = process.argv[2] ?? 'acadia-ocean-dr'
-const PORT = process.env.CORRIDOR_PORT ?? '5185'
+const PORT = process.env.PIEDMONT_PORT ?? '5185'
 const HOLD_S = Number(process.env.HOLD_S ?? 45)
 
 async function run(kind) {
@@ -42,14 +42,14 @@ async function run(kind) {
   await page.route('**/@vite/client', (r) => r.abort())
   const q = kind === 'rapier' ? 'lite&phys=1&car=rapier&profile=stunts' : 'lite&phys=1&car=kinematic'
   await page.goto(`http://127.0.0.1:${PORT}/#${site}?${q}`, { waitUntil: 'load' })
-  await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 240000 })
-  await page.waitForFunction(() => !!window.corridor.physics, null, { timeout: 120000 })
+  await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 240000 })
+  await page.waitForFunction(() => !!window.piedmont.physics, null, { timeout: 120000 })
 
   await page.keyboard.press('Tab')
-  await page.waitForFunction(() => !!window.corridor.drive?.car, null, { timeout: 60000 })
+  await page.waitForFunction(() => !!window.piedmont.drive?.car, null, { timeout: 60000 })
 
   const before = await page.evaluate(() => {
-    const c = window.corridor.drive.car
+    const c = window.piedmont.drive.car
     return { x: c.pos.x, z: c.pos.z, yaw: c.yaw }
   })
 
@@ -60,7 +60,7 @@ async function run(kind) {
   await page.keyboard.up('ArrowUp')
 
   const out = await page.evaluate(({ before }) => {
-    const a = window.corridor
+    const a = window.piedmont
     const car = a.drive.car
     const site = a.site
     const dx = car.pos.x - before.x

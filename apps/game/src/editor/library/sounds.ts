@@ -29,7 +29,7 @@ function buildSoundsTab(panel: HTMLElement): void {
     const head = el('div', 'panel-note')
     head.append(el('div', '', 'The sound bank: what the game plays for each thing it says. A vehicle, an actor or a weapon may give any slot clips of its own on its Sounds tab; a program reaches the same slots as api.audio.'))
     const credit = el('div', 'field-note')
-    credit.append('Cut by tools/sounds/build.py from CC0 recordings — Kenney, BigSoundBank, OpenGameArt, the Internet Archive — except the tyres, which are Rich’s own and not free; the provenance is ')
+    credit.append('Cut by pipelines/sounds/build.py from CC0 recordings — Kenney, BigSoundBank, OpenGameArt, the Internet Archive — except the tyres, which are Rich’s own and not free; the provenance is ')
     const a = el('a', '', 'public/sounds/CREDITS.md')
     a.href = '/sounds/CREDITS.md'
     a.target = '_blank'

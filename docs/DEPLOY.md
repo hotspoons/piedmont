@@ -36,7 +36,7 @@ Mode **9 · Deploy** (the top bar, or the `9` key). The form, top to bottom:
    `workers.dev` subdomain.
 4. **Where it goes.** The Worker's name; `workers.dev` on or off; optionally a hostname in one of
    the zones (Cloudflare writes the DNS); the bucket, or a new one (made on the first deploy); the
-   prefix under it, which defaults to `corridor/<world>-<stamp>`; and whether older copies of
+   prefix under it, which defaults to `piedmont/<world>-<stamp>`; and whether older copies of
    these worlds are deleted from the bucket afterwards.
 5. **Plan**, then **Deploy.** The plan is a dry run: how many objects, how many bytes, by group
    (bake, docs, levels, assets), which models and builds are going, and every warning. Deploy is a
@@ -68,21 +68,21 @@ their models, a fixture choice to its model — until nothing new appears. There
 Not sent: the lidar, the GeoTIFFs, `web.staging`, the raw 26 MB reconstruction when a finished
 mesh exists, and every model nothing in the world names.
 
-The bucket also holds `corridor/deployments.json`, a ledger of every deploy made this way. Pruning
+The bucket also holds `piedmont/deployments.json`, a ledger of every deploy made this way. Pruning
 reads it: an older deploy of the same worlds (or the same Worker) has its keys deleted from its own
 `deploy.json`, then its entry removed. Nothing depends on listing the bucket.
 
 ## The Worker
 
-`tools/worldeditor/deploy/worker.mjs`, one module. Bindings: `ASSETS` (the built app), `DATA`
+`services/worldeditor/deploy/worker.mjs`, one module. Bindings: `ASSETS` (the built app), `DATA`
 (the bucket), `PREFIX` (this deploy's prefix). A request for `/sites/…`, `/levels/…`,
 `/assetsvc/…`, `/api/levels`, `/api/programs/…` or `/assets/catalog.json` is a bucket lookup at
 `PREFIX/<path>`; everything else is the app, with `single-page-application` fallback. Tiles under
 `web/` are `immutable`; documents are cached for a minute. Writes get a 405 that says to edit in the
 world editor. `/api/*` anything else is a 404 rather than a silent `index.html`.
 
-The app is whatever is at `WORLDEDITOR_APP` (the image's prebuilt `apps/corridor/dist`; on a
-laptop, build it first with `npm run build -w apps/corridor`). It is ~140 MB across ~340 files,
+The app is whatever is at `PIEDMONT_EDITOR_APP` (the image's prebuilt `apps/game/dist`; on a
+laptop, build it first with `npm run build -w apps/game`). It is ~140 MB across ~340 files,
 well under the per-file limit; the upload session only sends what Cloudflare does not have yet.
 
 ## Over the API
@@ -111,7 +111,7 @@ orphaned parts. The signer is checked against AWS's published S3 examples (`clou
 
 ## What has and has not been proven
 
-`tools/worldeditor/cloudflare.test.mjs` proves the client's side of every call (paths, headers,
+`services/worldeditor/cloudflare.test.mjs` proves the client's side of every call (paths, headers,
 the asset manifest's hashes, the multipart shapes, the bindings) against a stand-in;
 `deploy.test.mjs` proves the closure, the keys, the ledger and the prune against a temp volume and
 an in-memory bucket. The token route was seen to reach Cloudflare (a bad token comes back as

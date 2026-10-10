@@ -8,11 +8,11 @@
 // against something true independently of the parser. Adding the next sky dataset is a new entry
 // in SOURCES, not a new script.
 //
-//   node tools/sky/ingest.mjs                 # everything missing or stale
-//   node tools/sky/ingest.mjs --only stars    # one source
-//   node tools/sky/ingest.mjs --refresh       # re-fetch even if cached
-//   node tools/sky/ingest.mjs --verify        # check the built assets, fetch nothing
-//   node tools/sky/ingest.mjs --prove         # the checks, against deliberately broken input
+//   node pipelines/sky/ingest.mjs                 # everything missing or stale
+//   node pipelines/sky/ingest.mjs --only stars    # one source
+//   node pipelines/sky/ingest.mjs --refresh       # re-fetch even if cached
+//   node pipelines/sky/ingest.mjs --verify        # check the built assets, fetch nothing
+//   node pipelines/sky/ingest.mjs --prove         # the checks, against deliberately broken input
 //
 // WHAT IT GUARANTEES
 //
@@ -38,13 +38,13 @@ import { fileURLToPath } from 'node:url'
 // with string and arithmetic; a 4k photographic galaxy cannot. So this source alone decodes its
 // OpenEXR with three's EXRLoader (three is already a dependency of the app) and encodes the
 // committed JPEG with sharp (already a root devDependency). Everything still runs under
-// `node tools/sky/ingest.mjs` with no external binary.
+// `node pipelines/sky/ingest.mjs` with no external binary.
 import sharp from 'sharp'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO = path.resolve(HERE, '../..')
-const OUT = path.join(REPO, 'apps/corridor/public/assets/sky')
+const OUT = path.join(REPO, 'apps/game/public/assets/sky')
 const CACHE = path.join(REPO, 'ext/sky-cache')
 
 const arg = (n) => {
@@ -396,7 +396,7 @@ async function build(src, { refresh = false } = {}) {
         credit: src.credit,
         note: src.note,
         fetched: new Date().toISOString(),
-        tool: 'tools/sky/ingest.mjs',
+        tool: 'pipelines/sky/ingest.mjs',
       },
       null,
       1,

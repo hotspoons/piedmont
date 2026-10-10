@@ -8,7 +8,7 @@ p.on('requestfailed', (r) => console.log(`REQFAIL ${r.url()} ${r.failure()?.erro
 await p.goto(`http://localhost:5185/editor.html#${slug}`, { waitUntil: 'load' })
 for (let i = 0; i < 24; i++) {
   await p.waitForTimeout(10000)
-  const s = await p.evaluate(() => ({ status: document.querySelector('#status')?.textContent, site: !!window.corridor?.site }))
+  const s = await p.evaluate(() => ({ status: document.querySelector('#status')?.textContent, site: !!window.piedmont?.site }))
   console.log(`t=${(i + 1) * 10}s status=${JSON.stringify(s.status)} site=${s.site}`)
   if (s.site && s.status === '') break
 }

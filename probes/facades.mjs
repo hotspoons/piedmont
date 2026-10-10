@@ -9,7 +9,7 @@
 // again with BUILDING_FACADES 0 and the same measurements must find nothing pooled (the checks can
 // fail). That a building draws the same material on every build is test/facades.test.ts.
 //
-//   PORT=5196 WORLD=crofton-triangle SHOTS=/tmp/shots node probes/corridor-facades.mjs
+//   PORT=5196 WORLD=crofton-triangle SHOTS=/tmp/shots node probes/facades.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'
@@ -23,16 +23,16 @@ const fails = []
 const ok = (name, cond, detail) => { console.log(`${cond ? 'ok  ' : 'FAIL'}  ${name} — ${detail}`); if (!cond) fails.push(name) }
 
 await page.goto(`http://127.0.0.1:${PORT}/#${WORLD}?ui=dev`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, WORLD, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, WORLD, { timeout: 300000 })
 // the swiftshader cliff: trees and grass off, or no frame arrives in time to measure anything
-await page.evaluate(() => { const L = window.corridor.site.layers; if (L.trees) L.trees.visible = false; if (L.grass) L.grass.visible = false })
-await page.waitForFunction(() => (window.corridor.site.manifest.buildings ?? []).length > 50, null, { timeout: 240000 })
+await page.evaluate(() => { const L = window.piedmont.site.layers; if (L.trees) L.trees.visible = false; if (L.grass) L.grass.visible = false })
+await page.waitForFunction(() => (window.piedmont.site.manifest.buildings ?? []).length > 50, null, { timeout: 240000 })
 // daylight, by longitude: the headless clock is UTC, so solar noon over Maryland is ~17:00 here
-await page.evaluate(() => { const c = window.corridor; c.tune.set('TIME_RATE', 0); c.time?.setLocal?.('2026-06-21', '16:30') })
+await page.evaluate(() => { const c = window.piedmont; c.tune.set('TIME_RATE', 0); c.time?.setLocal?.('2026-06-21', '16:30') })
 
 /** stand at a driver's-eye-and-a-bit, looking at (x, y) in site metres from `back` metres away */
 const look = (x, y, back, up, lift) => page.evaluate(([x, y, back, up, lift]) => {
-  const c = window.corridor
+  const c = window.piedmont
   const eye = { x: x + back * 0.8, z: -(y - back * 0.6) }
   const gy = c.site.groundAt(eye.x, eye.z) ?? 0
   c.camera.position.set(eye.x, gy + up, eye.z)
@@ -40,11 +40,11 @@ const look = (x, y, back, up, lift) => page.evaluate(([x, y, back, up, lift]) =>
   c.orbit.update()
 }, [x, y, back, up, lift])
 /** the massing cells built so far */
-const cells = () => page.evaluate(() => { let n = 0; window.corridor.scene.traverse((o) => { if (o.name === 'buildings:massing') n++ }); return n })
+const cells = () => page.evaluate(() => { let n = 0; window.piedmont.scene.traverse((o) => { if (o.name === 'buildings:massing') n++ }); return n })
 
 // a street of houses: the house with the most houses within 60 m
 const street = await page.evaluate(() => {
-  const c = window.corridor, f = c.site.facades()
+  const c = window.piedmont, f = c.site.facades()
   if (!f) return null
   const hs = (c.site.manifest.buildings ?? []).filter((b) => f.plan.classes[f.slotOf(b)]?.id === 'house')
   const cen = hs.map((b) => { let x = 0, y = 0; for (const p of b.ring) { x += p[0]; y += p[1] } return [x / b.ring.length, y / b.ring.length] })
@@ -62,7 +62,7 @@ for (let i = 0; i < 120 && (await cells()) === 0; i++) await page.waitForTimeout
 await page.waitForTimeout(5000)
 
 const facts = await page.evaluate(async () => {
-  const c = window.corridor
+  const c = window.piedmont
   const f = c.site.facades()
   if (!f) return { none: true }
   const st = f.stats()
@@ -101,14 +101,14 @@ if (SHOTS && street) {
 
 // REFLECTIVENESS REACHES THE PIXELS: the street's own class, drawn matte and then mirror-smooth
 const sample = () => page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   c.renderer.render(c.scene, c.camera)
   const gl = c.renderer.getContext()
   const px = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4)
   gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, px)
   return Array.from(px.filter((_, i) => i % 64 === 0))
 })
-const surf = (m, r) => page.evaluate(([m, r]) => window.corridor.site.facades()?.setSurface('house', { metalness: m, roughness: r }), [m, r])
+const surf = (m, r) => page.evaluate(([m, r]) => window.piedmont.site.facades()?.setSurface('house', { metalness: m, roughness: r }), [m, r])
 await surf(0, 0.9)
 const matte = await sample()
 await surf(0.9, 0.08)
@@ -122,13 +122,13 @@ await page.close()
 
 // AND OFF: the knob as the F6 panel keeps it, the same questions, nothing pooled
 const off = await browser.newPage({ viewport: { width: 1280, height: 760 } })
-await off.addInitScript(() => { try { localStorage.setItem('apex-corridor-world.tune.v1', JSON.stringify({ v: 2, values: { BUILDING_FACADES: 0 }, touched: ['BUILDING_FACADES'] })) } catch { /* */ } })
+await off.addInitScript(() => { try { localStorage.setItem('piedmont-world.tune.v1', JSON.stringify({ v: 2, values: { BUILDING_FACADES: 0 }, touched: ['BUILDING_FACADES'] })) } catch { /* */ } })
 await off.goto(`http://127.0.0.1:${PORT}/#${WORLD}?ui=dev`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await off.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, WORLD, { timeout: 300000 })
-if (street) await off.evaluate(([x, y]) => { const c = window.corridor; const gy = c.site.groundAt(x + 24, -(y - 18)) ?? 0; c.camera.position.set(x + 24, gy + 7, -(y - 18)); c.orbit.target.set(x, gy + 3, -y); c.orbit.update() }, [street.x, street.y])
-for (let i = 0; i < 120; i++) { if (await off.evaluate(() => { let n = 0; window.corridor.scene.traverse((o) => { if (o.name === 'buildings:massing') n++ }); return n })) break; await off.waitForTimeout(2000) }
+await off.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, WORLD, { timeout: 300000 })
+if (street) await off.evaluate(([x, y]) => { const c = window.piedmont; const gy = c.site.groundAt(x + 24, -(y - 18)) ?? 0; c.camera.position.set(x + 24, gy + 7, -(y - 18)); c.orbit.target.set(x, gy + 3, -y); c.orbit.update() }, [street.x, street.y])
+for (let i = 0; i < 120; i++) { if (await off.evaluate(() => { let n = 0; window.piedmont.scene.traverse((o) => { if (o.name === 'buildings:massing') n++ }); return n })) break; await off.waitForTimeout(2000) }
 const offFacts = await off.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   let textured = 0, total = 0
   c.scene.traverse((o) => { if (o.name !== 'buildings:massing') return; const lay = o.geometry.getAttribute('layer')?.array ?? []; total += lay.length; for (const v of lay) if (v >= 0) textured++ })
   return { facades: !!c.site.facades(), textured, total }

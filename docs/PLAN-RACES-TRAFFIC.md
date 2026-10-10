@@ -144,7 +144,7 @@ port's facing and a tightness factor.
 ### What is done (`src/stunts.ts`, `test/stunts.test.ts`)
 
 - **The vocabulary is imported, not copied.** `pieces.ts` is 592 lines of tuned lane paths; a copy
-  would drift the first time somebody fixes the corkscrew in STUNTIN'. Corridor imports
+  would drift the first time somebody fixes the corkscrew in STUNTIN'. The game imports
   `PIECE_BY_TYPE` across the app boundary and adds only what a grid game never needed.
 - **Any position, any angle.** A fixture is `{ piece, at, yaw_deg, lift_m }`; `toSite` converts the
   grid frame (x east, z north, y up, min corner at the origin) to the site frame (x east, y north,
@@ -152,7 +152,7 @@ port's facing and a tightness factor.
 - **Ports come from the LANE, not the port table.** Sampling the lane at t=0 and t=1 gives the
   mouth and the exit with their headings, and cannot disagree with the surface.
 - **The link is the Hermite**, with one change: STUNTIN' port facings point out of their piece, so
-  it negates the far tangent; a corridor `Pose` points along travel at both ends, so a road anchor
+  it negates the far tangent; a road band `Pose` points along travel at both ends, so a road anchor
   and a fixture port join without either knowing what the other is.
 - **A backwards fixture is reported**, because it is the easiest mistake to make, it looks correct
   from above, and the only symptom is that the course is undriveable.
@@ -164,7 +164,7 @@ port's facing and a tightness factor.
    tube sections, but it takes STUNTIN's own `Track`, not a bare path. Either extract the ribbon
    generator to take a polyline plus normals and rolls, or build a synthetic `Track`. The first is
    more work and leaves both games sharing one builder.
-2. **Wiring `coversRoad` into the corridor road build**, so the tarmac stops at the footprint.
+2. **Wiring `coversRoad` into the road band road build**, so the tarmac stops at the footprint.
 3. **Placing one in the editor** — the Traffic mode's polygon tool is the wrong shape; this wants a
    click to place, a drag to turn, and two draggable handles on the road for entry and exit.
 4. **The gates come free**: a fixture with an entry and an exit is a stage with two gates, so a
@@ -181,15 +181,15 @@ Worked through in this order, each with a probe that was shown able to fail.
 
 | what | where | proved by |
 | --- | --- | --- |
-| **Areas / zones** — bounds, density as cars per km per lane, the swing, the map colour scale | `src/zones.ts`, `src/zones-ecs.ts`, `src/editor/zones.ts` | `probes/corridor-trafficzone.mjs` — the painted zone reads as jammed ON the centreline, and a control point a kilometre away reads zero |
+| **Areas / zones** — bounds, density as cars per km per lane, the swing, the map colour scale | `src/zones.ts`, `src/zones-ecs.ts`, `src/editor/zones.ts` | `probes/trafficzone.mjs` — the painted zone reads as jammed ON the centreline, and a control point a kilometre away reads zero |
 | **Traffic planning** — density to actual car positions, asked per car rather than per road | `src/trafficplan.ts` | `test/trafficplan.test.ts` — a zone on half a road fills half a road |
 | **Gates, circuits, stages** — oriented lines, penalties, laps, wrong-way | `src/races.ts` | `test/races.test.ts` — cannot be jumped at any step size, cutting a checkpoint charges for it |
-| **Races in the editor** — one click lays a gate square across the road | `src/editor/coursemode.ts` | `probes/corridor-races.mjs` — four clicks, four gates, each facing the road to within 0.001, and driving the centreline finishes with no penalties |
-| **Stunt fixtures** — any position and yaw on a real road, bezier links, road suppression | `src/stunts.ts`, `src/stuntmesh.ts`, `src/editor/stuntmode.ts` | `probes/corridor-stuntmode.mjs` |
-| **Stunts are DRIVEABLE** — a trimesh collider from the same arrays the renderer draws | `src/stuntworld.ts`, `packages/engine/.../terrain.ts#addSurface` | `probes/corridor-stunt-drive.mjs` — a ray down at the loop hits 64.4 m against 28.4 m of terrain |
+| **Races in the editor** — one click lays a gate square across the road | `src/editor/coursemode.ts` | `probes/races.mjs` — four clicks, four gates, each facing the road to within 0.001, and driving the centreline finishes with no penalties |
+| **Stunt fixtures** — any position and yaw on a real road, bezier links, road suppression | `src/stunts.ts`, `src/stuntmesh.ts`, `src/editor/stuntmode.ts` | `probes/stuntmode.mjs` |
+| **Stunts are DRIVEABLE** — a trimesh collider from the same arrays the renderer draws | `src/stuntworld.ts`, `vendor/arcade/packages/engine/.../terrain.ts#addSurface` | `probes/stunt-drive.mjs` — a ray down at the loop hits 64.4 m against 28.4 m of terrain |
 | **Stunt surfacing** — the site's own tarmac, or STUNTIN's red-and-white kerbs | `src/stuntmesh.ts` | the `style` field, per fixture, with a picker |
 | **Program references** — `api.traffic.set(id, d, { over })`, `api.stunts.show(id, on)` | `src/program.ts` | `test/program-layers.test.ts` — and safe with no world, which is the half that matters |
-| **The vocabulary as a package** — `@apex/stunt-pieces`, zero dependencies | `packages/stunt-pieces` | `test/standalone.test.ts`, which fails if anyone adds an import |
+| **The vocabulary as a package** — `@apex/stunt-pieces`, zero dependencies | `vendor/arcade/packages/stunt-pieces` | `test/standalone.test.ts`, which fails if anyone adds an import |
 
 ### Left
 
@@ -215,7 +215,7 @@ waypoints … we'll need to be able to place entry points you drive through to c
 and the ability to exit the race … Think race areas in Forza Horizon where you drive into a throbber
 and you enter the race."*
 
-**Done, and driven end to end.** `probes/corridor-race-drive.mjs` authors a stage in the editor,
+**Done, and driven end to end.** `probes/race-drive.mjs` authors a stage in the editor,
 saves it, loads the viewer, and drives the real centreline:
 
 ```
@@ -246,7 +246,7 @@ idle → armed → countdown → running → finished     29.40 s, 0 penalties
 
 ### Still left
 
-1. **Menus.** `packages/engine/src/app/Menus.ts` has a `MenuStack` with screens-as-data; the race
+1. **Menus.** `vendor/arcade/packages/engine/src/app/Menus.ts` has a `MenuStack` with screens-as-data; the race
    result is a `resultLines(state)` away from being one. Rich asked to *"port menus from the other
    games"* — this is where.
 2. **Opponents.** A circuit with a field is the one thing in the original brief still untouched;
@@ -301,7 +301,7 @@ Three faults stacked, and each one alone is enough:
    lane and stands the piece on the highest ground it touches, and `linkPath` holds the approach and
    departure curves above the terrain (max, then smoothed, ends fixed).
 
-`probes/corridor-stunt-drivable.mjs` drives it with no query parameters at all: onto the fixture, over
+`probes/stunt-drivable.mjs` drives it with no query parameters at all: onto the fixture, over
 it, and back onto the road.
 
 **What is still not drivable is a full vertical loop**, and it is a vehicle problem rather than a
@@ -378,11 +378,11 @@ What was missing and is now in:
 
 | piece | where | proved by |
 | --- | --- | --- |
-| traffic in the world — planned from zones, spawned from a traffic SET's vehicle builds, driven by `traffic.ts`, drawn, kinematic bodies | `src/trafficlayer.ts`, `physics.spawnKinematic`, `scene.chains()` now carries lanes/twoWay/half/highway | `probes/corridor-traffic-level.mjs` |
+| traffic in the world — planned from zones, spawned from a traffic SET's vehicle builds, driven by `traffic.ts`, drawn, kinematic bodies | `src/trafficlayer.ts`, `physics.spawnKinematic`, `scene.chains()` now carries lanes/twoWay/half/highway | `probes/traffic-level.mjs` |
 | a level's program runs in the VIEWER against the real host (car, clock, presets, races, traffic zones, stunts) | `src/programload.ts` (shims shared with the pane), `main.ts` `startProgram`/`programHost` | `probes/.build/probe-game.mjs`, and the crofton probe |
 | `player.vehicle` may name a vehicle BUILD; a level with traffic starts physics and drives the physics car | `main.ts` | crofton probe |
-| server-side program build + typecheck against the generated bundle | `tools/worldeditor/programs.mjs`, `GET /api/programs/<id>?js=1 | ?check=1` | `program_check` catches a typo with a line |
-| MCP: `vehicle_*`, `traffic_set_*`, `site_roads`, `site_road_polygon`, `site_road_gate`, `traffic_zone_add`, `course_save`, `program_check`, `program_build`; zones/courses/stunts as documents; `level_save` creates | `tools/worldeditor/mcptools.mjs`, `mcp.mjs`, `store.mjs` AUTHORED, `levels.mjs` | 88 tools; `probes/corridor-crofton-jam.mjs` |
+| server-side program build + typecheck against the generated bundle | `services/worldeditor/programs.mjs`, `GET /api/programs/<id>?js=1 | ?check=1` | `program_check` catches a typo with a line |
+| MCP: `vehicle_*`, `traffic_set_*`, `site_roads`, `site_road_polygon`, `site_road_gate`, `traffic_zone_add`, `course_save`, `program_check`, `program_build`; zones/courses/stunts as documents; `level_save` creates | `services/worldeditor/mcptools.mjs`, `mcp.mjs`, `store.mjs` AUTHORED, `levels.mjs` | 88 tools; `probes/crofton-jam.mjs` |
 
 **The Route 3 jam** (`levels/crofton-jam.json`, `programs/crofton/jam.ts`, four zones and the
 stage `route-3-jam` in `sites/crofton-triangle/`) was authored by a script of MCP calls and nothing
@@ -401,7 +401,7 @@ kilometres away, 80 cars within 300 m of the start, ring → countdown → runni
 
 ## The editor as a set of palettes (2026-09-30)
 
-Rich's morning list, each fixed where it was measured to be broken (`probes/corridor-editor-palettes.mjs`,
+Rich's morning list, each fixed where it was measured to be broken (`probes/editor-palettes.mjs`,
 21 checks):
 
 - **The stunt list vanished on select.** Not a render bug: `.list` is a scroll container whose
@@ -452,7 +452,7 @@ Rich's morning list, each fixed where it was measured to be broken (`probes/corr
   `sites/<slug>/fixtures.json`: a chosen catalog asset of that class is fitted to the class height,
   cloned onto every bake position, and the built-in batch is hidden; choose the built-in and it
   comes back. The asset manager has a Fixtures tab (both editors); the document is a site doc for
-  the MCP tools. Proven with a stand-in on 523 stop signs (`probes/corridor-fixtures.mjs`).
+  the MCP tools. Proven with a stand-in on 523 stop signs (`probes/fixtures.mjs`).
 - **Race furniture.** Built-in gates are posts, a banner, and a chequered stripe at start/finish,
   drawn for every course all the time (dim, bright in your race, brightest for the next gate);
   the entry marker is a ring to trigger on and a standing arch facing the start. Height, colours
@@ -484,11 +484,11 @@ Rich's morning list, each fixed where it was measured to be broken (`probes/corr
 - **Missiles.** `missiles.ts`: M fires from the bonnet along the nose (a point flown by hand, a
   0.9 m ball swept over each frame's travel — a ray missed cars by a metre), landing is a blast
   (`MISSILE_RADIUS`, `MISSILE_IMPULSE`) and a flash. `api.physics.explode` lands in the same
-  `boom`. `probes/corridor-crash.mjs`: a blast throws a car 42 m, a missile 33 m.
+  `boom`. `probes/crash.mjs`: a blast throws a car 42 m, a missile 33 m.
 - **Soft breakables.** A sign or post (breaking under `PHYS_SOFT_BREAK_NS`) is a sensor until it
   is touched: no contact impulse, so no launch — a rigid post against the sled's raked nose had
   put a 40 m/s stop into the car, upward, end over end. The touch breaks it and sets its velocity;
-  it flies, the car keeps going (`probes/corridor-stopsign.mjs`).
+  it flies, the car keeps going (`probes/stopsign.mjs`).
 - **Waypoint.** Lower left, off the corner, steps over the attribution block, turns with the
   CAMERA; the goal no longer echoes on the bottom readout.
 
@@ -542,7 +542,7 @@ stop or slow down"; and at 12 fps "trying to straighten my car out was in slow m
   car and `traffic.player` has to be fed by hand, or cars 3 km from the camera are never placed
   and a woken body falls from the origin for ever ("thrown 3218 m", green). And after an HMR
   update a probe's `import('/src/traffic.ts')` is a second copy of the module with empty arrays;
-  `traffic.view(i)` reads the live one. `probes/corridor-pileup.mjs` covers all of the above;
+  `traffic.view(i)` reads the live one. `probes/pileup.mjs` covers all of the above;
   `test/traffic-wrecks.test.ts` the leader rule and blind mode.
 
 Measured here (swiftshader, 600 cars): traffic actors 0.7 ms, place 0.3 ms, physics 0.2 ms a
@@ -559,11 +559,11 @@ step of a resting pile) and the pile itself on the GPU; both are bounded now.
   night changes (`lightsLevel` in main.ts). Listed in Settings → Controls.
 - **Deploy.** World editor mode 9: token (env or typed, in memory only) → worlds (one or several,
   one URL) → query Cloudflare → worker name, workers.dev and/or a hostname in a zone, bucket (or a
-  new one), prefix `corridor/<world>-<stamp>`, prune older copies → plan → deploy as a run.
-  `tools/worldeditor/{cloudflare,deploy}.mjs`, `deploy/worker.mjs`; `docs/corridor/DEPLOY.md`.
+  new one), prefix `piedmont/<world>-<stamp>`, prune older copies → plan → deploy as a run.
+  `services/worldeditor/{cloudflare,deploy}.mjs`, `deploy/worker.mjs`; `docs/DEPLOY.md`.
   Only what the worlds use goes up, measured by following ids through the documents and builds
   (Route 3: 254 objects, 129 MB, 11 of the library's cars). No real deploy has been run: there is
-  no token here. Probes: `corridor-stages-lights.mjs`; tests: `cloudflare.test.mjs`, `deploy.test.mjs`.
+  no token here. Probes: `stages-lights.mjs`; tests: `cloudflare.test.mjs`, `deploy.test.mjs`.
 
 ## The editor's list, the textures, the points, and the wall over the road (2026-09-30, late)
 
@@ -597,7 +597,7 @@ Rich's list, after playing the deployed editor. What changed, in the order he wr
   material's metres per tile. A deploy carries every surface material and whatever a world names.
 - **The wall over the road** on the cluster's Crofton bake was a cached `dem_1m.tif` from an
   earlier, smaller bake: 79 of 158 tiles were solid nodata and the tiles at the old DEM's edge
-  copied its last row outward 10–29 m over the road. `corridor/rastercache.py`: a cached raster is
+  copied its last row outward 10–29 m over the road. `piedmont_bake/rastercache.py`: a cached raster is
   reused only when it is in the frame's CRS and contains the bbox; otherwise it is removed and
   fetched (DEM, NAIP, horizon, canopy). The tile export skips a tile the DEM does not reach. The
   world was re-baked on the cluster with the fix.
@@ -613,6 +613,6 @@ does not yet take a wall/roof pool (the pools texture the procedural massing). S
 cluster bake's 2,049 false branch structures come from `profile_tiled` never passing
 `major_road`; they are not drawn, and are not fixed here.
 
-Probes: corridor-world-tab, corridor-points, corridor-editor-palettes (updated), worldedit-place
-(its stale `setMode('define')` fixed), corridor-fixtures (follows the document). Tests:
+Probes: world-tab, points, editor-palettes (updated), worldedit-place
+(its stale `setMode('define')` fixed), fixtures (follows the document). Tests:
 surfacesdoc, frame-check, cloudflare (account tokens), deploy (materials), test_rastercache.py.

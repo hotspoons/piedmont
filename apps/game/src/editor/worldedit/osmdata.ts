@@ -15,7 +15,7 @@
 // empty is filled red too (coveragemap.ts).
 //
 // ADDING A REGION is a run like a bake — `osm-import` — so its log is in the same viewer, it
-// survives a reload, and it can be cancelled (tools/worldeditor/runs.mjs).
+// survives a reload, and it can be cancelled (services/worldeditor/runs.mjs).
 
 import { Dialog, button, confirm, el, toast } from '../../ui/shell'
 import { bodyOf, empty, group, select } from '../../ui/controls'
@@ -202,7 +202,7 @@ class OsmData {
       }
       card.append(regs)
       // the diff streams: the instance's updater follows the one it was built from; the regions
-      // sidecar follows every imported one (tools/overpass/README.md)
+      // sidecar follows every imported one (services/overpass/README.md)
       const streams = u.regions.filter((r) => r.updates)
       if (streams.length) card.append(line('diffs', streams.map((r) => r.updates!.replace(/^https:\/\/download\.geofabrik\.de\//, '')).join(', ')))
       b.append(card)

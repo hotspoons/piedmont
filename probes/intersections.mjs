@@ -1,7 +1,7 @@
 // Intersections: do the signals actually cycle, do all the arms get a head, are the stop bars on
 // the asphalt, and do the blades stand on a corner?
 //
-//   PORT=5210 SLUG=crofton-triangle node probes/corridor-intersections.mjs
+//   PORT=5210 SLUG=crofton-triangle node probes/intersections.mjs
 //
 // The things a screenshot cannot tell you:
 //   EVERY ARM        Rich's report was "the stop light only read from one direction". So the check
@@ -21,10 +21,10 @@ const page = await browser.newPage({ viewport: { width: 1100, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
 
 const out = await page.evaluate(() => {
-  const site = window.corridor.site, THREE = window.corridor.THREE
+  const site = window.piedmont.site, THREE = window.piedmont.THREE
   const m = site.manifest
   const model = m.intersections?.list ?? []
   const ed = site.edgeDistance ?? null

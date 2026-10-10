@@ -5,8 +5,8 @@
 // the sun rises due east and sets due west at an equinox, the equation of time stays inside ±17
 // minutes, and everything is symmetric about solar noon. A bug in the declination, the hour angle
 // or the azimuth quadrant breaks at least one of them.
-//   npx tsx probes/corridor-sun.mjs
-import { sunPosition, sunVector, WorldClock } from '../apps/corridor/src/visuals/sun.ts'
+//   npx tsx probes/sun.mjs
+import { sunPosition, sunVector, WorldClock } from '../apps/game/src/visuals/sun.ts'
 
 let fails = 0
 const ok = (what, cond, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++ }

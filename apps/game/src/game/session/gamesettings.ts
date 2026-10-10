@@ -148,7 +148,7 @@ export interface GameSettingsData {
   detail: Detail
 }
 
-export const SETTINGS_KEY = 'apex-corridor.settings.v1'
+export const SETTINGS_KEY = 'piedmont.settings.v1'
 /** bump when a NEW default key arrives: saved key lists gain it (a player's own stay) */
 const KEYS_VERSION = 4
 /**

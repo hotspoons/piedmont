@@ -1,7 +1,7 @@
 // Street furniture: how much was placed, is any of it standing in the road, and is it facing the
 // traffic it governs?
 //
-//   PORT=5205 SLUG=crofton-crownsville node probes/corridor-furniture.mjs
+//   PORT=5205 SLUG=crofton-crownsville node probes/furniture.mjs
 //
 // Three things a screenshot cannot tell you:
 //   ON THE CARRIAGEWAY   `edgeDistance` at every instance's real position. A signal node is on the
@@ -26,10 +26,10 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
 
 console.log(JSON.stringify(await page.evaluate(() => {
-  const site = window.corridor.site, mod = window.corridor.THREE
+  const site = window.piedmont.site, mod = window.piedmont.THREE
   const g = site.layers.furniture
   const masts = site.manifest.signals?.masts ?? []
   const out = {

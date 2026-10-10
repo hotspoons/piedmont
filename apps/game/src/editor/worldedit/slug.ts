@@ -6,7 +6,7 @@
 /**
  * A name to the slug it will be stored under.
  *
- * MUST MATCH `slugify` in tools/worldeditor/geo.mjs, which is what the service actually applies.
+ * MUST MATCH `slugify` in services/worldeditor/geo.mjs, which is what the service actually applies.
  * If they disagree, the form shows one slug and the world is created under another — and the two
  * are checked against each other over a corpus in worldedit-forms.test.ts rather than by reading
  * both and hoping.

@@ -1,7 +1,7 @@
 // Where the capture wins, and how the built world gets out of its way.
 //
 // Rich, 2026-09-27: "let's get my neighborhood baked into the world properly with a crossfade of
-// corridor rendered world as you approach the edge of the splats."
+// rendered world as you approach the edge of the splats."
 //
 // `SplatField.weightAt` already answers "how much of this point belongs to the capture" — but it
 // answers it by walking every segment of every pass, which on arrowhead-2026-09 is 7,703 of them.

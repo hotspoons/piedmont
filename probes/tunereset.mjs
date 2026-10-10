@@ -1,5 +1,5 @@
 // Reset buttons in the tuning panel: one per knob, one per section, one per tab.
-//   PORT=5185 node probes/corridor-tunereset.mjs
+//   PORT=5185 node probes/tunereset.mjs
 import { chromium } from 'playwright'
 const PORT = process.env.PORT ?? '5185'
 const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
@@ -7,12 +7,12 @@ const p = await b.newPage({ viewport: { width: 1200, height: 800 } })
 p.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await p.route('**/@vite/client', (r) => r.abort())
 await p.goto(`http://localhost:${PORT}/#crofton-triangle?lite=1&fresh`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await p.waitForTimeout(2500)
 let fails = 0
 const ok = (what, cond, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++ }
-const get = (n) => p.evaluate((n) => window.corridor.tune.get(n), n)
-const set = (n, v) => p.evaluate(({ n, v }) => window.corridor.tune.set(n, v), { n, v })
+const get = (n) => p.evaluate((n) => window.piedmont.tune.get(n), n)
+const set = (n, v) => p.evaluate(({ n, v }) => window.piedmont.tune.set(n, v), { n, v })
 await p.keyboard.press('F6')
 await p.waitForTimeout(800)
 ok('F6 opens the panel', await p.evaluate(() => !!document.querySelector('.group')))

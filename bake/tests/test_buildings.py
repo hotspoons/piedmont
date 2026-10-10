@@ -5,7 +5,7 @@ for each of 8,137 POIs (~1.76 billion `contains`). The STRtree replaced it; thes
 POI is still attributed to the footprint that actually contains it (and to none otherwise), which
 is the only thing the lookup has to get right.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from corridor import buildings  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import buildings  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
 LON, LAT = -76.6, 39.0
 

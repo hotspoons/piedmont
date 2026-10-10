@@ -5,7 +5,7 @@ here", and a dc-metro shard swapped 0.6 m aerial photography for 10 m Sentinel-2
 failing. An outage is not an answer: the probe now raises, and the retry helpers ride out a few
 minutes of 5xx before they give up.
 
-Plain unittest: the corridor image's CI runs `python -m unittest discover`, with no pytest in it.
+Plain unittest: the bake image's CI runs `python -m unittest discover`, with no pytest in it.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import BakeFault, horizon, naip  # noqa: E402
+from piedmont_bake import BakeFault, horizon, naip  # noqa: E402
 
 
 class _Resp:
@@ -46,10 +46,10 @@ BBOX = (300000.0, 4300000.0, 301000.0, 4301000.0)
 
 
 class ProbeTest(unittest.TestCase):
-    """The ImageServer's own content probe (CORRIDOR_NAIP_SOURCE=usgs, or auto's fallback)."""
+    """The ImageServer's own content probe (PIEDMONT_NAIP_SOURCE=usgs, or auto's fallback)."""
 
     def setUp(self):
-        self._env = mock.patch.dict(os.environ, {"CORRIDOR_NAIP_SOURCE": "usgs"})
+        self._env = mock.patch.dict(os.environ, {"PIEDMONT_NAIP_SOURCE": "usgs"})
         self._env.start()
         self.addCleanup(self._env.stop)
 
@@ -79,7 +79,7 @@ class OneSourceDownTest(unittest.TestCase):
     against the code before the Planetary Computer source existed — and fails there."""
 
     def test_an_imageserver_outage_is_ridden_out_by_the_catalogue(self):
-        from corridor.geo import Frame
+        from piedmont_bake.geo import Frame
 
         seen: list[str] = []
 
@@ -101,7 +101,7 @@ class OneSourceDownTest(unittest.TestCase):
             return r
 
         frame = Frame(32618, (354269.88, 4318567.75))
-        with mock.patch.dict(os.environ, {"CORRIDOR_NAIP_SOURCE": "auto"}), mock.patch("requests.sessions.Session.request", route), \
+        with mock.patch.dict(os.environ, {"PIEDMONT_NAIP_SOURCE": "auto"}), mock.patch("requests.sessions.Session.request", route), \
                 mock.patch("time.sleep", lambda s: None):
             self.assertIs(naip.covered(frame, (354000.0, 4318000.0, 355000.0, 4319000.0)), True)
         self.assertTrue(any("planetarycomputer" in u for u in seen))

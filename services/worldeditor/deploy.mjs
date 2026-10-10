@@ -37,7 +37,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 /** the Worker module, as published */
 export const WORKER_SOURCE = path.join(HERE, 'deploy', 'worker.mjs')
 /** the bucket-level ledger of every deploy made with this tool, so a prune knows what exists */
-export const LEDGER_KEY = 'corridor/deployments.json'
+export const LEDGER_KEY = 'piedmont/deployments.json'
 
 export const BUILD_KINDS = ['vehicles', 'actors', 'weapons', 'presets', 'traffic']
 
@@ -98,16 +98,16 @@ export const GAME_TOP = new Set([...SITE_DOCS, 'manifest.json', 'context.json', 
 /** read only when a site has no context.json (bakes from before it), as the fallback the viewer takes */
 const GAME_FALLBACK = { 'osm.geojson': 'context.json' }
 
-/** a default prefix: `corridor/<worlds>-<stamp>`, which is what Rich asked for */
+/** a default prefix: `piedmont/<worlds>-<stamp>`, which is what Rich asked for */
 export function defaultPrefix(worlds, at = new Date()) {
   const stamp = at.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z').replace('T', '-')
   const name = worlds.length === 1 ? worlds[0] : worlds.length ? `${worlds[0]}+${worlds.length - 1}` : 'empty'
-  return `corridor/${name}-${stamp}`
+  return `piedmont/${name}-${stamp}`
 }
 
 /** a Worker name Cloudflare accepts: lower-case, digits and dashes, 63 characters */
 export function workerName(s) {
-  return String(s).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63) || 'corridor'
+  return String(s).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63) || 'piedmont'
 }
 
 async function walk(dir, rel = '') {
@@ -389,7 +389,7 @@ export async function plan({ store, worlds, assetsvc = '', transpile, fetch = gl
      * through it) and every map in it.
      */
     /*
-     * THE BUILDING CLASSES' POOLS (apps/corridor/src/world/facades.ts). Every world draws its
+     * THE BUILDING CLASSES' POOLS (apps/game/src/world/facades.ts). Every world draws its
      * buildings from them now, whether or not a document names a material: the built-in set and
      * the library's shared `/facades` records are read by the game itself. So the shared records
      * are carried whole, and every material any of the three layers names goes in with the roads.
@@ -440,7 +440,7 @@ export async function plan({ store, worlds, assetsvc = '', transpile, fetch = gl
   let app = null
   if (appDir) {
     const files = await walk(appDir)
-    if (!files.includes('index.html')) problems.push(`no built app at ${appDir} — build it first (npm run build -w apps/corridor)`)
+    if (!files.includes('index.html')) problems.push(`no built app at ${appDir} — build it first (npm run build -w apps/game)`)
     else {
       let bytes = 0
       for (const f of files) bytes += (await stat(path.join(appDir, f))).size
@@ -571,7 +571,7 @@ async function deletePrefix(cf, accountId, bucket, prefix, concurrency) {
  */
 export async function removeDeployment({ cf, accountId, bucket, prefix, log = () => {}, concurrency = 8 }) {
   prefix = String(prefix).replace(/^\/+|\/+$/g, '')
-  if (!prefix || prefix === 'corridor') throw Object.assign(new Error('refusing to delete without a deployment prefix'), { status: 400 })
+  if (!prefix || prefix === 'piedmont') throw Object.assign(new Error('refusing to delete without a deployment prefix'), { status: 400 })
   log(`deleting r2://${bucket}/${prefix}/`)
   const objects = await deletePrefix(cf, accountId, bucket, prefix, concurrency)
   log(`deleted ${objects} objects`)
@@ -607,7 +607,7 @@ export async function removeDeployment({ cf, accountId, bucket, prefix, log = ()
 export async function run({ cf, accountId, bucket, createBucket = true, prefix, plan: p, worker, appDir, prune = false, replacePrefix = null, dryRun = false, log, fetch = globalThis.fetch, concurrency = 8 }) {
   const at = new Date().toISOString()
   prefix = String(prefix).replace(/^\/+|\/+$/g, '')
-  if (!prefix) throw new Error('a prefix is required (the default is corridor/<world>-<stamp>)')
+  if (!prefix) throw new Error('a prefix is required (the default is piedmont/<world>-<stamp>)')
   if (p.problems.length) throw new Error(`the plan has problems: ${p.problems.join('; ')}`)
   for (const w of p.warnings) log(`warning: ${w}`)
   log(`worlds: ${p.worlds.join(', ')} · levels: ${p.levels.length} · assets: ${p.assets.items.length} models · ${p.objects.length} objects, ${mib(p.bytes)} → r2://${bucket}/${prefix}/`)

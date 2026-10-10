@@ -6,7 +6,7 @@
 // finisher whose import closure is incomplete. None of that shows up in a unit test, and all of it
 // shows up here in about a minute.
 //
-//   node tools/assetsvc/smoke.mjs [--url http://localhost:8770] [--keep] [--no-mesh]
+//   node services/assetsvc/smoke.mjs [--url http://localhost:8770] [--keep] [--no-mesh]
 //
 // `--no-mesh` stops after the 2D step, which costs ten seconds instead of a GPU-minute and still
 // exercises the adapter, the catalog, the job queue and the file route. `--keep` leaves the item

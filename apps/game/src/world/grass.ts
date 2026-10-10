@@ -44,7 +44,7 @@ const SEGMENTS = 6
 const TILE = 8
 const BLADE_F = 8 // x y z | rand height width lean mown
 const CARD_F = 6 // x y z | size rand mown
-/** shared empty instance array: an off-road corridor tile and a bare one both want zero records */
+/** shared empty instance array: an off-road road-band tile and a bare one both want zero records */
 const EMPTY_RECORDS = new Float32Array(0)
 
 function bladeGeometry(): THREE.InstancedBufferGeometry {
@@ -330,14 +330,14 @@ export class Grass {
   private look = GRASS_LOOK.common
   // per-frame cost of the last update(), milliseconds. This box has no GPU (swiftshader renders
   // ~1 frame per 10 s at Rich's density), so the only honest frame-time number we can take here
-  // is the CPU half — tile generation and buffer assembly. probes/corridor-grasscpu.mjs reads it.
+  // is the CPU half — tile generation and buffer assembly. probes/grasscpu.mjs reads it.
   private genMs = 0
   /*
    * THE ELIGIBILITY QUESTIONS, COUNTED — since boot, so a probe can take a difference over a run.
    *
    * PERF-RIG.md proposed baking "may grass grow here" per pyramid tile so the generator stops
    * asking the road field, the canopy, the slope and the shelf of the same ground every time a
-   * tile is planted. Measured before building it (probes/corridor-bakephases.mjs --phase cpu,
+   * tile is planted. Measured before building it (probes/bakephases.mjs --phase cpu,
    * 2026-10-10, 78 m/s on crofton-triangle): the questions are 25 % of the generator — 13 µs a
    * cell on a graded bake, 15 on the served one — and the generator is ~2.5 ms of a frame, so a
    * mask that answered every rejected cell for free would return ~0.5 ms a frame, and a 2.3 m
@@ -857,7 +857,7 @@ export class Grass {
   /**
    * What the blades are ACTUALLY drawing with, read back off the uniforms.
    *
-   * probes/corridor-flora.mjs prints this per season. A screenshot cannot settle "is the hillside
+   * probes/flora.mjs prints this per season. A screenshot cannot settle "is the hillside
    * browner in September than it used to be"; `#97a054 -> #cfbd8a` can.
    */
   get applied(): { type: GrassType; blades: number; dry: number; base: string; tip: string } {
@@ -1267,9 +1267,9 @@ export class Grass {
    */
   private *generateSteps(tx: number, tz: number, withBlades: boolean): Generator<void, Tile, void> {
     /*
-     * A CORRIDOR TILE AWAY FROM EVERY ROAD IS EMPTY, AND ONE QUERY SAYS SO.
+     * A ROAD-BAND TILE AWAY FROM EVERY ROAD IS EMPTY, AND ONE QUERY SAYS SO.
      *
-     * On a corridor bake grass only grows within GRASS_MAX_FROM_ROAD of the tarmac (the per-cell
+     * On a road-band bake grass only grows within GRASS_MAX_FROM_ROAD of the tarmac (the per-cell
      * test further down), so the 64-cell walk below rejects every cell and pays a road/ground/canopy
      * lookup to do it. A tile whose CENTRE is further than the band plus its own half-diagonal
      * cannot touch the band at any cell, so it is empty by construction. The ring at speed is
@@ -1377,10 +1377,10 @@ export class Grass {
         const roadD = this.roadDistance(wx, wz)
         if (roadD < this.pavedHalf + T.GRASS_ROAD_CLEAR) { this.questionsMs += performance.now() - q0; this.cellsRejected++; continue } // pavement
         /*
-         * "Spend the budget on the verge, where the eye is" -- true of a CORRIDOR, false of a
+         * "Spend the budget on the verge, where the eye is" -- true of a ROAD BAND, false of a
          * WORLD.
          *
-         * On a corridor bake there is no imagery and no vegetation mask past the road buffer, so
+         * On a road-band bake there is no imagery and no vegetation mask past the road buffer, so
          * distance-from-a-road is a fair stand-in for "is there any data here" and this keeps the
          * blades where they can be judged. On a world bake the data covers everything, and the
          * same line means grass stops twenty-four metres from the tarmac and you walk out of it

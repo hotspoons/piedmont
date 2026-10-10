@@ -102,7 +102,7 @@ export const LAYER_GROUPS: { title: string; layers: { id: string; label: string;
  * from. `frame.kind` is the ONLY field that distinguishes the two, and reading it wrong rotates
  * the world by the grid convergence — about 55 m at 3 km, and it looks plausible. So the panel
  * says which, names the anchor, and gives the convergence that separates the two norths.
- * See docs/corridor/FRAME.md.
+ * See docs/FRAME.md.
  */
 function frameReadouts(m: Manifest): HTMLElement[] {
   const f = m.frame
@@ -231,7 +231,7 @@ export class ViewerUI {
   private searchHits: { label: string; detail: string; x: number; z: number; kind: string }[] = []
   private searchSel = -1
   private searchFind: ((q: string) => { label: string; detail: string; x: number; z: number; kind: string }[]) | null = null
-  drawer = new Drawer('corridor', 'a strip of real road, measured')
+  drawer = new Drawer('piedmont', 'a strip of real road, measured')
   settings: Dialog
   private siteSel = el('div', 'topbar-site')
   private posEl = el('span', 'hud-pos mono')
@@ -343,7 +343,7 @@ export class ViewerUI {
       look,
       select({
         label: 'Theme',
-        value: (localStorage.getItem('corridor.theme') as 'dark' | 'light') ?? 'dark',
+        value: (localStorage.getItem('piedmont.theme') as 'dark' | 'light') ?? 'dark',
         options: [
           { value: 'dark', label: 'Dark' },
           { value: 'light', label: 'Light' },
@@ -589,7 +589,7 @@ export class ViewerUI {
         : []),
       ...only('display.theme', () => select({
         label: 'Theme',
-        value: (localStorage.getItem('corridor.theme') as 'dark' | 'light') ?? 'dark',
+        value: (localStorage.getItem('piedmont.theme') as 'dark' | 'light') ?? 'dark',
         options: [
           { value: 'dark', label: 'Dark' },
           { value: 'light', label: 'Light' },
@@ -648,7 +648,7 @@ export class ViewerUI {
       return
     }
     const ident = m.ident ? Object.values(m.ident)[0] : '(unnamed)'
-    const lidar = m.lidar.points_in_corridor ? `${m.lidar.dataset}, ${(m.lidar.points_in_corridor / 1e6).toFixed(1)} M points` : 'none'
+    const lidar = m.lidar.points_in_road_band ? `${m.lidar.dataset}, ${(m.lidar.points_in_road_band / 1e6).toFixed(1)} M points` : 'none'
     const byRel = m.crossings.reduce<Record<string, number>>((a, c) => ((a[c.relation] = (a[c.relation] ?? 0) + 1), a), {})
 
     const measured = group('Measured')
@@ -666,7 +666,7 @@ export class ViewerUI {
 
     const st = group(`Structures (${m.structures.length})`, { collapsed: m.structures.length > 8 })
     const stBody = bodyOf(st)
-    if (!m.structures.length) stBody.append(empty('None along this corridor.'))
+    if (!m.structures.length) stBody.append(empty('None along this road band.'))
     for (const [i, s] of m.structures.entries()) {
       const row = el('button', 'struct-row')
       row.append(icon('rectangle-group', 14), el('span', 'struct-kind', s.kind), el('span', 'struct-desc', this.describe?.(s) ?? ''))
@@ -709,7 +709,7 @@ export class ViewerUI {
 
   private buildControls(host: HTMLElement) {
     let pref: string | null = null
-    try { pref = localStorage.getItem('corridor.recoverRepairs') } catch { /* no storage */ }
+    try { pref = localStorage.getItem('piedmont.recoverRepairs') } catch { /* no storage */ }
     if (this.allow('controls.recover')) {
       host.append(
         select({
@@ -721,7 +721,7 @@ export class ViewerUI {
             { value: 'off', label: 'never' },
           ],
           note: 'recover straightens the dents out, unless the game wants you to carry them',
-          onChange: (v) => { try { localStorage.setItem('corridor.recoverRepairs', v) } catch { /* no storage */ } },
+          onChange: (v) => { try { localStorage.setItem('piedmont.recoverRepairs', v) } catch { /* no storage */ } },
         }),
       )
     }
@@ -844,7 +844,7 @@ export class ViewerUI {
   }
 }
 
-const PERF_KEY = 'corridor.perf'
+const PERF_KEY = 'piedmont.perf'
 
 /** Was the performance panel left on? Read at start-up and by the settings tab. */
 export function perfWanted(): boolean {
@@ -866,13 +866,13 @@ export function setPerfWanted(on: boolean): void {
 export function setTheme(theme: 'dark' | 'light') {
   document.documentElement.dataset.theme = theme
   try {
-    localStorage.setItem('corridor.theme', theme)
+    localStorage.setItem('piedmont.theme', theme)
   } catch {
     /* ignore */
   }
 }
 
 export function restoreTheme() {
-  const t = (localStorage.getItem('corridor.theme') as 'dark' | 'light' | null) ?? 'dark'
+  const t = (localStorage.getItem('piedmont.theme') as 'dark' | 'light' | null) ?? 'dark'
   setTheme(t)
 }

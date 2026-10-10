@@ -20,5 +20,5 @@
  "credit": "Star positions: Yale Bright Star Catalogue (Hoffleit & Warren 1991)",
  "note": "Every star brighter than about magnitude 6.5 — precisely the set a person can see. Fixed-width ASCII; the column positions below are the catalogue ReadMe’s own and are checked against Sirius by `verify`.",
  "fetched": "2026-09-27T13:04:13.210Z",
- "tool": "tools/sky/ingest.mjs"
+ "tool": "pipelines/sky/ingest.mjs"
 }

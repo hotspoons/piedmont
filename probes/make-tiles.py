@@ -1,10 +1,10 @@
 """Slice a baked site's single-image layers into the agreed tile schema, so the streaming code can
 be written and measured before the first tiled bake lands.
 
-    tools/corridor/.venv/bin/python probes/make-tiles.py <src-slug> [tile_m]
+    bake/.venv/bin/python probes/make-tiles.py <src-slug> [tile_m]
 
-Writes apps/corridor/public/testdata/sites/<slug>-tiled/web/ — inside this worktree, served by
-Vite's public/ and loaded with `?data=/testdata`, so the shared bake in tools/corridor/data is
+Writes apps/game/public/testdata/sites/<slug>-tiled/web/ — inside this worktree, served by
+Vite's public/ and loaded with `?data=/testdata`, so the shared bake in data is
 never touched. This is NOT a bake step: it re-cuts what export.py already wrote, at the same
 resolutions and the same encodings, purely as a fixture.
 
@@ -21,8 +21,8 @@ Image.MAX_IMAGE_PIXELS = None
 SRC = sys.argv[1] if len(sys.argv) > 1 else 'arrowhead-farms-network'
 TILE_M = float(sys.argv[2]) if len(sys.argv) > 2 else 1000.0
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC_WEB = f'/workspaces/apex-conduit/tools/corridor/data/sites/{SRC}/web'
-DST = os.path.join(HERE, 'apps/corridor/public/testdata/sites', f'{SRC}-tiled')
+SRC_WEB = f'/workspaces/piedmont/data/sites/{SRC}/web'
+DST = os.path.join(HERE, 'apps/game/public/testdata/sites', f'{SRC}-tiled')
 DST_WEB = os.path.join(DST, 'web')
 TILES = os.path.join(DST_WEB, 'tiles/0')
 

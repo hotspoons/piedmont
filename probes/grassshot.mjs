@@ -1,8 +1,8 @@
 // A look at the grass. Thins the field first: this box has no GPU and swiftshader falls off a
-// cliff above ~60 k blade instances (probes/corridor-grassload.mjs), so a screenshot at Rich's
+// cliff above ~60 k blade instances (probes/grassload.mjs), so a screenshot at Rich's
 // density never returns. Colour, height and lean are what this is for; density is not.
 //
-//   PORT=5201 SLUG=bowie-racetrack-rd SEASONS=0,1,2,3 node probes/corridor-grassshot.mjs out-
+//   PORT=5201 SLUG=bowie-racetrack-rd SEASONS=0,1,2,3 node probes/grassshot.mjs out-
 import { chromium } from 'playwright'
 const PORT = process.env.PORT ?? '5201'
 const SLUG = process.env.SLUG ?? 'bowie-racetrack-rd'
@@ -14,10 +14,10 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug && !!window.corridor.site.grass, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug && !!window.piedmont.site.grass, SLUG, { timeout: 300000 })
 await page.keyboard.press('m') // the info panel covers half the frame
 await page.evaluate(() => {
-  const c = window.corridor, L = c.site.layers
+  const c = window.piedmont, L = c.site.layers
   // the near tree models are the other swiftshader hog; grass is its own layer now, so this
   // leaves it alone
   if (L.trees) L.trees.visible = false
@@ -43,12 +43,12 @@ await page.evaluate(() => {
 })
 for (const t of TYPES) {
   for (const s of SEASONS) {
-    await page.evaluate(({ t, s }) => { window.corridor.tune.set('GRASS_TYPE', t); window.corridor.tune.set('SEASON', s) }, { t, s })
+    await page.evaluate(({ t, s }) => { window.piedmont.tune.set('GRASS_TYPE', t); window.piedmont.tune.set('SEASON', s) }, { t, s })
     // the knobs emptied the cache; refill it before the shot
     // the knobs emptied the cache: drive the fill to completion rather than waiting on frames,
     // which arrive about once a second here
     await page.evaluate(() => {
-      const c = window.corridor, g = c.site.grass
+      const c = window.piedmont, g = c.site.grass
       const fwd = c.camera.getWorldDirection(new c.THREE.Vector3())
       let n = 0
       do { g.update(c.camera.position, fwd, 0) } while (g.counts.pending > 0 && ++n < 8000)
@@ -56,7 +56,7 @@ for (const t of TYPES) {
     await page.waitForTimeout(1200)
     const name = `${OUT}${['common', 'wheat', 'bermuda', 'coastal'][t] ?? 'baked'}-${['winter', 'spring', 'summer', 'autumn'][s]}.png`
     await page.screenshot({ path: name, timeout: 180000 })
-    console.log(name, JSON.stringify(await page.evaluate(() => window.corridor.site.grass.counts)))
+    console.log(name, JSON.stringify(await page.evaluate(() => window.piedmont.site.grass.counts)))
   }
 }
 await browser.close()

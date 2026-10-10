@@ -1,7 +1,7 @@
 # Handoff: turn the Arrowhead Farms capture into a splat world
 
-**For:** the capture agent (the `splats` lane). **From:** the corridor agent (the `viewer` lane),
-2026-09-26. **Read first:** [PLAN-SPLAT-CORRIDORS.md](PLAN-SPLAT-CORRIDORS.md) — it is the design
+**For:** the capture agent (the `splats` lane). **From:** the road band agent (the `viewer` lane),
+2026-09-26. **Read first:** [PLAN-SPLAT-ROUTES.md](PLAN-SPLAT-ROUTES.md) — it is the design
 this serves, and §2 explains why the alignment numbers you record matter more than they look.
 
 Your job is **Track A**: footage → a geo-aligned, chunked splat world, with its numbers written
@@ -30,7 +30,7 @@ view plan, and a Max *2* body is newer than the note that profile was written ag
 
 The roads Rich named are Patuxent River Rd (PRR), the Arrowhead Farms neighbourhood, and Gosheff —
 i.e. the streets around `arrowhead-farms` and the west end of `crofton-crownsville`. Both sites are
-already baked under `tools/corridor/data/sites/`, which is what the world has to line up with.
+already baked under `data/sites/`, which is what the world has to line up with.
 
 ### Disk: read this before you run anything
 
@@ -63,7 +63,7 @@ splatpipe ingest   <the three .360 chapters> --out <work>/frames --config config
 splatpipe chunk    --frames <work>/frames --out <work>/chunks
 splatpipe poses    --chunks <work>/chunks                     # spatial matching, then model_aligner to ENU
 splatpipe train    --chunks <work>/chunks                     # one GPU per chunk, claim-based
-splatpipe merge    --chunks <work>/chunks --out <work>/world --prune-corridor
+splatpipe merge    --chunks <work>/chunks --out <work>/world --prune-road-band
 splatpipe route    --world <work>/world                       # optional: the stage centreline
 ```
 
@@ -114,7 +114,7 @@ rather than guessing: `chunk` prints frames per cell).
    removes.
 2. **One road driven twice is one chunk, not two.** The locality grid is deliberate: every pass
    through a cell feeds that cell. Do not split the capture by video file.
-3. **`--prune-corridor` on merge.** Floaters outside the observed envelope are the first thing a
+3. **`--prune-road-band` on merge.** Floaters outside the observed envelope are the first thing a
    driver sees, because they hang over the road.
 4. **Altitude semantics.** Record whether the GPS altitude in these files is ellipsoidal (WGS84) or
    MSL. It is a 33–35 m difference in Maryland and it is my problem to correct, but only if you
@@ -123,9 +123,9 @@ rather than guessing: `chunk` prints frames per cell).
    Rivian, per the md-backroads protocol note). It is degenerate with the vertical fit, so knowing
    it is worth more than fitting it.
 6. **Nothing under `ext/` is committed** — it is gitignored, and the footage must stay out of git.
-   The world you produce under `tools/corridor/data/splats/` is also data, not source: put the
+   The world you produce under `data/splats/` is also data, not source: put the
    numbers in `REPORT.md` and tell me the path; do not `git add` the tiles.
-7. **`tools/corridor/data` is shared with other lanes.** `splats/<world>/` is yours alone. Do not
+7. **`data` is shared with other lanes.** `splats/<world>/` is yours alone. Do not
    touch `sites/`.
 8. **Never `git add -A`** in this tree, and never create a symlink under `/workspaces/apex-conduit`.
 
@@ -134,9 +134,9 @@ rather than guessing: `chunk` prints frames per cell).
 ## 5. The contract: what I need back
 
 ```
-tools/corridor/data/splats/arrowhead-2026-09/
+data/splats/arrowhead-2026-09/
   world.json        frame "enu", origin {lat, lon}, cell_m, tiles[{tile, bounds_enu_m, centre, gaussians}]
-  corridor.json     radius_m, height_band_m, passes[{points: [[e,n,u], ...]}]
+  <envelope>.json     radius_m, height_band_m, passes[{points: [[e,n,u], ...]}]
   route.json        (optional but welcome)
   tiles/*.spz       .ply is acceptable for a first pass — see below
   REPORT.md         the numbers from §3, plus altitude semantics and camera height
@@ -148,12 +148,12 @@ these tiles stream to a browser over a Cloudflare tunnel, so `.spz` is what prod
 conversion after. If you do write the converter, it belongs in gaussworks next to `merge`.
 
 **A far LOD** (a decimated copy per tile, say 1/8 by opacity × scale) is the next thing after that,
-because driving shows the corridor ahead as well as the cell you are in.
+because driving shows the road band ahead as well as the cell you are in.
 
-**A sanity check you can do without me.** Your `corridor.json` passes are ENU about your origin;
-the site's anchor is in `tools/corridor/data/sites/arrowhead-farms/web/manifest.json` under
+**A sanity check you can do without me.** Your the envelope file (`ENVELOPE_FILE`) passes are ENU about your origin;
+the site's anchor is in `data/sites/arrowhead-farms/web/manifest.json` under
 `frame.anchor`. Composing the two frames through ECEF is ten lines —
-`tools/corridor/splats/frame-error.mjs` is a worked example using the engine's pyproj-checked
+`bake/splats/frame-error.mjs` is a worked example using the engine's pyproj-checked
 helpers. If the transformed passes do not land on the right streets, something is wrong upstream
 (alignment, GPS, or the origin) and it is much cheaper to find now. **Do not try to fix the fit
 yourself** — the 4-DOF fit against the road network is mine, and a second correction applied
@@ -178,7 +178,7 @@ belongs in your `REPORT.md`.
 
 - every `.360` chapter ingested, with the frame count and the GPS verdict written down;
 - chunks trained, with a per-chunk PSNR in the report, and no chunk silently missing;
-- `world.json` + `corridor.json` + tiles under `tools/corridor/data/splats/arrowhead-2026-09/`;
+- `world.json` + the envelope file (`ENVELOPE_FILE`) + tiles under `data/splats/arrowhead-2026-09/`;
 - the capture passes, transformed into `arrowhead-farms`' ENU frame, land on the streets they were
   driven down;
 - a message in my inbox with the path, the altitude semantics, and the camera height.

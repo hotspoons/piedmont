@@ -14,8 +14,8 @@ first — it is the approach. This is what exists and what is known.*
 | **generate.mjs** | here | spec → prompt → flux → keyed cut-out → TRELLIS.2 → `.glb`. **Exercised to the cut-out** |
 | **card.mjs** | here | keyed cut-out → a `.glb` the game loads, for single-yaw kinds |
 | **finish.mjs** | here | reconstruction → 1.2 MB: meshopt simplify, unlit, WebP + Draco |
-| **TRELLIS.2** | `tools/recon-service` | one keyed view → textured `.glb`, ~7 s warm. **Not deployed anywhere** |
-| **blrig rigging** | `tools/rigging` | mesh → Rigify rig. Characters only; nothing here needs it |
+| **TRELLIS.2** | `services/recon` | one keyed view → textured `.glb`, ~7 s warm. **Not deployed anywhere** |
+| **blrig rigging** | `pipelines/rigging` | mesh → Rigify rig. Characters only; nothing here needs it |
 
 ```
 spec ──► proportion.mjs ──► flux.2-dev ──► keyed cut-out ──► TRELLIS.2 ──► .glb ──► game
@@ -62,7 +62,7 @@ bodywork, the windscreen blown to white — while the raw mesh was clean. Ninete
 seams apart and the texture rips along them. Blender is no longer in this path at all.
 
 So the `.glb` half of `generate.mjs` is written against the service's actual API
-(`tools/recon-service/app/main.py`: POST `/reconstruct` with `images`, poll `/jobs/<id>`, GET
+(`services/recon/app/main.py`: POST `/reconstruct` with `images`, poll `/jobs/<id>`, GET
 `/jobs/<id>/asset`) and has never been run.
 
 **What shipped instead** is `card.mjs`, and for the forty roadside kinds it is not a workaround —
@@ -113,11 +113,11 @@ flank trick, naming what must be kept in an edit — is in `apps/fighter/ART.md`
 ## Where things live
 
 ```
-tools/assetgen/assets.json        57 design-language specs. The `$comment` block documents the fields
-tools/assetgen/liveries.json      four original liveries, to replace the two trademarked ones
-tools/assetgen/proportion.mjs     spec → measured outline PNG
-tools/assetgen/generate.mjs       spec → prompts → flux → keyed cut-out → mesh
-tools/recon-service/              image→3D as a service: Dockerfile, API, Helm chart
+pipelines/assetgen/assets.json        57 design-language specs. The `$comment` block documents the fields
+pipelines/assetgen/liveries.json      four original liveries, to replace the two trademarked ones
+pipelines/assetgen/proportion.mjs     spec → measured outline PNG
+pipelines/assetgen/generate.mjs       spec → prompts → flux → keyed cut-out → mesh
+services/recon/              image→3D as a service: Dockerfile, API, Helm chart
 apps/coast/src/render/models.ts   ModelDef — the contract a generated asset must satisfy
 apps/coast/src/render/extents.json  MEASURED widths, written by scripts/roadside-check.mjs
 apps/coast/src/sim/place.ts       the one copy of where a thing beside the road stands

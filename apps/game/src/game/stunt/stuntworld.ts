@@ -18,7 +18,7 @@
 import * as THREE from 'three'
 import { connectFixture, fixtureFootprint, fixtureGeometry, linksTo, Stunts, type StuntDoc, type StuntFixture } from './stunts'
 import { buildFixture, type Ribbon } from './stuntmesh'
-import type { CorridorPhysics } from '../world/physics'
+import type { WorldPhysics } from '../world/physics'
 import type { Site } from '../../world/scene'
 import type { Pose } from './stunts'
 
@@ -81,7 +81,7 @@ export function groundSampler(site: Site): (x: number, y: number) => number {
  */
 export function addStuntColliders(
   site: Site,
-  physics: CorridorPhysics,
+  physics: WorldPhysics,
   fixtures: readonly StuntFixture[],
   halfWidth = 5,
 ): number {
@@ -108,7 +108,7 @@ export function addStuntColliders(
 export class StuntWorld {
   readonly group = new THREE.Group()
   private site: Site
-  private physics: CorridorPhysics | null
+  private physics: WorldPhysics | null
   private opts: StuntWorldOpts
   private built = new Map<string, Ribbon>()
   /** every fixture's lane poses, for `nearestPose` */
@@ -116,7 +116,7 @@ export class StuntWorld {
   private grid = new Map<string, { lane: Pose[]; i: number }[]>()
   private doc: StuntDoc = { version: 1, fixtures: [] }
 
-  constructor(site: Site, physics: CorridorPhysics | null, opts: StuntWorldOpts = {}) {
+  constructor(site: Site, physics: WorldPhysics | null, opts: StuntWorldOpts = {}) {
     this.group.name = 'stunts'
     this.site = site
     this.physics = physics
@@ -407,7 +407,7 @@ export class StuntWorld {
  */
 export async function loadStuntWorld(
   site: Site,
-  physics: CorridorPhysics | null,
+  physics: WorldPhysics | null,
   opts: StuntWorldOpts & { base?: string } = {},
 ): Promise<StuntWorld | null> {
   const doc = await fetchStuntDoc(site.manifest.slug, opts.base ?? '')
@@ -440,7 +440,7 @@ export async function fetchStuntDoc(slug: string, base = ''): Promise<StuntDoc |
 /** Stand a document up in a world. Null for a world with no fixtures, which is most of them. */
 export function makeStuntWorld(
   site: Site,
-  physics: CorridorPhysics | null,
+  physics: WorldPhysics | null,
   doc: StuntDoc | null,
   opts: StuntWorldOpts = {},
 ): StuntWorld | null {

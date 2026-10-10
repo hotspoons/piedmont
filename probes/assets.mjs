@@ -6,7 +6,7 @@
 // that 404s and a model dot that is green when the model is not actually reachable. A screenshot
 // shows neither.
 //
-//   node probes/corridor-assets.mjs [port] [assetsvcUrl]
+//   node probes/assets.mjs [port] [assetsvcUrl]
 import { chromium } from 'playwright'
 import { mkdirSync } from 'node:fs'
 
@@ -37,7 +37,7 @@ const shot = async (name) => {
   console.log(`  ${out}/${name}.png`)
 }
 
-console.log(`corridor assets — editor :${port}, service ${svc}`)
+console.log(`piedmont assets — editor :${port}, service ${svc}`)
 await page.click('.topbar .btn[aria-label="generated assets"]')
 await page.waitForSelector('.asset-split, .asset-none', { timeout: 30000 })
 await shot('01-catalog')

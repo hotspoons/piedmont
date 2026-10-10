@@ -8,10 +8,10 @@
 // fails if the check stays green. Run `--prove` when you change a check, and read its output as
 // "the instrument still works" rather than as a test of the product.
 //
-//   node tools/worldeditor/probe.mjs                 # everything that needs no service
-//   node tools/worldeditor/probe.mjs --prove         # the checks themselves, broken on purpose
-//   node tools/worldeditor/probe.mjs --api http://localhost:8780
-//   node tools/worldeditor/probe.mjs --ui  http://localhost:5212/world.html
+//   node services/worldeditor/probe.mjs                 # everything that needs no service
+//   node services/worldeditor/probe.mjs --prove         # the checks themselves, broken on purpose
+//   node services/worldeditor/probe.mjs --api http://localhost:8780
+//   node services/worldeditor/probe.mjs --ui  http://localhost:5212/world.html
 //
 // Exits non-zero on the first failure that matters, and prints a numbered summary.
 
@@ -151,7 +151,7 @@ const checkCacheKey = check('the overpass cache key is byte-identical to osm.py�
   const q = '[out:json][timeout:300];(way(39.000000,-76.690000,39.010000,-76.680000)[highway~"^(residential)$"];);out geom;'
   const mine = store.cacheKey(q)
   // asked of Python, not of another copy of the same expression in JavaScript
-  const theirs = execFileSync(process.env.WORLDEDITOR_PYTHON ?? 'python3', [
+  const theirs = execFileSync(process.env.PIEDMONT_EDITOR_PYTHON ?? 'python3', [
     '-c',
     'import hashlib,sys;print(hashlib.sha1(sys.stdin.buffer.read()).hexdigest()[:16])',
   ], { input: Buffer.from(q) })
@@ -211,17 +211,17 @@ const checkAtomic = check('a save that is not JSON never reaches the volume', as
 
 /* ---- 4. the preview box is inside the bake’s box ------------------------------------------------ */
 
-const VENV = process.env.WORLDEDITOR_PYTHON ?? path.join(REPO, 'tools/corridor/.venv/bin/python')
+const VENV = process.env.PIEDMONT_EDITOR_PYTHON ?? path.join(REPO, 'bake/.venv/bin/python')
 
 const checkBbox = check('the preview’s box is inside the box the bake actually queries, at every site tried', () => {
-  if (!existsSync(VENV)) return SKIP('no corridor venv at ' + VENV + '; set WORLDEDITOR_PYTHON')
+  if (!existsSync(VENV)) return SKIP('no bake venv at ' + VENV + '; set PIEDMONT_EDITOR_PYTHON')
   const sites = [
     [-76.683, 39.004, 2600],
     [-76.62, 39.0, 9000],
     [-121.9, 36.37, 3000],
     [-68.19, 44.33, 2000],
   ]
-  const out = execFileSync(VENV, ['-c', BBOX_PY, JSON.stringify(sites)], { cwd: path.join(REPO, 'tools/corridor') }).toString()
+  const out = execFileSync(VENV, ['-c', BBOX_PY, JSON.stringify(sites)], { cwd: path.join(REPO, 'bake') }).toString()
   const rows = JSON.parse(out)
   const worst = []
   for (const r of rows) {
@@ -235,7 +235,7 @@ const checkBbox = check('the preview’s box is inside the box the bake actually
 
 const BBOX_PY = `
 import json, math, sys
-from corridor.geo import Frame
+from piedmont_bake.geo import Frame
 out = []
 for lon, lat, R in json.loads(sys.argv[1]):
     f = Frame.at(lon, lat); ox, oy = f.origin
@@ -251,8 +251,8 @@ print(json.dumps(out))
 
 /* ---- 5. a world the editor writes is a site the bake selects ------------------------------------ */
 
-const checkSitesJson = check('a world drawn here is picked up by the real `corridor` CLI, extra keys and all', async () => {
-  if (!existsSync(VENV)) return SKIP('no corridor venv at ' + VENV + '; set WORLDEDITOR_PYTHON')
+const checkSitesJson = check('a world drawn here is picked up by the real `piedmont_bake` CLI, extra keys and all', async () => {
+  if (!existsSync(VENV)) return SKIP('no bake venv at ' + VENV + '; set PIEDMONT_EDITOR_PYTHON')
   const store = new Store(await mkdtemp(path.join(tmpdir(), 'we-probe-')))
   await store.init()
   const world = worlds.fromDraw({
@@ -266,11 +266,11 @@ const checkSitesJson = check('a world drawn here is picked up by the real `corri
   await store.putWorld(world)
   // The bake's own selection logic, against the file the editor materialised — not a copy of it.
   const out = execFileSync(VENV, ['-c', SELECT_PY], {
-    cwd: path.join(REPO, 'tools/corridor'),
-    env: { ...process.env, CORRIDOR_SITES: path.join(store.root, 'sites.json') },
+    cwd: path.join(REPO, 'bake'),
+    env: { ...process.env, PIEDMONT_SITES: path.join(store.root, 'sites.json') },
   }).toString()
   const got = JSON.parse(out)
-  assert(got.found === 1, `corridor found ${got.found} sites called probe-world`)
+  assert(got.found === 1, `piedmont_bake found ${got.found} sites called probe-world`)
   assert(got.kind === 'network' && got.all_streets === true, `the bake read kind=${got.kind} all_streets=${got.all_streets}`)
   assert(got.primary === 'Crofton Parkway', `primary came through as ${got.primary}`)
   assert(got.radius_m === world.radius_m, `radius came through as ${got.radius_m}, not ${world.radius_m}`)
@@ -281,7 +281,7 @@ const checkSitesJson = check('a world drawn here is picked up by the real `corri
 
 const SELECT_PY = `
 import json, os
-sites = json.loads(open(os.environ["CORRIDOR_SITES"]).read())
+sites = json.loads(open(os.environ["PIEDMONT_SITES"]).read())
 w = [s for s in sites if s["slug"] == "probe-world"]
 s = w[0]
 print(json.dumps(dict(found=len(w), kind=s.get("kind"), all_streets=s.get("all_streets"),
@@ -554,7 +554,7 @@ const checkJobSpec = check('the Job this service builds is accepted by the real 
   const { K8s } = await import('./k8s.mjs')
   const store = new Store(await mkdtemp(path.join(tmpdir(), 'we-probe-')))
   await store.init()
-  const k8s = new K8s({ WORLDEDITOR_NAMESPACE: 'default' })
+  const k8s = new K8s({ PIEDMONT_EDITOR_NAMESPACE: 'default' })
   // Off-cluster there is no token, so pretend there is: the point is the SPEC, not the transport.
   Object.defineProperty(k8s, 'available', { get: () => true })
   let spec = null
@@ -565,8 +565,8 @@ const checkJobSpec = check('the Job this service builds is accepted by the real 
   k8s.getJob = () => new Promise(() => {})
   k8s.podsFor = () => Promise.resolve([])
   const runs = new Runs(store, k8s, {
-    image: 'ghcr.io/hotspoons/corridor:latest', claim: 'probe-claim-not-the-default', secretName: 'corridor-r2',
-    bucket: 'apex-corridor', endpoint: '', region: 'auto', prefix: 'corridor',
+    image: 'ghcr.io/hotspoons/piedmont-bake:latest', claim: 'probe-claim-not-the-default', secretName: 'piedmont-r2',
+    bucket: 'piedmont', endpoint: '', region: 'auto', prefix: 'piedmont',
     overpassUrl: 'https://overpass.example/api/interpreter', horizonM: 30000,
     resources: { requests: { cpu: '8', memory: '32Gi' }, limits: { cpu: '64', memory: '384Gi' } },
     python: 'x', cwd: 'x',
@@ -575,14 +575,14 @@ const checkJobSpec = check('the Job this service builds is accepted by the real 
   assert(spec, 'no Job was built')
   // the things that make it the CHART's Job rather than a different one
   const c = spec.spec.template.spec.containers[0]
-  assert(c.command.join(' ') === 'python -m corridor fetch crofton-triangle', `command is ${c.command.join(' ')}`)
-  // Deliberately NOT the default name: feeding in 'corridor-data' and asserting 'corridor-data'
+  assert(c.command.join(' ') === 'python -m piedmont_bake fetch crofton-triangle', `command is ${c.command.join(' ')}`)
+  // Deliberately NOT the default name: feeding in 'piedmont-data' and asserting 'piedmont-data'
   // passes just as well against a claimName hardcoded in runs.mjs, which is the one bug this
   // check exists to catch. The Job must mount whatever claim the POD is serving from, or a
   // bake writes into a volume nobody reads.
   assert(spec.spec.template.spec.volumes[0].persistentVolumeClaim.claimName === 'probe-claim-not-the-default', 'the Job is not on the claim the pod serves from')
-  assert(c.env.find((e) => e.name === 'CORRIDOR_SITES')?.value === '/data/sites.json', 'the Job would read the image’s sites.json, not the world just drawn')
-  assert(c.env.find((e) => e.name === 'CORRIDOR_PYRAMID')?.value === '1', 'a bake from the editor is a tile pyramid')
+  assert(c.env.find((e) => e.name === 'PIEDMONT_SITES')?.value === '/data/sites.json', 'the Job would read the image’s sites.json, not the world just drawn')
+  assert(c.env.find((e) => e.name === 'PIEDMONT_PYRAMID')?.value === '1', 'a bake from the editor is a tile pyramid')
   assert(c.env.find((e) => e.name === 'PYTHONUNBUFFERED')?.value === '1', 'without this the log arrives in 4 KiB lumps, minutes late')
   assert(spec.spec.backoffLimit === 0, 'a retry would print the log twice and look like a hang')
   const file = path.join(store.root, 'job.json')
@@ -629,7 +629,7 @@ async function apiChecks(base) {
     await fetch(`${base}/api/worlds/${slug}`, { method: 'DELETE' })
 
     const bundle = {
-      kind: 'corridor-worlds', version: 1,
+      kind: 'piedmont-worlds', version: 1,
       worlds: [world],
       levels: [{ id: levelId, world: slug, title: 'A run', mode: 'drive', defaults: { time: '06:15' } }],
     }

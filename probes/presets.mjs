@@ -9,10 +9,10 @@
 //      the sliders can see, and that is exactly what happens if the per-frame hook is missing;
 //   3. the tab has to be in the panel at all.
 //
-// `window.corridor` and not `window.__apex`: the rich probe surface is the former, and __apex is
+// `window.piedmont` and not `window.__apex`: the rich probe surface is the former, and __apex is
 // the dev bridge's much smaller context. Both exist on a bridge server and only one has `tune`.
 //
-//   node probes/corridor-presets.mjs
+//   node probes/presets.mjs
 import { chromium } from 'playwright'
 
 const url = process.env.PROBE_URL ?? 'http://localhost:5185/#arrowhead-farms?lite'
@@ -21,14 +21,14 @@ const page = await browser.newPage({ viewport: { width: 1200, height: 700 } })
 const errs = []
 page.on('pageerror', (e) => errs.push(e.message))
 await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 })
-await page.waitForFunction(() => !!window.corridor?.presets, null, { timeout: 60000 })
+await page.waitForFunction(() => !!window.piedmont?.presets, null, { timeout: 60000 })
 
 const fail = []
 const say = (label, v) => console.log(`${label.padEnd(34)} ${typeof v === 'object' ? JSON.stringify(v) : v}`)
 
 // 1. the library is there and knows which knobs it may carry
 const shape = await page.evaluate(() => {
-  const p = window.corridor.presets
+  const p = window.piedmont.presets
   return { knobs: p.knobs.length, ground: Object.keys(p.ground).length, presets: p.list().length }
 })
 say('world knobs', shape.knobs)
@@ -39,17 +39,17 @@ if (shape.ground < 100) fail.push(`ground state holds ${shape.ground} knobs, exp
 // 2. THE GROUND STATE IGNORES THE PANEL. Move a knob, reload, and it must be unchanged: the
 //    ground state is the documents, not what this browser was last playing with.
 const ground = await page.evaluate(() => {
-  const a = window.corridor
+  const a = window.piedmont
   const before = a.presets.ground.WEATHER_RATE
   a.tune.set('WEATHER_RATE', 3.15) // persisted to localStorage by the panel
   return { before, live: a.tune.get('WEATHER_RATE') }
 })
 say('WEATHER_RATE moved to', ground.live)
 await page.reload({ waitUntil: 'networkidle' })
-await page.waitForFunction(() => !!window.corridor?.presets, null, { timeout: 60000 })
+await page.waitForFunction(() => !!window.piedmont?.presets, null, { timeout: 60000 })
 const after = await page.evaluate(() => ({
-  live: window.corridor.tune.get('WEATHER_RATE'),
-  ground: window.corridor.presets.ground.WEATHER_RATE,
+  live: window.piedmont.tune.get('WEATHER_RATE'),
+  ground: window.piedmont.presets.ground.WEATHER_RATE,
 }))
 say('after reload: live / ground', after)
 if (Math.abs(after.live - 3.15) > 1e-6) fail.push('the panel did not restore the moved knob, so this test proves nothing')
@@ -62,7 +62,7 @@ if (Math.abs(after.ground - 3.15) < 1e-6) fail.push('the ground state picked up 
 //    exactly like the bug this is here to catch. The duration has to be long against the frame
 //    time, and progress is read by polling rather than by sleeping a fixed wall-clock amount.
 const tween = await page.evaluate(async () => {
-  const a = window.corridor
+  const a = window.piedmont
   a.presets.put({ id: 'probe-dusk', name: 'probe dusk', values: { WEATHER: 1, WEATHER_RATE: 1.5 } })
   a.tune.set('WEATHER', 0)
   a.tune.set('WEATHER_RATE', 0.5)
@@ -110,7 +110,7 @@ if (!tween.stepped?.includes('WEATHER')) fail.push('WEATHER was not reported as 
 
 // 4. going home
 const home = await page.evaluate(() => {
-  const a = window.corridor
+  const a = window.piedmont
   a.preset(a.presets.ground)
   return { weather: a.tune.get('WEATHER'), rate: a.tune.get('WEATHER_RATE') }
 })
@@ -119,7 +119,7 @@ if (Math.abs(home.rate - after.ground) > 1e-9) fail.push(`going home left WEATHE
 
 // 5. the tab exists and lists what the library holds
 const tab = await page.evaluate(() => {
-  const a = window.corridor
+  const a = window.piedmont
   a.tuneDialog.open?.()
   const btn = [...document.querySelectorAll('.tab')].find((b) => b.textContent?.trim() === 'presets')
   if (!btn) return { found: false }

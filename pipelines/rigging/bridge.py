@@ -3,7 +3,7 @@
 Drive a headless Blender, and get a picture back.
 
     blender --background --online-mode --command blender_mcp      # once, leaves it listening
-    python3 tools/rigging/bridge.py shot out.png                  # look at what it has
+    python3 pipelines/rigging/bridge.py shot out.png                  # look at what it has
 
 This is the transport Rich asked for: "a process where an agent, either through MCP or via the
 agent bridge, can drive blender over MCP and complete the rigging exercise … and it will require

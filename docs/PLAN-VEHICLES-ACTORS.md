@@ -30,10 +30,10 @@ boundary needs agreeing.
 
 It is one screen and three documents, and none of it collides with what is in flight:
 
-- the **editor/UI lane** is in `apps/corridor/src/{ui,worldedit,editor}` and `tools/assetsvc` —
+- the **editor/UI lane** is in `apps/game/src/{ui,worldedit,editor}` and `services/assetsvc` —
   you will add tabs to `src/ui/assets.ts`, which that lane owns, so **the file boundary is the
   thing to agree first** (see *Coordination*);
-- the **physics lane** owns `packages/engine/src/physics/` and is building the engine these
+- the **physics lane** owns `vendor/arcade/packages/engine/src/physics/` and is building the engine these
   numbers feed;
 - nobody is working on `enginesim`, which already exists and already has a tuning bench.
 
@@ -44,10 +44,10 @@ It is one screen and three documents, and none of it collides with what is in fl
 | you will need | it is already there |
 |---|---|
 | the asset library UI | `src/ui/assets.ts` — a pane with Catalog / Materials / Service tabs, per-class tabs, search, shared-vs-world scope, a detail pane with a draft-and-save, model import, and a rig editor |
-| a rig binding | `AssetItem.rig` = `{ roles: { wheel: ['wheel_fl', …], steer: […] }, convention }`, edited in `rigEditor()` and stored by `tools/assetsvc/catalog.mjs` |
+| a rig binding | `AssetItem.rig` = `{ roles: { wheel: ['wheel_fl', …], steer: […] }, convention }`, edited in `rigEditor()` and stored by `services/assetsvc/catalog.mjs` |
 | a 3D preview with role detection | `src/ui/meshview.ts` — `rig()` reports bones, convention and guessed roles; `highlightBone(name)` lights one up |
-| the handling model | `packages/engine/src/physics/profiles.ts` — `DriveProfile`, a **flat record of numbers**, and five presets: `stunts`, `taxi`, `street`, `rush`, `sim`. `profile(id, overrides)` and `blendProfiles(a, b, t)` |
-| the vehicle controller | `packages/engine/src/physics/vehicle.ts` — `VehicleSpec`, `Vehicle`, and a live `state` (speed, slide, slip, wheelslip, grounded, airborne, damage) |
+| the handling model | `vendor/arcade/packages/engine/src/physics/profiles.ts` — `DriveProfile`, a **flat record of numbers**, and five presets: `stunts`, `taxi`, `street`, `rush`, `sim`. `profile(id, overrides)` and `blendProfiles(a, b, t)` |
+| the vehicle controller | `vendor/arcade/packages/engine/src/physics/vehicle.ts` — `VehicleSpec`, `Vehicle`, and a live `state` (speed, slide, slip, wheelslip, grounded, airborne, damage) |
 | an engine simulator | `enginesim` — engine-sim as a Web Audio node, with a tuning bench and an F6 engine tab. **Read its notes before wiring audio**: the `__EMSCRIPTEN__` silence trap and `wasmBinary` being ignored are both real and both cost a day |
 | the ECS | `src/actors.ts` (`Vehicle`, `Engine`, `Human`, `Animal`, `Health`, `Hostile`, `Player`, relations, `SETS`), `src/actorworld.ts` (fixed step, systems, `spawnVehicle`, `spawnPedestrian`) |
 | the program API | `src/program.ts` — `GameApi`, and `api.physics` (profile, blend, entityProfile, explode, impulse, break, ray, car, onImpact), safe when there is no physics world |
@@ -60,7 +60,7 @@ rig binding plus a dynamics document. Do not build a second catalog.
 
 ## 1. The vehicle document
 
-Beside the asset, not inside it: `tools/assetsvc` stores it on the item as `vehicle`, the same way
+Beside the asset, not inside it: `services/assetsvc` stores it on the item as `vehicle`, the same way
 `rig` is stored. One record, and every number in it has a unit.
 
 ```jsonc
@@ -200,9 +200,9 @@ offers a picker over `kind === 'weapon'` assets. The program API gets a small na
 
 ## 4. Order
 
-1. ~~**The vehicle document and the Vehicles tab**~~ — **done**. `apps/corridor/src/vehicles.ts`
+1. ~~**The vehicle document and the Vehicles tab**~~ — **done**. `apps/game/src/vehicles.ts`
    (document, defaults, validation, arithmetic), `src/ui/vehicles.ts` (the Dynamics group and the
-   roster tab), the `vehicle` field in `tools/assetsvc/catalog.mjs`, and `test/vehicles.test.ts`.
+   roster tab), the `vehicle` field in `services/assetsvc/catalog.mjs`, and `test/vehicles.test.ts`.
    The editor lane added an `extensions` seam to `AssetCatalog` for it, so the list, the search,
    the scope and the save bar are still theirs and there is one of each.
 2. ~~**The engine and audio block**~~ — **done**. `src/ui/enginelisten.ts` is a one-at-a-time dyno:
@@ -230,16 +230,16 @@ offers a picker over `kind === 'weapon'` assets. The program API gets a small na
 never `git add -A`** — somebody has already swept another lane's files that way.
 
 - **Yours:** a new `src/ui/vehicles.ts` and `src/ui/actors.ts`, a new `src/weapons.ts`, the
-  document schemas in `tools/assetsvc/catalog.mjs`, and `probes/corridor-vehicles.mjs`.
+  document schemas in `services/assetsvc/catalog.mjs`, and `probes/vehicles.mjs`.
 - **Ask first:** `src/ui/assets.ts` (the editor lane's; you need two `Tab` entries and a filtered
   list — propose the smallest possible seam), `src/actors.ts` and `src/actorworld.ts` (shared with
-  the physics lane), `packages/engine/**` (theirs, entirely).
-- **Mailbox:** `/tmp/messages/`, NOT `/tmp/corridor-mail/` — that one is from an older round and
+  the physics lane), `vendor/arcade/packages/engine/**` (theirs, entirely).
+- **Mailbox:** `/tmp/messages/`, NOT `/tmp/piedmont-mail/` — that one is from an older round and
   nobody reads it. The lanes are `splats`, `viewer`, `worldeditor` and `physics`, each with an
   `inbox/` and an `outbox/`; `PROTOCOL.md` there is the rule. The seam proposal for `assets.ts` is
   `physics/outbox/003-assets-seam-for-vehicles-tab.md`.
 
-Verify with headless probes, not screenshots: `probes/corridor-*.mjs` are the pattern, and the
+Verify with headless probes, not screenshots: `probes/*.mjs` are the pattern, and the
 house rule is that a probe must be shown able to FAIL before it is trusted. Assert the mechanism —
 "the wheels turn" is `rig.roles.wheel.length === 4` and a spin in the preview, not a vibe.
 

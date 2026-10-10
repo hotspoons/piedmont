@@ -7,7 +7,7 @@ const st = { v: 1, site: 'braddock-i70', season: 'summer', mode: 'drive', layers
 await page.goto('http://127.0.0.1:5185/#braddock-i70?lite&season=summer&stance=' + encodeURIComponent(Buffer.from(JSON.stringify(st)).toString('base64')), { waitUntil: 'load' })
 for (let i = 0; i < 20; i++) {
   await page.waitForTimeout(5000)
-  const s = await page.evaluate(() => ({ status: document.querySelector('#status')?.textContent, ready: !!window.corridor }))
+  const s = await page.evaluate(() => ({ status: document.querySelector('#status')?.textContent, ready: !!window.piedmont }))
   console.log(i * 5, JSON.stringify(s))
   if (s.status === '' && s.ready) break
 }

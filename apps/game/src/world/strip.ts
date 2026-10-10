@@ -1,4 +1,4 @@
-// The road corridor as its own fine terrain: a strip swept along the spine, wide enough to take
+// The road road band as its own fine terrain: a strip swept along the spine, wide enough to take
 // in every carriageway and the median plus 40 m of verge each side, sampled 1 m across by 2 m
 // along. Under any pavement it sits at that carriageway's road height; from the pavement edge it
 // blends back to the DEM over 7 m. So there is no coarse triangle to interpolate across the road,
@@ -370,7 +370,7 @@ export async function buildStrip(
     // headlight spots off while they are fake, so the two never double up.
     injectFloodLamp(shader)
   }
-  mat.customProgramCacheKey = () => 'corridor-strip-shade-wet-vert'
+  mat.customProgramCacheKey = () => 'piedmont-strip-shade-wet-vert'
   const mesh = new THREE.Mesh(geo, mat)
   mesh.name = 'strip'
   // GRASS EDGE FACE. The lift above put the turf proud of the pavement; on its own that shows only
@@ -491,9 +491,9 @@ export async function buildStrip(
   mesh.receiveShadow = true
   // the blend uniforms are merged into the compiled shader and otherwise unreachable from outside;
   // a probe that wants to switch the forest floor or the turf off to see what is under it (the
-  // bisection in probes/corridor-stanceshot.mjs) finds them here
+  // bisection in probes/stanceshot.mjs) finds them here
   mesh.userData.uniforms = uniforms
-  // CULL IT. This was off, which is right for one 5 km corridor strip whose bounding sphere covers
+  // CULL IT. This was off, which is right for one 5 km road-band strip whose bounding sphere covers
   // the site anyway, and wrong the moment a network gave every branch its own: 428 of them were
   // submitted in full from anywhere on crofton-triangle. The primary's sphere is still site-sized
   // and still always passes, so this costs nothing there and removes the branches when they are
@@ -551,8 +551,8 @@ export async function buildStrip(
    *
    * Without the taper (sinkUnderStrip took a `margin` argument and then `void`ed it) the terrain
    * arrived at the rim still 0.5–1.1 m low, and since the strip stops there, nothing covered it:
-   * a trench about three metres wide ran down both sides of the corridor for the length of the
-   * site. Measured on Bowie at s = 1000 and s = 3219 with probes/corridor-float.mjs.
+   * a trench about three metres wide ran down both sides of the road band for the length of the
+   * site. Measured on Bowie at s = 1000 and s = 3219 with probes/float.mjs.
    */
   const sinkAt = (x: number, z: number, deep = 2.2, band = 3.5): number | null => {
     const r = probe(x, z)
@@ -675,7 +675,7 @@ export class BoundsIndex<T extends { bounds: [number, number, number, number] }>
 /**
  * Get the coarse terrain out of the way of EVERY strip, in one pass.
  *
- * It used to be one call per strip. That is fine for a corridor with one carriageway and quadratic
+ * It used to be one call per strip. That is fine for a road band with one carriageway and quadratic
  * for a network: crofton-triangle has 427 branch strips, and each call allocated a fresh cover
  * array over 580 000 terrain vertices AND rebuilt the whole 1.7-million-entry index. 427 of those
  * was **84 of the 125 second build**, with the browser frozen for all of it. A bounding-box

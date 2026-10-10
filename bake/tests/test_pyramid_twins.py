@@ -2,10 +2,10 @@
 
 The viewer prefers the twin only when the manifest's `layers.pyramid.texture_ktx2` is set, and the
 bake sets it only when EVERY jpg under `web/pyr` has one — a viewer must never have to ask per
-tile. These pin that contract with a stand-in encoder (`CORRIDOR_KTX` pointing at a script that
+tile. These pin that contract with a stand-in encoder (`PIEDMONT_KTX` pointing at a script that
 copies its input to its output), because the real `ktx` binary is not in the repo.
 
-    tools/corridor/.venv/bin/python -m pytest tools/corridor/tests/test_pyramid_twins.py
+    bake/.venv/bin/python -m pytest bake/tests/test_pyramid_twins.py
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import ktx2, pyramid  # noqa: E402
+from piedmont_bake import ktx2, pyramid  # noqa: E402
 
 # copies its input to its output and leaves its argv beside it, so a test can read what it was asked
 STUB = ("#!/usr/bin/env python3\nimport shutil, sys\nshutil.copy(sys.argv[-2], sys.argv[-1])\n"
@@ -42,7 +42,7 @@ class TwinsTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_every_jpg_gets_a_twin_and_the_flag(self):
-        os.environ["CORRIDOR_KTX"] = str(self.stub)
+        os.environ["PIEDMONT_KTX"] = str(self.stub)
         out: dict = {"texture": "jpg"}
         kk = pyramid.encode_twins(self.web, out)
         self.assertEqual(kk["ok"], 3)
@@ -59,7 +59,7 @@ class TwinsTest(unittest.TestCase):
         self.assertEqual(out.get("texture_ktx2"), "ktx2")
 
     def test_no_encoder_means_no_flag_and_no_twins(self):
-        os.environ["CORRIDOR_KTX"] = str(Path(self.tmp.name) / "absent")
+        os.environ["PIEDMONT_KTX"] = str(Path(self.tmp.name) / "absent")
         os.environ["PATH"] = self.tmp.name  # no `ktx` on the path either (the stub is `ktxstub`)
         # the repo-local .bin is a symlink farm on some checkouts: only the env and PATH count here
         orig = ktx2.HERE
@@ -79,7 +79,7 @@ class TwinsTest(unittest.TestCase):
         picky = Path(self.tmp.name) / "picky"
         picky.write_text("#!/usr/bin/env python3\nimport shutil, sys\nsys.exit(1) if '1_2' in sys.argv[-2] else shutil.copy(sys.argv[-2], sys.argv[-1])\n")
         picky.chmod(0o755)
-        os.environ["CORRIDOR_KTX"] = str(picky)
+        os.environ["PIEDMONT_KTX"] = str(picky)
         out: dict = {"texture": "jpg", "texture_ktx2": "ktx2"}  # a stale flag from an earlier bake
         kk = pyramid.encode_twins(self.web, out)
         self.assertEqual(kk["fail"], 1)

@@ -1,6 +1,6 @@
 // A look at a signalised junction, with the furniture on and off.
 //
-//   PORT=5205 SLUG=crofton-crownsville node probes/corridor-furnitureshot.mjs out-
+//   PORT=5205 SLUG=crofton-crownsville node probes/furnitureshot.mjs out-
 //
 // Parks the camera at the busiest signalised junction the site has — the one with the most masts
 // within fifty metres — and shoots it twice, with the furniture layer on and off, so the pair is
@@ -18,13 +18,13 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
 await page.keyboard.press('m')
 if (process.env.MODE) await page.evaluate((m) => { window.__mode = m }, process.env.MODE)
 if (process.env.KIND) await page.evaluate((k) => { window.__kind = k }, process.env.KIND)
 
 console.log(await page.evaluate(({ eye }) => {
-  const c = window.corridor, site = c.site, L = site.layers, mod = c.THREE
+  const c = window.piedmont, site = c.site, L = site.layers, mod = c.THREE
   // this box has no GPU; the grass and the near trees are what stop a screenshot returning
   if (L.trees) L.trees.visible = false
   if (site.grass) site.grass.mesh.visible = false
@@ -132,7 +132,7 @@ console.log(await page.evaluate(({ eye }) => {
 
 for (const on of [false, true]) {
   await page.evaluate((v) => {
-    const L = window.corridor.site.layers
+    const L = window.piedmont.site.layers
     const g = window.__mode === 'parking' ? L.parking : window.__mode === 'barriers' ? L.barriers : window.__mode === 'sidewalks' ? L.sidewalks : L.furniture
     g.visible = v
   }, on)

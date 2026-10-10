@@ -3,7 +3,7 @@
 // A 2D generation is tens of seconds and a reconstruction is minutes. Neither can be held open on
 // an HTTP connection through an ingress, and the editor must be able to close its laptop and come
 // back — so every unit of work here is a job: POST starts one and returns an id, GET polls it.
-// Exactly the shape tools/recon-service already uses, for the same reason.
+// Exactly the shape services/recon already uses, for the same reason.
 //
 // ONE AT A TIME, PER LANE. The GPU behind the mesh model serialises internally; firing six
 // reconstructions at it gets six that are each six times slower, plus an out-of-memory. So jobs

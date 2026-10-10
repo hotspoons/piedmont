@@ -4,7 +4,7 @@
 Rich's t-section bake was killed by the kernel on the fifth of seventeen tiles with 3 GB free, and
 the runner reported `exited null`. `laspy.read` holds the whole tile: one 213 MiB delivery is 36.5
 million points and peaks at 2.44 GB — the point record, then x and y as float64, then the
-reprojected pair, then z. 72 bytes of peak per point, for a tile of which a 9.5 km² corridor keeps
+reprojected pair, then z. 72 bytes of peak per point, for a tile of which a 9.5 km² road band keeps
 about 3.5 million.
 
 TWO CLAIMS, and the second is the one that matters. The memory is easy to check and easy to buy by
@@ -12,14 +12,14 @@ accident — dropping a field, or a mask applied in the wrong order, would also 
 this runs the OLD reader verbatim beside the new one and compares the output element for element.
 A bake that differs from every bake before it is a worse problem than the memory was.
 
-    tools/corridor/.venv/bin/python probes/corridor-lazchunk.py [tile.laz]
+    bake/.venv/bin/python probes/lazchunk.py [tile.laz]
 """
 import resource
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools" / "corridor"))
+sys.path.insert(0, str(ROOT / "bake"))
 
 import laspy  # noqa: E402
 import numpy as np  # noqa: E402
@@ -27,8 +27,8 @@ import shapely  # noqa: E402
 from pyproj import Transformer  # noqa: E402
 from shapely.geometry import Polygon  # noqa: E402
 
-from corridor.geo import Frame  # noqa: E402
-from corridor.lidar import LAZ_CHUNK, _join, _read_laz_tile  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
+from piedmont_bake.lidar import LAZ_CHUNK, _join, _read_laz_tile  # noqa: E402
 
 #: what the chunked reader may peak at, in GB, for any tile. Generous against the 0.72 measured.
 CEILING_GB = 1.25
@@ -67,7 +67,7 @@ def old_reader(path, frame, bbox, clip):
 
 
 def find_tile() -> Path | None:
-    laz = ROOT / "tools" / "corridor" / "data" / "cache" / "laz"
+    laz = ROOT / "data" / "cache" / "laz"
     tiles = sorted(laz.rglob("*.laz"), key=lambda p: -p.stat().st_size)
     return tiles[0] if tiles else None
 
@@ -78,7 +78,7 @@ def main() -> int:
         print("SKIP: no cached LAZ tile to read; fetch a site with lidar first")
         return 0
 
-    # a bbox and a diagonal corridor through the middle of this tile — the shape a real site has,
+    # a bbox and a diagonal road band through the middle of this tile — the shape a real site has,
     # because a bbox that keeps everything exercises neither the mask nor the clip
     with laspy.open(path) as r:
         crs = r.header.parse_crs()
@@ -119,9 +119,9 @@ def main() -> int:
         print(f"  identical    {len(new['x']):,} points, every field, element for element")
     if new_peak > CEILING_GB:
         bad.append(f"peaked at {new_peak:.2f} GB, over the {CEILING_GB} GB ceiling")
-    # a run over a tile the corridor misses entirely proves nothing about either claim
+    # a run over a tile the road band misses entirely proves nothing about either claim
     if new is not None and len(new["x"]) < 10_000:
-        bad.append(f"only {len(new['x'])} points fell in the test corridor — this run measured nothing")
+        bad.append(f"only {len(new['x'])} points fell in the test road band — this run measured nothing")
 
     # AND THE JOIN, which is the other half of the memory: np.concatenate allocates the result
     # while every input is still alive, so the peak used to be twice the cloud. On t-section tiles

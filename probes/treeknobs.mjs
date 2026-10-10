@@ -1,5 +1,5 @@
 // The trees tab (F6 → trees): do the knobs actually move the trees?
-//   PORT=5185 node probes/corridor-treeknobs.mjs [slug]
+//   PORT=5185 node probes/treeknobs.mjs [slug]
 // Planting knobs replant around the eye; shape knobs regrow the ez-tree species models and
 // re-bake the impostor atlas. Both are debounced in scene.ts retune, so this waits for them.
 import { chromium } from 'playwright'
@@ -11,15 +11,15 @@ const errs = []
 p.on('pageerror', (e) => errs.push(e.message.slice(0, 160)))
 await p.route('**/@vite/client', (r) => r.abort())
 await p.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await p.waitForTimeout(3000)
 let fails = 0
 const ok = (what, cond, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++ }
-const set = async (name, v) => p.evaluate(({ name, v }) => window.corridor.tune.set(name, v), { name, v })
+const set = async (name, v) => p.evaluate(({ name, v }) => window.piedmont.tune.set(name, v), { name, v })
 const settle = async (ms = 2500) => p.waitForTimeout(ms)
 /** trees near the middle of the spine, and what the near models look like */
 const state = async () => p.evaluate(() => {
-  const site = window.corridor.site, m = site.manifest
+  const site = window.piedmont.site, m = site.manifest
   const mid = m.spine.coords[Math.floor(m.spine.coords.length / 2)]
   const near = site.treesNear(mid[0], -mid[1], 250)
   let leafVerts = 0, branchVerts = 0, variants = 0

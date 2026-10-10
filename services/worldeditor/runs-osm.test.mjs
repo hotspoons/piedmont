@@ -70,13 +70,13 @@ test('a dc-metro-take-2 bake is handed overpass-na, the coverage file, and says 
   const k8s = cluster()
   try {
     await store.putWorld({ slug: 'dc-metro-take-2', name: 'DC', lat: 38.911621, lon: -77.005045, radius_m: 19933, all_streets: true })
-    const runs = new Runs(store, k8s, { force: 'kubernetes', image: 'corridor:latest', claim: 'data', resources: {}, coverage, overpassUrl: URLS.join(',') })
+    const runs = new Runs(store, k8s, { force: 'kubernetes', image: 'piedmont-bake:latest', claim: 'data', resources: {}, coverage, overpassUrl: URLS.join(',') })
     const run = await runs.bake('dc-metro-take-2', { sharded: false })
     await until(() => k8s.jobs.size === 1)
     const e = env([...k8s.jobs.values()][0].spec)
-    assert.equal(e.CORRIDOR_OVERPASS_URL, 'http://overpass-na/api/interpreter')
-    assert.equal(e.CORRIDOR_OVERPASS_COVERAGE, '/data/overpass/coverage.json')
-    assert.equal(e.CORRIDOR_OSM_REFRESH, undefined)
+    assert.equal(e.PIEDMONT_OVERPASS_URL, 'http://overpass-na/api/interpreter')
+    assert.equal(e.PIEDMONT_OVERPASS_COVERAGE, '/data/overpass/coverage.json')
+    assert.equal(e.PIEDMONT_OSM_REFRESH, undefined)
     const log = await readFile(store.logFile(run.id), 'utf8')
     assert.match(log, /OSM for dc-metro-take-2: overpass-na \(overpass 3\d\.\d% outside, overpass-na holds it\)/)
     // and the coverage file the bake will read is really there, with Maryland's polygon in it
@@ -93,13 +93,13 @@ test('refreshOsm refreshes ONCE: the plan Job asks Overpass again, the shards re
   const k8s = cluster()
   try {
     await store.putWorld({ slug: 'w', name: 'W', lat: 39.0, lon: -76.7, radius_m: 2000, all_streets: true })
-    const runs = new Runs(store, k8s, { force: 'kubernetes', image: 'corridor:latest', claim: 'data', resources: {}, coverage, overpassUrl: URLS.join(',') })
+    const runs = new Runs(store, k8s, { force: 'kubernetes', image: 'piedmont-bake:latest', claim: 'data', resources: {}, coverage, overpassUrl: URLS.join(',') })
     const run = await runs.bake('w', { sharded: true, refreshOsm: true })
     await until(() => k8s.jobs.size === 1)
     const e = env([...k8s.jobs.values()][0].spec)
-    assert.equal(e.CORRIDOR_OSM_REFRESH, '1')
+    assert.equal(e.PIEDMONT_OSM_REFRESH, '1')
     // a Maryland world: the Maryland extract first
-    assert.equal(e.CORRIDOR_OVERPASS_URL, URLS.join(','))
+    assert.equal(e.PIEDMONT_OVERPASS_URL, URLS.join(','))
     assert.match(run.label, /fresh OSM/)
     // the plan finishes; its shards must NOT refresh (2026-10-10: 25 shards each re-asked the
     // whole network at once and one got a non-JSON 200 from an instance under that load)
@@ -109,8 +109,8 @@ test('refreshOsm refreshes ONCE: the plan Job asks Overpass again, the shards re
     await until(() => [...k8s.jobs.keys()].filter((n) => n.includes('-shard-')).length === 2)
     for (const [name, j] of k8s.jobs) {
       if (!name.includes('-shard-')) continue
-      assert.equal(env(j.spec).CORRIDOR_OSM_REFRESH, undefined, `${name} refreshes`)
-      assert.ok(env(j.spec).CORRIDOR_OVERPASS_URL, `${name} still knows its upstreams`)
+      assert.equal(env(j.spec).PIEDMONT_OSM_REFRESH, undefined, `${name} refreshes`)
+      assert.ok(env(j.spec).PIEDMONT_OVERPASS_URL, `${name} still knows its upstreams`)
     }
     await runs.cancel(run.id)
   } finally {
@@ -125,7 +125,7 @@ test('an osm-import is one Job on the instance\'s node, with its volume and scri
     const imported = []
     const runs = new Runs(store, k8s, {
       force: 'kubernetes',
-      image: 'corridor:latest',
+      image: 'piedmont-bake:latest',
       claim: 'data',
       resources: {},
       coverage,
@@ -180,7 +180,7 @@ test('an import is refused, by name, when the instance is not running or the edi
 })
 
 test('the reviewed manifest is exactly what the editor creates', async () => {
-  // tools/overpass/osm-import-job.yaml is what an admin reads; this holds it to the code
+  // services/overpass/osm-import-job.yaml is what an admin reads; this holds it to the code
   const onDisk = await readFile(new URL('../overpass/osm-import-job.yaml', import.meta.url), 'utf8')
-  assert.equal(onDisk, manifest(osmImportJob), 'regenerate with: node tools/overpass/osm-import-job.mjs > tools/overpass/osm-import-job.yaml')
+  assert.equal(onDisk, manifest(osmImportJob), 'regenerate with: node services/overpass/osm-import-job.mjs > services/overpass/osm-import-job.yaml')
 })

@@ -12,12 +12,12 @@
 // THE VOCABULARY IS NOT COPIED. `@apex/stunt-pieces` is 592 lines of loops, corkscrews, banked
 // sixths, drawbridges and jumps, each with a lane path that has been driven and tuned. A port that
 // copies it is a port that drifts: the day somebody fixes the corkscrew's exit angle in STUNTIN',
-// corridor keeps the old one and nobody notices for a month. So this IMPORTS the piece definitions
+// the game keeps the old one and nobody notices for a month. So this IMPORTS the piece definitions
 // and adds the one thing they do not have — a way to stand them anywhere, at any angle, on ground
 // that is not a grid.
 //
 // IT IS A PACKAGE WITH NO DEPENDENCIES, which is the whole reason this survives the repositories
-// being split: corridor depends on a folder, and a folder can be moved and depended on over a git
+// being split: the game depends on a folder, and a folder can be moved and depended on over a git
 // URL. Reaching into `apps/stuntin/src/` — which is what this did first — works in a monorepo and
 // nowhere else, and it dragged that game's entire car-tuning table in to learn that a cell is 40 m.
 //
@@ -26,7 +26,7 @@
 //   STUNTIN' — x east, z north, y UP. A piece's footprint has its minimum corner at the origin and
 //   the grid is `CELL` metres (40). Everything is axis-aligned because the editor is a tile grid.
 //
-//   CORRIDOR — x east, y north, and height is a third thing entirely, sampled from the terrain. A
+//   GAME — x east, y north, and height is a third thing entirely, sampled from the terrain. A
 //   fixture has a position and a YAW, because a real road does not run along a grid line.
 //
 // PORTS COME FROM THE LANE, NOT FROM THE PORT TABLE. A piece declares its ports as a cell and a
@@ -515,7 +515,7 @@ export function linkLength(a: Pose, b: Pose, tightness = DEFAULT_TIGHTNESS): num
 /**
  * The whole thing: road in, through the fixture, road out.
  *
- * `road(s)` is the corridor's own centreline sampler — give it a distance along the chain and it
+ * `road(s)` is the game's own centreline sampler — give it a distance along the chain and it
  * gives back a pose. Everything else is arithmetic, so a level can place a loop by naming two
  * distances and a piece, and an editor can do the same by dragging.
  *
@@ -568,7 +568,7 @@ export function resolveEnd(
 /**
  * The whole thing: in, through the fixture, out.
  *
- * `road(s, chain)` is the corridor's own centreline sampler — a distance along a chain gives back a
+ * `road(s, chain)` is the game's own centreline sampler — a distance along a chain gives back a
  * pose. Everything else is arithmetic, so a level can place a loop by naming two distances and a
  * piece, and an editor can do the same by dragging.
  *

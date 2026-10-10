@@ -1,6 +1,6 @@
 // The minimap's chrome: is the grip where the panel's free corner is, does dragging it the
 // intuitive way make the map BIGGER, and is there an obvious way out of full screen?
-//   PORT=5185 node probes/corridor-minimap.mjs [slug]
+//   PORT=5185 node probes/minimap.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -9,7 +9,7 @@ const p = await b.newPage({ viewport: { width: 1100, height: 700 } })
 p.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await p.route('**/@vite/client', (r) => r.abort())
 await p.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await p.waitForTimeout(1500)
 let fails = 0
 const ok = (what, cond, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++ }
@@ -33,7 +33,7 @@ if (grip && panel0) {
   ok('the canvas followed the panel', Math.abs(canvas.w - panel1.w) < 4 && Math.abs(canvas.h - panel1.h) < 4, `${canvas.w}x${canvas.h}`)
 }
 // full screen: an obvious close, in the top right, that works
-await p.evaluate(() => window.corridor.minimap?.setExpanded?.(true) ?? document.querySelector('#minimap .mm-expand').click())
+await p.evaluate(() => window.piedmont.minimap?.setExpanded?.(true) ?? document.querySelector('#minimap .mm-expand').click())
 await p.waitForTimeout(400)
 const expanded = await box('#minimap')
 ok('full screen covers the window', expanded.w > 1000 && expanded.h > 600, `${expanded.w}x${expanded.h}`)

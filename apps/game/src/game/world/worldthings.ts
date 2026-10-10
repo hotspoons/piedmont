@@ -17,7 +17,7 @@
 // and the code that uses it.
 //
 // WHY IT IS A PURE FUNCTION OVER DOCUMENTS. The editor fetches the files; a test hands it literals;
-// and the world editor's MCP server (tools/worldeditor/mcptools.mjs, `program_refs`) imports THIS
+// and the world editor's MCP server (services/worldeditor/mcptools.mjs, `program_refs`) imports THIS
 // FILE — Node runs it with its types stripped — so an agent writing a level is offered the same
 // rows and the same snippets a person clicks. That is why there is not one runtime import in here:
 // Node resolves none of the app's extension-less paths, and a second copy of the snippets in the

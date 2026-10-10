@@ -1,7 +1,7 @@
 // What a tuning-panel knob costs. Rich drives with F6 open, so a slider that throws the tile cache
 // away is three seconds of grass growing back in every time he nudges it.
 //
-//   PORT=5201 SLUG=bowie-racetrack-rd node probes/corridor-grasstune.mjs
+//   PORT=5201 SLUG=bowie-racetrack-rd node probes/grasstune.mjs
 //
 // For each knob: set it, then count how many update() calls it takes before the queue is empty
 // again. A knob that only feeds a uniform or the LOD prefix should cost 0.
@@ -14,9 +14,9 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug && !!window.corridor.site.grass, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug && !!window.piedmont.site.grass, SLUG, { timeout: 300000 })
 console.log(JSON.stringify(await page.evaluate(async ({ knobs }) => {
-  const site = window.corridor.site, grass = site.grass, tune = window.corridor.tune, camera = window.corridor.camera
+  const site = window.piedmont.site, grass = site.grass, tune = window.piedmont.tune, camera = window.piedmont.camera
   const p = site.spineAt(site.manifest.spine.photo_s)
   camera.position.set(p.pos.x, p.pos.y + 1.6, p.pos.z)
   camera.lookAt(p.pos.x + p.dir.x * 60, p.pos.y + 1.2, p.pos.z + p.dir.z * 60)

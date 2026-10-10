@@ -13,7 +13,7 @@ page.on('pageerror', (e) => logs.push(`pageerror: ${e.message}`))
 page.on('dialog', (d) => d.accept())
 
 await page.goto(`http://localhost:5207/editor.html#${slug}:grow`, { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && !!window.corridor?.site, null, { timeout: 300000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && !!window.piedmont?.site, null, { timeout: 300000 })
 await page.waitForTimeout(1500)
 
 for (const a of actions) {
@@ -22,7 +22,7 @@ for (const a of actions) {
     // time the RULES alone, separately from spawning the scene objects: on a big site those are
     // two very different costs and only one of them is autogen's fault
     const t = await page.evaluate(async () => {
-      const { site, place, grow } = window.corridor
+      const { site, place, grow } = window.piedmont
       const ag = await import('/src/editor/autogen.ts')
       const t0 = performance.now()
       const r = ag.generate(site.manifest, site, place.assets, grow.params)
@@ -35,34 +35,34 @@ for (const a of actions) {
     console.log('  skipped:', JSON.stringify(t.skipped))
     await page.waitForTimeout(1500)
   } else if (verb === 'invent') {
-    await page.evaluate(() => { window.corridor.grow.params.invent = true })
+    await page.evaluate(() => { window.piedmont.grow.params.invent = true })
   } else if (verb === 'params') {
     // params:key=value,key=value
     await page.evaluate((kv) => {
       for (const pair of kv.split(',')) {
         const [k, v] = pair.split('=')
-        window.corridor.grow.params[k] = v === 'true' ? true : v === 'false' ? false : Number(v)
+        window.piedmont.grow.params[k] = v === 'true' ? true : v === 'false' ? false : Number(v)
       }
     }, arg)
   } else if (verb === 'clear') {
-    await page.evaluate(() => window.corridor.grow.clear())
+    await page.evaluate(() => window.piedmont.grow.clear())
   } else if (verb === 'lock') {
     // a human edit through the same funnel the panel uses, so `locked` is set the real way
     await page.evaluate((id) => {
-      window.corridor.place.select(id)
-      window.corridor.place.key({ key: 'E', shiftKey: true, preventDefault() {} })
+      window.piedmont.place.select(id)
+      window.piedmont.place.key({ key: 'E', shiftKey: true, preventDefault() {} })
     }, arg)
   } else if (verb === 'inv') {
     // what the invented pass actually produced, by mix and by asset
     console.log('  invented:', await page.evaluate(() => {
-      const inv = window.corridor.place.doc.items.filter((p) => p.id.startsWith('g-inv'))
+      const inv = window.piedmont.place.doc.items.filter((p) => p.id.startsWith('g-inv'))
       const by = (k) => inv.reduce((a, p) => ((a[p.tags.find((t) => k.includes(t)) ?? '?'] = (a[p.tags.find((t) => k.includes(t)) ?? '?'] ?? 0) + 1), a), {})
       const assets = inv.reduce((a, p) => ((a[p.asset] = (a[p.asset] ?? 0) + 1), a), {})
       return JSON.stringify({ n: inv.length, mix: by(['strip', 'hamlet']), assets })
     }))
   } else if (verb === 'report') {
     const r = await page.evaluate(() => {
-      const d = window.corridor.place.doc
+      const d = window.piedmont.place.doc
       const f = (id) => d.items.find((p) => p.id === id)
       const KINDS = ['house','retail_unit','house_large','townhouse','big_box','warehouse','restaurant','shed','apartments','office','school','church','hotel','gas_station','barn','strip_mall','utility']
       const by = {}
@@ -71,15 +71,15 @@ for (const a of actions) {
     })
     console.log('  report:', JSON.stringify(r))
   } else if (verb === 'del') {
-    await page.evaluate((id) => window.corridor.place.remove(id), arg)
+    await page.evaluate((id) => window.piedmont.place.remove(id), arg)
   } else if (verb === 'preview') {
     await page.evaluate(() => document.querySelector('#preview').click())
-    await page.waitForFunction(() => window.corridor?.preview?.open === true, null, { timeout: 300000 })
+    await page.waitForFunction(() => window.piedmont?.preview?.open === true, null, { timeout: 300000 })
     await page.waitForTimeout(3000)
   } else if (verb === 'pfly') {
     // fly mode in the preview, parked above the biggest thing autogen placed
     await page.evaluate((h) => {
-      const { preview, place, site } = window.corridor
+      const { preview, place, site } = window.piedmont
       preview.setMode?.('fly')
       preview.mode = 'fly'
       const big = place.doc.items.filter((p) => p.asset.startsWith('bigbox') || p.asset.startsWith('stripmall') || p.asset.startsWith('school'))[0] ?? place.doc.items[0]
@@ -121,8 +121,8 @@ await page.screenshot({ path: out, timeout: 180000 })
 console.log(logs.filter((l) => !l.startsWith('log:')).slice(0, 12).join('\n') || 'no console errors')
 console.log('status:', await page.textContent('#status'))
 console.log(await page.evaluate(() => {
-  const d = window.corridor.place.doc
+  const d = window.piedmont.place.doc
   const gen = d.items.filter((p) => p.id.startsWith('g-'))
-  return `items ${d.items.length} · generated ${gen.length} · locked ${gen.filter((p) => p.locked).length} · deleted ${d.autogen?.deleted?.length ?? 0} · preview ${window.corridor.preview.open}`
+  return `items ${d.items.length} · generated ${gen.length} · locked ${gen.filter((p) => p.locked).length} · deleted ${d.autogen?.deleted?.length ?? 0} · preview ${window.piedmont.preview.open}`
 }))
 await browser.close()

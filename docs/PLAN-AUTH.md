@@ -15,9 +15,9 @@ references are to that tree and will drift.
 
 ## 1. Where we start from
 
-**There is no user anywhere.** The editor (`tools/worldeditor/server.mjs`) is one Node process
+**There is no user anywhere.** The editor (`services/worldeditor/server.mjs`) is one Node process
 serving a flat route chain (`server.mjs:477–524`, `api()` at `:526`). It has no sessions, cookies or
-idea of who is asking. The ingress (`tools/worldeditor/chart/templates/ingress.yaml`) only does TLS
+idea of who is asking. The ingress (`deploy/helm/worldeditor/templates/ingress.yaml`) only does TLS
 and body-size settings, and CORS is `*` (`server.mjs:258–265`).
 
 **The one secret is the MCP token, and it leaks.** `mcpauth.mjs` mints an `aat_…` bearer token.
@@ -31,7 +31,7 @@ by a world slug (one flat namespace, no owner) or by a global id:
   `runs/`, `deploys.json`, `assets/catalog.json`, `blender/`;
 - the two indexes `sites/index.json` and `sites.json`.
 
-The asset service (`tools/assetsvc`, separate pod and PVC) has no auth either. Its "shared vs this
+The asset service (`services/assetsvc`, separate pod and PVC) has no auth either. Its "shared vs this
 world" scope is a `world` field that only the *client* filters on (`assets.ts:425`).
 
 **Some of what runs on a caller's behalf is privileged.**
@@ -83,7 +83,7 @@ policy is a minimum length of 12 with no composition rules. Login attempts are r
 and per username, with exponential lockout recorded in memory and in the audit log.
 
 **Bootstrapping.** On first start with no users, the server creates `admin` with the password from
-the Secret value `WORLDEDITOR_ADMIN_PASSWORD`. If that is unset, it prints a one-time setup link to
+the Secret value `PIEDMONT_EDITOR_ADMIN_PASSWORD`. If that is unset, it prints a one-time setup link to
 the pod log; the link is valid for 30 minutes and lets you set the first admin password.
 
 **Who creates accounts:**
@@ -129,14 +129,14 @@ auth:
   oidc:
     enabled: true
     issuer: https://auth.example.com/realms/patapsco
-    clientId: corridor-editor
+    clientId: piedmont-editor
     clientSecretRef: { name: worldeditor-oidc, key: client-secret }
     scopes: [openid, profile, email, groups]
     username: preferred_username # claim for the display username; falls back to email, then sub
     roles:
       claim: groups              # dotted path into the id_token or userinfo, e.g. realm_access.roles
-      admin: [corridor-admins]   # any of these values → admin
-      user:  [corridor-users]    # any of these → user ("*" = any authenticated identity)
+      admin: [piedmont-admins]   # any of these values → admin
+      user:  [piedmont-users]    # any of these → user ("*" = any authenticated identity)
       default: deny              # no match → deny | user
       sync: every-login          # re-derive the role at each login (a revoked group demotes)
     allowedDomains: []           # optional e-mail domain allow-list
@@ -166,8 +166,8 @@ The single shared MCP token is replaced by **per-user API tokens**:
 - `GET/POST /api/agent/mcp/config` stops returning a token; it returns the caller's token list.
 
 **Loopback calls.** Server-side MCP tools call the API through `apiFetch`. Each loopback call
-carries `x-corridor-internal: <per-process random secret>` and `x-corridor-subject: <user id>`
-(and `x-corridor-actor` when acting as someone). These are honoured only from `127.0.0.1` with the
+carries `x-piedmont-internal: <per-process random secret>` and `x-piedmont-subject: <user id>`
+(and `x-piedmont-actor` when acting as someone). These are honoured only from `127.0.0.1` with the
 matching secret. The longer-term fix is to call handlers in-process with a context object
 (§4.3, phase 5).
 
@@ -211,14 +211,14 @@ admin opening another user's world does it by acting as them (§5); there is no 
 ### 4.2 Bakes and other cluster Jobs
 
 **Mounts.** A bake Job mounts the PVC twice:
-- `subPath: users/<uid>` at `/data`, so `CORRIDOR_DATA=/data`, `sites.json` and `sites/index.json`
+- `subPath: users/<uid>` at `/data`, so `PIEDMONT_DATA=/data`, `sites.json` and `sites/index.json`
   become per-user with no change to the Python;
 - `subPath: cache` at `/data/cache`, so the expensive downloads stay shared.
 
 Coverage files for Overpass routing are mounted read-only from `overpass/`. A Job therefore cannot
 read or write another user's tree. This is a property of the mount, not of the code inside it.
 
-**Labels** on every Job, TrainingDeployment and pod gain `corridor.owner=<uid>`. Listing, logs,
+**Labels** on every Job, TrainingDeployment and pod gain `piedmont.owner=<uid>`. Listing, logs,
 cancel and delete filter on that label, and admins see all.
 
 **Quotas.** Each user gets a concurrency limit, by default one running bake and one GPU job. Bakes
@@ -233,8 +233,8 @@ already unique, and the records move under `users/<uid>/runs/`.
 The asset service stays **cluster-internal**: no ingress, plus a NetworkPolicy that admits only
 the editor pod. It is reached only through the editor's `/assetsvc` proxy and `deploy.plan`.
 
-**Trusting the proxy.** The proxy (`server.mjs:407–422`) adds `x-corridor-user`,
-`x-corridor-role` and `x-corridor-ts`, plus an HMAC over them and the method and path. The HMAC
+**Trusting the proxy.** The proxy (`server.mjs:407–422`) adds `x-piedmont-user`,
+`x-piedmont-role` and `x-piedmont-ts`, plus an HMAC over them and the method and path. The HMAC
 key is a shared Secret (`assetsvc-auth`). The asset service rejects any request without a valid
 HMAC.
 
@@ -261,8 +261,8 @@ question 4).
 
 Users can publish and deploy their own worlds. The Cloudflare side keeps one account, the
 service's token held by the editor, with users namespaced inside it:
-- **R2 prefix:** `corridor/<uid>/<slug>-<stamp>/`
-- **Worker name:** `corridor-<username>-<slug>`
+- **R2 prefix:** `piedmont/<uid>/<slug>-<stamp>/`
+- **Worker name:** `piedmont-<username>-<slug>`
 - **`deploys.json`:** per user, under `users/<uid>/`
 
 A user sees and deletes only their own deploys. **Custom domains** (`dc-nightmare.siomporas.com`)
@@ -271,7 +271,7 @@ need an admin to attach them, because a hostname belongs to the account, not the
 Per-user Cloudflare tokens are a later option (open question 2). The token store would become
 per user, encrypted at rest with a key from a Secret.
 
-`/api/runs/publish` (the shared `corridor-r2` bucket) follows the same prefix rule. `deploy.plan`
+`/api/runs/publish` (the shared `piedmont-r2` bucket) follows the same prefix rule. `deploy.plan`
 reads only the caller's namespace and the shared plus own asset scopes.
 
 ## 5. Acting as a user (admin)
@@ -289,7 +289,7 @@ reads only the caller's namespace and the shared plus own asset scopes.
   in `auth/audit.log` (JSON lines: time, actor, subject, method, route, target ids, outcome). Login,
   logout, failed login, token create/revoke, role change, act-as start/stop are all recorded too.
   Admins can read it in the Users panel.
-- **MCP.** An admin's token can act as another user with `x-corridor-act-as: <user>` on the MCP
+- **MCP.** An admin's token can act as another user with `x-piedmont-act-as: <user>` on the MCP
   request. This is logged the same way, and works only for admin tokens.
 
 ## 6. Admin-only surface (from the survey)
@@ -406,7 +406,7 @@ Each phase ends deployable, with a probe that fails without it.
    sounds, shared-library admin writes, the NetworkPolicy, migration. Tests: user B can't list,
    fetch, fork-from or delete user A's items; a request without the HMAC is refused.
 5. **Machine access.** Per-user API tokens, MCP role-filtered tool lists, loopback identity (then
-   in-process handler calls), the per-user bridge owner, `x-corridor-act-as` for admin tokens.
+   in-process handler calls), the per-user bridge owner, `x-piedmont-act-as` for admin tokens.
    Tests: a user token's `tools/list` omits admin tools; one user's agent can't drive another's tab.
 6. **OIDC.** Discovery, PKCE flow, JWKS verification, claim → role mapping with sync, identity
    linking, IdP logout. Tests against a local stub IdP that signs tokens with a test key: mapping

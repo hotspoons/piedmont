@@ -2,7 +2,7 @@
 
 ## Why this exists
 
-`apps/corridor/src/world/scene.ts` grades the ground at run time: `physGroundAt` / `gradedHeight`
+`apps/game/src/world/scene.ts` grades the ground at run time: `physGroundAt` / `gradedHeight`
 fold every carriageway's profile into the bare-earth DEM — the road height under and just beside
 the pavement, a smoothstep blend back to the DEM across the verge, decks left to their own
 colliders, bridge verges stopping at the parapet, junctions met, cul-de-sac bulbs. That formula
@@ -27,7 +27,7 @@ ENU (east, north) passes `z = -north`.
 Heights are ENU UP. The pyramid stores a raster height `h` and the viewer's `heightAt` returns
 `RasterFrame.toEnuUp(u, v, h)` = the ellipsoid drop under that pixel plus `h`; so the raster has
 to be converted to up before grading and back after, which `grade_block` does with the viewer's
-own bilinear-of-the-corners drop (`enuUp` in packages/engine/src/geo/raster.ts) rather than the
+own bilinear-of-the-corners drop (`enuUp` in vendor/arcade/packages/engine/src/geo/raster.ts) rather than the
 exact ellipsoid, because the viewer's lookup is the thing we must agree with.
 
 ## What is NOT ported, and why
@@ -47,10 +47,10 @@ import numpy as np
 
 from . import BakeFault
 
-# --- the knobs (apps/corridor/src/tuning.ts defaults) ------------------------------------------
+# --- the knobs (apps/game/src/tuning.ts defaults) ------------------------------------------
 #
 # Read out of tuning.ts on 2026-10-09. These are the DEFAULTS; a browser whose F6 panel moved one
-# of them is grading a different world than the bake did, and `tools/corridor/README.md` says so.
+# of them is grading a different world than the bake did, and `bake/README.md` says so.
 
 
 @dataclass(frozen=True)

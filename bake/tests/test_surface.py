@@ -4,9 +4,9 @@ The old path built a shapely Point for every ground return (~240 bytes each, ~15
 Capital Beltway) and called distance/line_locate_point over all 669 M points against an 827-segment
 spine — three hours, and an OOM at 128 GiB. `_polyline_measures` indexes the densified line and
 projects each point onto its own segment. These tests pin that it agrees with shapely to floating
-point, that the per-station medians do not change, and that `measure` still reads a corridor.
+point, that the per-station medians do not change, and that `measure` still reads a road band.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -22,8 +22,8 @@ import shapely
 from shapely.geometry import LineString
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import surface  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import surface  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
 LON, LAT = -76.685, 39.007
 FRAME = Frame.at(LON, LAT)
@@ -120,7 +120,7 @@ class MeasureTest(unittest.TestCase):
         cls = [2] * (len(lane_x) + len(verge_x)) + [1] * len(noise_x)
         inten = lane_i + verge_i + [4000, 4000]
         (d / "lidar").mkdir(parents=True, exist_ok=True)
-        _write_laz(d / "lidar" / "corridor.laz", x, y, cls, inten)
+        _write_laz(d / "lidar" / "road_band.laz", x, y, cls, inten)
         return d
 
     def test_lane_verge_and_ignored_noise(self):
@@ -140,7 +140,7 @@ class MeasureTest(unittest.TestCase):
         # 4000 or the reference would move. Neither happened.
         self.assertNotIn(4000.0, lane)
 
-    def test_no_corridor_laz_still_reports_the_stations(self):
+    def test_no_road_band_laz_still_reports_the_stations(self):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             LineString([(OX, OY), (OX + 1000.0, OY)])

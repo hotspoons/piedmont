@@ -1,4 +1,4 @@
-"""Coordinate frames for one corridor.
+"""Coordinate frames for one road band.
 
 Everything a site produces is in ONE metric frame: the UTM zone of the photo. Lidar arrives in Web
 Mercator (EPSG:3857 — that is how USGS stages Entwine), OSM and the photos in WGS84, NAIP in
@@ -14,7 +14,7 @@ zones have no common metre frame at all, and even inside one zone UTM north is n
 So UTM is where the data is STORED, and WGS84 geodetic is what it MEANS. The render frame is a
 true ENU tangent plane about a declared geodetic anchor, which is also what gaussworks (Rich's
 splat pipeline) aligns to. `manifest_frame` below emits everything the viewer needs to get there.
-See docs/corridor/FRAME.md and packages/engine/src/geo/wgs84.ts.
+See docs/FRAME.md and vendor/arcade/packages/engine/src/geo/wgs84.ts.
 """
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ class Frame:
     #
     # UTM is a plane. It has no curvature, its north is not true north, and it has a scale factor.
     # The authoritative frame is WGS84 geodetic and the render frame is a true ENU tangent plane
-    # about a geodetic anchor -- see docs/corridor/FRAME.md and packages/engine/src/geo/wgs84.ts.
+    # about a geodetic anchor -- see docs/FRAME.md and vendor/arcade/packages/engine/src/geo/wgs84.ts.
     #
     # These give the viewer everything it needs to place this site on the ellipsoid WITHOUT a
     # projection library in the browser: where the origin is in lon/lat, and the rigid
@@ -231,9 +231,9 @@ class Frame:
 class Anchor:
     """
     A local ENU tangent frame about a geodetic anchor — the Python mirror of
-    packages/engine/src/geo/wgs84.ts `Anchor`.
+    vendor/arcade/packages/engine/src/geo/wgs84.ts `Anchor`.
 
-    The two are checked against each other (probes/corridor-frame.mjs) because the bake converts
+    The two are checked against each other (probes/frame.mjs) because the bake converts
     the vector geometry and the viewer converts the rasters, and if they disagree the roads will
     not sit on the ground. Same constants, same axis conventions:
 

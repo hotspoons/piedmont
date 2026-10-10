@@ -5,7 +5,7 @@ on: tiles must land in exactly one shard, chains must be assigned whole, and the
 stitch back to the same along-track array a single bake would have written. These tests pin that
 with synthetic rectangles/lines — no rasters, no network.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import shards  # noqa: E402
+from piedmont_bake import shards  # noqa: E402
 
 
 class PartitionTest(unittest.TestCase):
@@ -396,9 +396,9 @@ class MergeLidarTest(unittest.TestCase):
                 las = laspy.create(point_format=6, file_version="1.4")
                 las.header.offsets, las.header.scales = [0.0, 0.0, 0.0], [0.01, 0.01, 0.01]
                 las.x, las.y, las.z = xs, ys, np.full(len(xs), float(i))
-                las.write(d / "corridor.laz")
+                las.write(d / "road_band.laz")
             st = shards.merge_lidar([(0, root / "s0"), (1, root / "s1")], root / "out", plan, primary)
-            got = laspy.read(root / "out" / "lidar" / "corridor.laz")
+            got = laspy.read(root / "out" / "lidar" / "road_band.laz")
         x = np.asarray(got.x)
         self.assertEqual(st["near_points"], 200, "each primary point once, no branch points")
         self.assertEqual(len(np.unique(np.round(x, 2))), 200, "a margin point came from both shards")
@@ -411,7 +411,7 @@ class WorldTileNamesTest(unittest.TestCase):
         `3_4` was a different square kilometre in each and the merge kept one of them."""
         from shapely.geometry import box
 
-        from corridor import network_tiles
+        from piedmont_bake import network_tiles
 
         world = (302080.0, 4284770.0, 350010.0, 4331400.0)
         gx, gy, _ = shards.tile_grid(world)

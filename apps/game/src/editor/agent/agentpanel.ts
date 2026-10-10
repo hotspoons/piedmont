@@ -14,7 +14,7 @@
 //
 // THE TOKEN IS NOT HERE. The platform credential lives on the service, which mints the tunnel's
 // one-time token and opens the upstream socket — a browser's WebSocket cannot send the header the
-// platform's contract needs. See tools/worldeditor/agentws.mjs.
+// platform's contract needs. See services/worldeditor/agentws.mjs.
 import { api } from '../worldedit/api'
 import { Session, type Entry } from '../../agent/session'
 import type { Shell } from '../../agent/shell'

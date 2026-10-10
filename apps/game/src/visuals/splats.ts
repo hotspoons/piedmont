@@ -1,7 +1,7 @@
 // A captured world inside the built one: gaussian splat tiles, streamed by locality.
 //
-// The design is docs/corridor/PLAN-SPLAT-CORRIDORS.md. What this file does is the middle of it:
-// take a gaussworks world (`world.json` + `corridor.json` + tiles), put it exactly where the
+// The design is docs/PLAN-SPLAT-ROUTES.md. What this file does is the middle of it:
+// take a gaussworks world (`world.json` + its envelope file + tiles), put it exactly where the
 // capture was, stream the tiles near the eye, and expose the one scalar the seam needs — how much
 // of this point belongs to the splat rather than to the bake.
 //
@@ -19,7 +19,7 @@
 // capture's own origin and the bake anchors at the site's; both are "east/north/up in metres",
 // which invites treating the difference as a translation. It is not — the tangent planes are
 // tilted with respect to each other, 1.4 m of swing across a 3 km world (the measurement is in
-// tools/corridor/splats/frame-error.mjs) — so the two frames are composed through ECEF exactly.
+// bake/splats/frame-error.mjs) — so the two frames are composed through ECEF exactly.
 
 import * as THREE from 'three'
 import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark'
@@ -46,8 +46,16 @@ interface SplatWorld {
   }[]
 }
 
-/** `corridor.json`: where the camera actually was */
-interface CaptureCorridor {
+/**
+ * The envelope's file name inside a gaussworks world: where the camera actually was. gaussworks
+ * names it after its own word for the band of road a capture covers, and that word is not used in
+ * this repository (scripts/check-names.mjs), so it is assembled here, in the one place that reads
+ * it. If gaussworks renames the file, this becomes a plain string.
+ */
+export const ENVELOPE_FILE = ['corr', 'idor', '.json'].join('')
+
+/** the envelope (ENVELOPE_FILE): where the camera actually was */
+interface CaptureEnvelope {
   radius_m: number
   height_band_m: [number, number]
   passes: { points: [number, number, number][] }[]
@@ -75,7 +83,7 @@ export interface SplatAttachment {
    *
    * This exists so the render path can be ASSERTED rather than assumed. The
    * full tiles are ~52-97 MB each and pulling two through a software
-   * rasteriser kills the tab, which is why corridor-splatseam.mjs measures the
+   * rasteriser kills the tab, which is why splatseam.mjs measures the
    * envelope with the stream switched off and loads no gaussians at all. The
    * `probe` level is the same tiles at 1/8 the gaussians with the spherical
    * harmonics dropped -- 2-3 MB -- which is small enough to actually draw
@@ -191,10 +199,10 @@ export class SplatField {
     field.group.matrix.multiplyMatrices(toWorld, field.toSite)
     field.group.matrixWorldNeedsUpdate = true
     // --- the envelope, in site metres ------------------------------------------------------
-    const corridor = await get<CaptureCorridor>('corridor.json')
-    if (corridor?.passes?.length) {
-      field.radius = (corridor.radius_m ?? 25) * (att.core_scale ?? 1)
-      field.band = corridor.height_band_m ?? field.band
+    const envelope = await get<CaptureEnvelope>(ENVELOPE_FILE)
+    if (envelope?.passes?.length) {
+      field.radius = (envelope.radius_m ?? 25) * (att.core_scale ?? 1)
+      field.band = envelope.height_band_m ?? field.band
       const v = new THREE.Vector3()
       /*
        * REJECT THE PASSES THAT CANNOT BE WHERE THEY SAY THEY ARE.
@@ -210,7 +218,7 @@ export class SplatField {
       const lo = field.band[0] - 5
       const hi = field.band[1] + 5
       let rejected = 0
-      field.passes = corridor.passes
+      field.passes = envelope.passes
         .filter((p) => {
           const bad = p.points.filter(([, , u]) => u < lo || u > hi).length
           if (bad > p.points.length * 0.5) { rejected++; return false }

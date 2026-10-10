@@ -1,6 +1,6 @@
 # Build and publish the reconstruction service image for both architectures.
 #
-# The service (tools/recon-service) compiles four CUDA extensions from source — CuMesh, o-voxel,
+# The service (services/recon) compiles four CUDA extensions from source — CuMesh, o-voxel,
 # FlexGEMM and nvdiffrast. That is why it runs on Grace-Hopper at all, where TRELLIS 1 cannot:
 # nothing here depends on a prebuilt x86 wheel. It also means the build is a real compile.
 #
@@ -17,7 +17,7 @@
 # fails the BUILD rather than the deployment.
 #
 # This does NOT run on every push: the build takes tens of minutes and almost no commit touches it.
-# It runs when tools/recon-service changes, or by hand.
+# It runs when services/recon changes, or by hand.
 name: Recon image
 
 on:
@@ -31,10 +31,10 @@ on:
     # Ten runs, eight cancelled, and the one marked "failure" was a runner shutdown mid-apt. The
     # build had never actually failed on its merits. Use workflow_dispatch to test changes here.
     paths:
-      - 'tools/recon-service/**'
+      - 'services/recon/**'
       # docs and the Helm chart do not change the image; without these a README edit is a build
-      - '!tools/recon-service/README.md'
-      - '!tools/recon-service/chart/**'
+      - '!services/recon/README.md'
+      - '!deploy/helm/recon/**'
   workflow_dispatch:
     inputs:
       arch_list_amd64:
@@ -46,7 +46,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE: ghcr.io/hotspoons/recon
+  IMAGE: ghcr.io/hotspoons/piedmont-recon
 
 concurrency:
   group: recon-image-${{ github.ref }}
@@ -104,7 +104,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: tools/recon-service
+          context: services/recon
           platforms: ${{ matrix.platform }}
           build-args: |
             TORCH_CUDA_ARCH_LIST=${{ (matrix.slug == 'arm64' && (inputs.arch_list_arm64 || matrix.default_arch_list)) || (inputs.arch_list_amd64 || matrix.default_arch_list) }}

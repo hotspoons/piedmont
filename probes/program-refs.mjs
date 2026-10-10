@@ -10,7 +10,7 @@
 // and asks the panel's own TypeScript service whether the result typechecks. It fails loudly: a
 // group missing, a count of zero, a type error, or the panel not saying "No type errors.".
 //
-//   PROBE_URL=http://127.0.0.1:5197 node probes/corridor-program-refs.mjs dc-metro-take-2 [shot.png]
+//   PROBE_URL=http://127.0.0.1:5197 node probes/program-refs.mjs dc-metro-take-2 [shot.png]
 import { chromium } from 'playwright'
 
 const base = process.env.PROBE_URL ?? 'http://localhost:5186'

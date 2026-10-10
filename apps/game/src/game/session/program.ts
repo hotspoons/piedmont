@@ -11,7 +11,7 @@
 //   3. new exploration techniques arbitrary new behaviour. ONLY CODE CAN DO THIS.
 //
 // So the program layer is code, and the declarative `scenario` primitives (facts, conditions,
-// actions — tools/worldeditor/levels.mjs) stay as the simple path rather than being replaced. A
+// actions — services/worldeditor/levels.mjs) stay as the simple path rather than being replaced. A
 // program is what you write when the simple path runs out.
 //
 // THE API SURFACE IS THE PRODUCT. It is what an agent is prompted against, what a person reads
@@ -127,8 +127,8 @@ export interface ProgramHost {
    * still LOADS where there is none instead of throwing on its first line. Every method on
    * `api.physics` answers harmlessly when this is missing.
    *
-   * See docs/corridor/PLAN-EDITOR-IDE.md §4. The engine's side of this lives in
-   * `packages/engine/src/physics/`; nothing in this file imports it, because the boundary is what
+   * See docs/PLAN-EDITOR-IDE.md §4. The engine's side of this lives in
+   * `vendor/arcade/packages/engine/src/physics/`; nothing in this file imports it, because the boundary is what
    * keeps the program layer testable.
    */
   physics?: PhysicsHost
@@ -207,7 +207,7 @@ export interface WorldPoint {
 
 /**
  * MODELS A PROGRAM PUTS IN THE WORLD. Rich, 2026-09-30, after the pizza level had to reach
- * `window.corridor.site.layers.placements` to hide a pizza stack and clone a wad of cash: the
+ * `window.piedmont.site.layers.placements` to hide a pizza stack and clone a wad of cash: the
  * program API could name a placed thing and not show, hide, move or make one.
  *
  * Every member optional, like the physics: a dry run draws nothing and a program that spawns is

@@ -1,7 +1,7 @@
-// Style profiles and the prompt builder for the corridor asset library.
+// Style profiles and the prompt builder for the game's asset library.
 //
-// This is the half of tools/assetgen that is taste rather than physics. The keyer, the despill and
-// the mesh finisher are imported from there unchanged; the look is not, because corridor's scene is
+// This is the half of pipelines/assetgen that is taste rather than physics. The keyer, the despill and
+// the mesh finisher are imported from there unchanged; the look is not, because the game's scene is
 // photographic — lidar relief, NAIP ground, gaussian splats, a real sun and wet-road shading — and
 // Radrun's "flat bright arcade look, BRIGHT SATURATED colour, no photographic texture or grain" is
 // a deliberate mismatch for it.
@@ -26,7 +26,7 @@
 export const BUDGET = 1900
 
 /**
- * Pseudorealistic: what corridor wants. A studio photograph, not a render and not a toy.
+ * Pseudorealistic: what the game wants. A studio photograph, not a render and not a toy.
  *
  * The backdrop is chroma green because `keyChroma` is built for green dominance and the despill is
  * tuned for it. The rule that follows from that is absolute and it is why assetgen's `--audit`

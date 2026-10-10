@@ -3,7 +3,7 @@
 //
 // Rich, 2026-09-30: *"we were supposed to have elastic collisions and mesh deformations and all
 // that for crashes."* The engine has had the deformer since the physics landed; nothing in the
-// corridor called it. A reconstruction's clones SHARE geometry, so `Deformable` clones the
+// road band called it. A reconstruction's clones SHARE geometry, so `Deformable` clones the
 // geometry to the mesh on construction — otherwise one crash would crumple every car wearing
 // that model.
 //

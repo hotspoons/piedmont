@@ -9,7 +9,7 @@
 // WHY IT IS OPTIONAL. The editor also runs on a laptop against localhost, where a token is pure
 // friction, and it runs behind an ingress that already authenticates, where a second secret is
 // two things to rotate. `required` is therefore a decision the deployment makes
-// (`WORLDEDITOR_MCP_AUTH`), not one this file makes for it. The default is ON when a token exists
+// (`PIEDMONT_EDITOR_MCP_AUTH`), not one this file makes for it. The default is ON when a token exists
 // and the service is reachable off-localhost, because the failure modes are not symmetric: a
 // needless token costs a copy-paste, a missing one costs the cluster.
 //
@@ -77,11 +77,11 @@ export class McpAuth {
    * Resolve the token and whether it is enforced.
    *
    * Precedence is env, then the file, then a fresh mint — so a chart can set
-   * `WORLDEDITOR_MCP_TOKEN` from a Secret and the file is never written, which is what you want
+   * `PIEDMONT_EDITOR_MCP_TOKEN` from a Secret and the file is never written, which is what you want
    * when the volume is shared or backed up.
    */
   async load() {
-    const fromEnv = this.env.WORLDEDITOR_MCP_TOKEN?.trim()
+    const fromEnv = this.env.PIEDMONT_EDITOR_MCP_TOKEN?.trim()
     if (fromEnv) {
       this.token = fromEnv
       this.source = 'env'
@@ -97,14 +97,14 @@ export class McpAuth {
       }
     }
 
-    const flag = this.env.WORLDEDITOR_MCP_AUTH?.trim().toLowerCase()
+    const flag = this.env.PIEDMONT_EDITOR_MCP_AUTH?.trim().toLowerCase()
     // An explicit decision wins. Otherwise: on, unless this is plainly a localhost-only dev run.
     this.required = flag === 'off' || flag === 'false' || flag === '0' ? false : flag ? true : !this.#looksLocalOnly()
     return this
   }
 
   #looksLocalOnly() {
-    const host = (this.env.WORLDEDITOR_HOST ?? '').trim()
+    const host = (this.env.PIEDMONT_EDITOR_HOST ?? '').trim()
     return host === '127.0.0.1' || host === 'localhost' || host === '::1'
   }
 
@@ -119,7 +119,7 @@ export class McpAuth {
   async set(token) {
     const next = (token ?? '').trim() || mintToken()
     if (this.source === 'env') {
-      const e = new Error('the token comes from WORLDEDITOR_MCP_TOKEN; change it there, not here')
+      const e = new Error('the token comes from PIEDMONT_EDITOR_MCP_TOKEN; change it there, not here')
       e.status = 409
       throw e
     }

@@ -1,6 +1,6 @@
-// Handling probe for the corridor car: measure, don't eyeball.
+// Handling probe for the game car: measure, don't eyeball.
 //
-//   node probes/corridor-handling.mjs [site]        (CORRIDOR_PORT, default :5202; default site clarksburg-i270)
+//   node probes/handling.mjs [site]        (PIEDMONT_PORT, default :5202; default site clarksburg-i270)
 //
 // Test A — turning radius: hold the car at a speed, full right lock, and report the radius two ways:
 //   R_yaw  = v / yaw-rate           (what the nose does)
@@ -16,18 +16,18 @@
 import { chromium } from 'playwright'
 
 const site = process.argv[2] ?? 'clarksburg-i270'
-const PORT = process.env.CORRIDOR_PORT ?? '5202'
+const PORT = process.env.PIEDMONT_PORT ?? '5202'
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 900, height: 600 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
-// several agents edit this tree at once; a Vite full reload mid-probe empties window.corridor.
+// several agents edit this tree at once; a Vite full reload mid-probe empties window.piedmont.
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite`, { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 180000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 180000 })
 await page.keyboard.press('Tab')
 
 const r = await page.evaluate(() => {
-  const { drive, site } = window.corridor
+  const { drive, site } = window.piedmont
   const car = drive.car
   const DT = 1 / 120
   const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a))

@@ -9,7 +9,7 @@
 // Moving twenty-eight sections between tabs by hand is exactly the kind of edit that silently
 // loses one, so the first assertion is that every knob still has a home and no knob has two.
 //
-//   PORT=5185 node probes/corridor-tunelayout.mjs
+//   PORT=5185 node probes/tunelayout.mjs
 import { chromium } from 'playwright'
 const PORT = process.env.PORT ?? '5185'
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
@@ -18,11 +18,11 @@ const page = await browser.newPage({ viewport: { width: 520, height: 780 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#crofton-triangle?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.tune, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.tune, null, { timeout: 600000 })
 
 // the knob table, independent of the DOM
 const table = await page.evaluate(() => {
-  const tabs = window.corridor.tune.sections ?? window.corridor.tune.tabs ?? null
+  const tabs = window.piedmont.tune.sections ?? window.piedmont.tune.tabs ?? null
   if (!tabs) return { error: 'no tune table exposed' }
   const seen = {}
   const out = { tabs: [], dupes: [], empty: [] }
@@ -43,7 +43,7 @@ const table = await page.evaluate(() => {
 // open it, dock it to a side, and measure the layout
 await page.keyboard.press('F6')
 await page.waitForTimeout(600)
-await page.evaluate(() => window.corridor.tuneDialog?.dock?.('right'))
+await page.evaluate(() => window.piedmont.tuneDialog?.dock?.('right'))
 await page.waitForTimeout(600)
 
 const layout = await page.evaluate(() => {

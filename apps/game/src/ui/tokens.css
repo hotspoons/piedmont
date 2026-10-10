@@ -1,5 +1,5 @@
 /*
- * corridor design tokens — the whole visual vocabulary, in one file.
+ * game design tokens — the whole visual vocabulary, in one file.
  *
  * Two rules hold this together. First, NOTHING below this file names a raw colour: every rule in
  * ui.css and in the two app stylesheets reaches for a token, so the theme can move without a

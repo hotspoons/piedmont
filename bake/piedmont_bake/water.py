@@ -1,12 +1,12 @@
 """Streams, rivers, ponds and falls: OSM says where the water is, the lidar says how high.
 
-OSM `waterway=*` lines in the corridor are drawn from imagery and sit close to the channel:
+OSM `waterway=*` lines in the road band are drawn from imagery and sit close to the channel:
 measured 2026-09-21 on Little Catoctin Creek (South Mountain), the Monocacy tributary
 (Frederick I-270) and Butterfly Branch (Braddock), the OSM line is within 3 m of the 1 m DTM's
 low point 86-100 % of the time, median offset 0-1 m, and the DTM under the line is within 0.2 m of
 that low point. So each vertex is SNAPPED to the lowest DTM cell across a ±`SNAP_M` (6 m) transect
 and takes that height, which puts the water in the channel rather than on its bank. Outside the
-lidar corridor the bare-earth DEM (300 m half-width) stands in; beyond that the vertex is dropped.
+lidar road band the bare-earth DEM (300 m half-width) stands in; beyond that the vertex is dropped.
 
 Width: OSM `width` when tagged (the Monocacy carries 20), else by class (`WIDTHS`). A segment
 tagged `tunnel=culvert` is kept for continuity but flagged so the viewer does not draw water
@@ -52,7 +52,7 @@ class _Heights:
     """Ground height at arbitrary points: the lidar DTM first, the bare-earth DEM where it has no
     data, NaN beyond both.
 
-    Two modes, because a corridor and a region are different problems. A single-road site's DTM is
+    Two modes, because a road band and a region are different problems. A single-road site's DTM is
     a few hundred MB at most, so it is read once into an array and indexed. A NETWORK site's
     `lidar/dtm.vrt` covers 18 km square — 324 M cells, 1.3 GB — and must never be resident: over
     `LAZY_CELLS` the dataset is kept open and each `at()` call reads only the window its own points

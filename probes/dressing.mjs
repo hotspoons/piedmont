@@ -5,7 +5,7 @@
 // The two failures it exists for are the ones a unit test cannot see — the kit JSON not reaching
 // the bundle at all, and every part landing inside the walls where nothing is visible.
 //
-//   node probes/corridor-dressing.mjs shots/dressing.png
+//   node probes/dressing.mjs shots/dressing.png
 import { chromium } from 'playwright'
 
 const out = process.argv[2] ?? 'shots/dressing.png'

@@ -17,7 +17,7 @@ whatever the world's size — fewer than the 125 one site costs today.
 ## The scheme, and why this one
 
 The same geographic quadtree trailworks uses (`globe_tiles.tile_bounds`, `geoMath.tileBoundsRaw`,
-and `tileBounds`/`tileOf` in packages/engine/src/geo/wgs84.ts, which were written during the
+and `tileBounds`/`tileOf` in vendor/arcade/packages/engine/src/geo/wgs84.ts, which were written during the
 geodetic work precisely so the two projects could meet): level z has 2^(z+1) columns of longitude
 and 2^z rows of latitude.
 
@@ -60,7 +60,7 @@ from dataclasses import dataclass
 
 from .naip import NAIP_BLANK_MAX
 
-# --- the quadtree (mirrors packages/engine/src/geo/wgs84.ts) -------------------------------------
+# --- the quadtree (mirrors vendor/arcade/packages/engine/src/geo/wgs84.ts) -------------------------------------
 
 
 def tile_bounds(z: int, x: int, y: int) -> tuple[float, float, float, float]:
@@ -535,7 +535,7 @@ def road_model(site_dir, frame, manifest: dict):
 
     from . import grade
 
-    if os.environ.get("CORRIDOR_GRADE", "1").strip().lower() in ("0", "false", "no", "off"):
+    if os.environ.get("PIEDMONT_GRADE", "1").strip().lower() in ("0", "false", "no", "off"):
         return None
     dem_p = site_dir / "dem_1m.tif"
     if not dem_p.exists() or not manifest or not manifest.get("spine", {}).get("coords"):
@@ -562,12 +562,12 @@ def bake(site_dir, web, frame, zmax: int | None = None, zmin: int | None = None,
 
     A pyramid tile is sampled from the same site rasters as its siblings and written to a file keyed
     by its own (z, x, y), so the tiles are independent and the only shared state is the read-only
-    plan. On the Capital Beltway that was 1,272 tiles in a single `for` loop (corridor-bake-495,
+    plan. On the Capital Beltway that was 1,272 tiles in a single `for` loop (piedmont-bake-495,
     ~60 min); the plan is unchanged, only who runs it is.
 
     `manifest` is the manifest-shaped dict the viewer will read (spine, branches, intersections,
     structures, driveways). With it, the fine levels are written GRADED — see `GRADE_MAX_PX_M` and
-    grade.py; `CORRIDOR_GRADE=0` turns that off. Without it the pyramid is bare, as it always was.
+    grade.py; `PIEDMONT_GRADE=0` turns that off. Without it the pyramid is bare, as it always was.
     """
     from . import pool
 

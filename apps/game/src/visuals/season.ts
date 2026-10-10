@@ -112,7 +112,7 @@ export const LOOK: Record<Season, SeasonLook> = {
 // The same season, somewhere else.
 //
 // The four palettes above are the Maryland piedmont, and until 2026-09-21 they were every site:
-// `summer` painted a straw-topped olive verge whether the corridor was in Frederick County, on
+// `summer` painted a straw-topped olive verge whether the road band was in Frederick County, on
 // Mount Desert Island or above the Pacific at Bixby Bridge. Two of those three are wrong, and the
 // California one is wrong in the most recognisable way there is — a Big Sur hillside in September
 // is straw from the road to the ridge, and the SAME hillside in February is the greenest thing in
@@ -125,7 +125,7 @@ export const LOOK: Record<Season, SeasonLook> = {
 /**
  * The climate the four palettes were drawn against: Chesterfield Road, Maryland — Rich's own road,
  * and the site his September reference photography was shot on. Daymet v4 1 km monthly means over
- * 2014–2023, printed by `probes/corridor-flora.mjs`. It is written down here rather than fetched
+ * 2014–2023, printed by `probes/flora.mjs`. It is written down here rather than fetched
  * because it is a property of the PALETTE, not of any site being rendered: move the palette and
  * this has to move with it.
  */

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // A reconstruction, finished into something a game can ship: simplify, unlit, compress.
 //
-//   node tools/assetgen/finish.mjs --id hero-prototype
-//   node tools/assetgen/finish.mjs --all --out apps/coast/public/assets/generated
+//   node pipelines/assetgen/finish.mjs --id hero-prototype
+//   node pipelines/assetgen/finish.mjs --all --out apps/coast/public/assets/generated
 //
 // WHAT COMES IN is what TRELLIS hands back: around 400k faces with two 2048px PBR maps, 26 MB a
 // subject. That is right for a reconstruction and about fifty times what a sprite bake in a
@@ -70,7 +70,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const id = flag('id')
   if ((!id && !has('all')) || has('help')) {
     console.log(`
-  node tools/assetgen/finish.mjs --id hero-prototype [--out DIR]
+  node pipelines/assetgen/finish.mjs --id hero-prototype [--out DIR]
 
     --id ID        one reconstruction from ext/assetgen/<id>/<id>.glb
     --all          every reconstruction on disk

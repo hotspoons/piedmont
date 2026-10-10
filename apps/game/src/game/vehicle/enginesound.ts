@@ -1,6 +1,6 @@
 // The engine you can hear: Ange Yaghi's combustion simulator, voicing whatever has an `Engine`.
 //
-// This is corridor's side of `@apex/enginesim`. The package knows how to run a piston engine in an
+// This is the game's side of `@apex/enginesim`. The package knows how to run a piston engine in an
 // audio thread; this file knows which entity it is speaking for, when the browser will let it make
 // a noise at all, and where to put it in the world.
 //
@@ -8,7 +8,7 @@
 // the entire audio interface — a combustion engine's sound at any instant is decided by how fast
 // it is turning and how far the throttle is open. Whoever owns a car writes those; this reads them.
 // That is why the player's car and a traffic car are the same case here: `attachPlayer` only
-// differs in that it derives rpm from `car.speed` through a gearbox corridor does not otherwise
+// differs in that it derives rpm from `car.speed` through a gearbox the game does not otherwise
 // have (see Drivetrain in the package for why the gearbox is ours and not engine-sim's).
 //
 // ONE VOICE. A simulated engine costs a real slice of a core — 45% of one on the machine this was
@@ -179,7 +179,7 @@ export class EngineSound {
   /**
    * Derive the player's engine state from the car and write it into the component.
    *
-   * Separate from `update` on purpose: this is the bit that knows corridor's `Car` has a speed and
+   * Separate from `update` on purpose: this is the bit that knows the game's `Car` has a speed and
    * no crankshaft, and it writes only the ECS. Anything else that wants to drive an engine — a
    * replay, the traffic model, a test — writes the same two fields and gets the same sound.
    */
@@ -193,14 +193,14 @@ export class EngineSound {
   /**
    * The tab is not the one you are looking at. Go quiet, and stop burning a core.
    *
-   * Rich, 2026-09-27: "it would be great if we muted the corridor UI when the tab isn't active.
+   * Rich, 2026-09-27: "it would be great if we muted the game UI when the tab isn't active.
    * We do that for the other games here" — stuntin and coast both mute on `blur` and unmute on
    * `focus` (apps/stuntin/src/app/Game.ts).
    *
    * TWO THINGS, not one. The gain ramp is the audible half and happens immediately. Suspending
    * the context is the half that matters on a laptop: this engine is a rigid-body solver running
    * inside the audio callback at about 45% of a core, and a browser throttles a background tab's
-   * TIMERS but keeps its audio thread running at full rate — so a corridor tab left open behind a
+   * TIMERS but keeps its audio thread running at full rate — so a game tab left open behind a
    * video call is a fan that never stops for a sound nobody can hear.
    *
    * The ramp comes first and the suspend follows it, because suspending mid-note freezes the

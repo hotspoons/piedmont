@@ -195,7 +195,7 @@ test('the protocol: initialize, tools/list, tools/call', async () => {
   const { root } = volume()
   const { ctx } = ctxFor(root)
   const init = await handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }, ctx)
-  assert.equal(init.result.serverInfo.name, 'corridor-world-editor')
+  assert.equal(init.result.serverInfo.name, 'piedmont-world-editor')
   assert.ok(init.result.capabilities.tools)
 
   const list = await handle({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, ctx)

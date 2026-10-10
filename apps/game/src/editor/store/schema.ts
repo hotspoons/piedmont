@@ -1,9 +1,9 @@
 // The three authored files, and how they get to and from disk.
 //
-// All live BESIDE the bake (tools/corridor/data/sites/<slug>/{adjustments,placements,structures}
+// All live BESIDE the bake (data/sites/<slug>/{adjustments,placements,structures}
 // .json), not inside web/ — the bake owns web/ and would overwrite them. In dev the Vite
 // middleware serves them at /sites/<slug>/*.json and accepts a PUT back to the same path; that is
-// the only writable path in the app. `python -m corridor areas` writes adjustments.json too,
+// the only writable path in the app. `python -m piedmont_bake areas` writes adjustments.json too,
 // seeding the areas this editor then tunes, so the two must agree on the shape exactly.
 
 import type { Manifest } from '../../world/site'
@@ -49,7 +49,7 @@ export interface Area {
 /**
  * Which frame a file's coordinates are in.
  *
- * On 2026-09-22 the corridor moved from UTM-relative metres to true ENU. Every authored polygon
+ * On 2026-09-22 the road band moved from UTM-relative metres to true ENU. Every authored polygon
  * stayed where it was written and the world rotated by the grid convergence underneath it — a
  * median of 40 m off the road each band was drawn around, up to 439 m, with nothing erroring,
  * nothing logging, and every polygon still drawing a perfectly plausible shape. A file of
@@ -177,7 +177,7 @@ export const NEUTRAL: Adjust = {
   row_spacing_m: 0.76,
 }
 
-/** The texture sets tools/surfaces/gen.py bakes; `null` means "whatever the classifier said". */
+/** The texture sets pipelines/surfaces/gen.py bakes; `null` means "whatever the classifier said". */
 export const SURFACE_CLASSES = ['asphalt_new', 'asphalt_aged', 'asphalt_patched', 'chipseal', 'concrete', 'shoulder_gravel']
 
 /** What trees.ts can actually grow; `null` means "pick by height as usual". */
@@ -221,7 +221,7 @@ export const SLIDERS: SliderDef[] = [
   { key: 'tree_density', label: 'trees ×', min: 0, max: 1, step: 0.05, note: 'thins the trees by a stable position hash. Thinning only: above 1 there are no canopy cells to grow from' },
   { key: 'grass_height', label: 'grass height ×', min: 0, max: 3, step: 0.05, note: 'scales the blade height in the grass ring' },
   { key: 'grass_density', label: 'grass density ×', min: 0, max: 3, step: 0.05, note: 'scales how many blades the grass ring puts down' },
-  { key: 'ground_offset_m', label: 'ground +m', min: -10, max: 10, step: 0.25, note: 'raises or lowers the corridor strip off the pavement; it fades in from the pavement edge so the road itself never moves' },
+  { key: 'ground_offset_m', label: 'ground +m', min: -10, max: 10, step: 0.25, note: 'raises or lowers the road-band strip off the pavement; it fades in from the pavement edge so the road itself never moves' },
 ]
 
 // `location` guarded: the pure parts of this module (the frame check) are unit-tested under node

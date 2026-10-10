@@ -1,19 +1,19 @@
-# AUTOGEN — growing neighbourhoods, business parks and towns along a corridor
+# AUTOGEN — growing neighbourhoods, business parks and towns along a road band
 
-**Implemented**, in the browser, as mode 3 of the corridor editor:
-`apps/corridor/src/editor/autogen.ts` (the rules) and `grow.ts` (the loop around them). Press **G**
+**Implemented**, in the browser, as mode 3 of the site editor:
+`apps/game/src/editor/autogen.ts` (the rules) and `grow.ts` (the loop around them). Press **G**
 in `/editor.html`; the result is `g-` items in `placements.json`.
 
-It runs in the browser rather than as a `python -m corridor autogen` subcommand, and that was a
+It runs in the browser rather than as a `python -m piedmont_bake autogen` subcommand, and that was a
 change of plan worth recording. The loop this has to serve is *generate → look at it → fix the six
 it got wrong → generate again*, and a loop with a shell round trip in it is a loop nobody runs
 twice. Everything the rules need is already in `web/manifest.json`; the three quantities that
-genuinely need the GIS stack are precomputed there by `corridor/buildings.py` (§10).
+genuinely need the GIS stack are precomputed there by `piedmont_bake/buildings.py` (§10).
 
 Sections 2–7 below are the rule set, and describe the shipped code. §8 is the override model —
 how a regeneration keeps the corrections you made to the last one. §9 says what is not done.
 
-## 1. What the corridor already knows
+## 1. What the road band already knows
 
 | input | where | what it gives |
 |---|---|---|
@@ -22,14 +22,14 @@ how a regeneration keeps the corrections you made to the last one. §9 says what
 | NAIP 1 m | `web/naip_1m.jpg` | roof colour, parking-lot extent (bright, flat, unvegetated) |
 | lidar DSM/CHM | `<site>/lidar/` | true roof height per footprint; where the trees actually are |
 | Overture buildings | trailworks `pipeline/ingest/overture.py`, GeoParquet cached per region, DuckDB bbox query | footprint + `height` + `num_floors` + `names.primary` |
-| catalog | `apps/corridor/public/assets/catalog.json` | `{id, category, footprint_m, height_m}` |
+| catalog | `apps/game/public/assets/catalog.json` | `{id, category, footprint_m, height_m}` |
 
 Two facts set the whole design, both measured over the nine baked sites:
 
 - **3413 footprints, 2887 of them `building=yes`.** The tag is 85% noise. Category has to be
   *inferred from geometry and context*, never read off the tag.
 - **Landuse is sparse** — 35 `residential`, 17 `commercial`, 7 `retail` polygons across nine
-  sites. Zoning covers a minority of the corridor, so it is a *hint*, not the partition.
+  sites. Zoning covers a minority of the road band, so it is a *hint*, not the partition.
 
 And one constraint: the bake is a **ribbon 300 m each side** of the road. A big-box store and its
 lot fit. A town does not. Autogen fills frontage, not settlements.
@@ -99,7 +99,7 @@ box, `footprint_m` always **[long, short]**.
   **Watch the frame.** `rect.yaw_deg` is `degrees(atan2(dy, dx)) % 180`, a math angle measured
   counterclockwise from EAST, describing an axis. A placement's `yaw_deg` is a compass bearing,
   rendered as `rotation.y = -yaw·π/180`. The conversion that puts a box's long side on the
-  rectangle is `yaw = -rect.yaw_deg` (`yawForLongAxis` in `editor/corridor.ts`). Get the sign
+  rectangle is `yaw = -rect.yaw_deg` (`yawForLongAxis` in `editor/author/roadband.ts`). Get the sign
   wrong and you get a town mirrored about the east axis, which looks entirely plausible until you
   put it next to the air photo.
 - **Setback**, from the *pavement edge* (not the centreline), when the footprint is invented rather
@@ -132,7 +132,7 @@ areas for these, which is precisely what the areas schema is for.
 
 ## 7. Invented settlements (R5)
 
-Where the corridor is `rural`/`open` and Rich wants a town anyway, seed instead of read. Per side,
+Where the road band is `rural`/`open` and Rich wants a town anyway, seed instead of read. Per side,
 walk `s` and draw a gap from the zone's spacing distribution, then site as in R4:
 
 | zone to invent | frontage spacing | mix |
@@ -231,7 +231,7 @@ Why each of the three derived fields, since they are the whole ask:
   **DSM minus DTM over the footprint** → 6 m) has a lidar step in it, and that step is a raster
   read inside a polygon. It is also the only honest height for the 85% of footprints OSM labels
   `building=yes` and nothing else. `height_src` lets autogen distrust a `default`.
-- **`s` / `lat`** because every rule in this document is written in corridor coordinates — setback
+- **`s` / `lat`** because every rule in this document is written in road-band coordinates — setback
   is from the pavement edge, density falls off with distance from a junction — and projecting a
   centroid onto the spine is the one thing the manifest already knows how to do.
 

@@ -10,7 +10,7 @@
 // at a colleague's instance), then `VITE_ASSETSVC` at build time, then same-origin `/assetsvc`
 // (which is how it looks in the cluster, behind one ingress), then localhost:8770 for a laptop.
 //
-// NOT CONFIGURED IS A NORMAL STATE. Asset generation is off by default and corridor works
+// NOT CONFIGURED IS A NORMAL STATE. Asset generation is off by default and the game works
 // completely without it, so every call here can fail and the UI's job is to say "no service"
 // rather than to break.
 
@@ -161,7 +161,7 @@ function baseUrl(): string {
   /*
    * THROUGH THE EDITOR, ALWAYS. In the cluster the editor and the service sit behind one host, so
    * a relative path is right and needs no CORS. In development Vite proxies `/assetsvc` to the
-   * world editor (`WORLDEDITOR=…`), which forwards to the service IT is configured for — and that
+   * world editor (`PIEDMONT_EDITOR=…`), which forwards to the service IT is configured for — and that
    * is the one whose builds the editor screens write. This used to fall back to
    * `http://localhost:8770` on a dev port, which is whichever asset service happens to be on 8770
    * and was, measured, an older one with no `/traffic` route and a different data directory: the

@@ -9,7 +9,7 @@
 // about the frame anchor, so a projection slip puts every result in the wrong place while the
 // list still looks perfect.
 //
-//   PORT=5185 node probes/corridor-search.mjs [slug]
+//   PORT=5185 node probes/search.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -18,11 +18,11 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 640 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
-await page.waitForFunction(() => window.corridor.searchCounts?.().ready, null, { timeout: 120000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => window.piedmont.searchCounts?.().ready, null, { timeout: 120000 })
 
 const out = await page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   const counts = c.searchCounts()
   const bbox = c.site.manifest.bbox // [minE, minN, maxE, maxN] in plan metres
   // pick a real street out of the index itself rather than naming one I remember
@@ -47,7 +47,7 @@ const out = await page.evaluate(() => {
 })
 
 // and the UI: type, see a list, pick the first, end up somewhere else
-const ui = await page.evaluate(() => ({ before: [Math.round(window.corridor.camera.position.x), Math.round(window.corridor.camera.position.z)] }))
+const ui = await page.evaluate(() => ({ before: [Math.round(window.piedmont.camera.position.x), Math.round(window.piedmont.camera.position.z)] }))
 const box = await page.$('.search-input')
 let typed = null
 if (box) {
@@ -63,7 +63,7 @@ if (box) {
   await page.keyboard.press('Enter')
   await page.waitForTimeout(600)
 }
-const after = await page.evaluate(() => [Math.round(window.corridor.camera.position.x), Math.round(window.corridor.camera.position.z)])
+const after = await page.evaluate(() => [Math.round(window.piedmont.camera.position.x), Math.round(window.piedmont.camera.position.z)])
 console.log(JSON.stringify({ ...out, ui: { ...ui, typed, after } }, null, 1))
 await browser.close()
 

@@ -724,20 +724,20 @@ export let ROAD_TAPER_M = 60
 export let ROAD_ONEWAY_CENTRE = 0
 
 
-// --- engine sound (packages/enginesim) ---------------------------------------------------------
+// --- engine sound (vendor/arcade/packages/enginesim) ---------------------------------------------------------
 //
 // The car you hear. `enginesound.ts` runs Ange Yaghi's combustion simulator in an audio worklet;
 // these are the knobs for the car you are driving RIGHT NOW, as opposed to the bench
 // (`npm run bench -w @apex/enginesim`), which is for voicing an engine as an asset.
 //
-// Two groups, and they are not the same kind of thing. The DRIVETRAIN is ours — corridor's car has
+// Two groups, and they are not the same kind of thing. The DRIVETRAIN is ours — the game's car has
 // a speed and no crankshaft, so a gearbox turns one into the other, and these numbers are the only
 // description of it anywhere. The VOICING belongs to the engine script, which ships its own; the
 // panel's copies are what you get when ENGINE_VOICE_OVERRIDE is on, and their defaults below are
 // the GM LS's own values so that turning it on changes nothing until you move something.
 
 /**
- * Which engine, as an index into the generated catalog (packages/enginesim/wasm/engines.json,
+ * Which engine, as an index into the generated catalog (vendor/arcade/packages/enginesim/wasm/engines.json,
  * sorted by path). 5 is the Subaru EJ25. An index rather than a name because this panel is sliders and
  * numbers all the way down — and being able to walk through twenty engines with an arrow key while
  * driving is most of the point.
@@ -798,7 +798,7 @@ export let FLY_SPEED = 0.8
  * WAS 40, WHICH IS WHY IT FELT TOO FAST: 40 x 0.8 = 32 m/s, or 72 mph, a metre off the kerb
  * whatever the zoom said. At 12 it is 9.6 m/s near the ground and — measured, not assumed — it
  * changes nothing at all above 12 m, because the floor only binds when the camera is closer in
- * than this (probes/corridor-flyspeed.mjs asserts both halves).
+ * than this (probes/flyspeed.mjs asserts both halves).
  */
 export let FLY_SPEED_FLOOR_M = 12
 /** What Shift multiplies movement, lift, zoom and Q/E look by. */
@@ -915,7 +915,7 @@ export let CAR_GRASS_DRAG = 0.4
 export let CAR_GRASS_GRIP_SCALE = 0.7
 export let CAR_GRASS_TRACTION = 0.85
 export let CAR_GRASS_STEER = 0.9
-/** metres past the paved edge before the tyres count as on grass (corridor: the edge is a hard line) */
+/** metres past the paved edge before the tyres count as on grass (the game: the edge is a hard line) */
 export let CAR_GRASS_EDGE = 0.3
 export let CAR_BUMP_BOUNCE = 0.25
 // ride
@@ -925,7 +925,7 @@ export let CAR_CLIMB_SLOPE = 1.5
 // jumps (Stunts homages; the mechanics are stuntin's, the switches default off here)
 /** below this speed the car follows the ground down instead of leaving it (m/s) */
 export let CAR_LAUNCH_MIN_SPEED = 20
-/** the ground must fall this far away from under the wheels (m) before the car is airborne (corridor: hysteresis over stuntin's one-tick test, which a faceted lidar strip would trip every station) */
+/** the ground must fall this far away from under the wheels (m) before the car is airborne (the game: hysteresis over stuntin's one-tick test, which a faceted lidar strip would trip every station) */
 export let CAR_LAUNCH_GAP = 0.9
 /** m/s: the most vertical speed a crest can impart. A suspension cannot throw a car harder than
  *  this however steep the height data pretends to be; 8 m/s is a 3.3 m jump. */
@@ -1498,7 +1498,7 @@ export let HEADLIGHT_BOUNCE = 3
  */
 export let WET_STREAK = 0.15
 export let WET_SPREAD = 1.25
-// --- splat corridors (splats.ts, docs/corridor/PLAN-SPLAT-CORRIDORS.md) -----------------------
+// --- splat road bands (splats.ts, docs/PLAN-SPLAT-ROUTES.md) -----------------------
 /** 0 turns the captured world off entirely and leaves the built one */
 /** show the name of the road you are on while driving; 0 hides it */
 export let HUD_ROAD_NAME = 1
@@ -1529,7 +1529,7 @@ export let SPLAT_ENABLED = 1
  * This was off by default for a while, because it appeared to break the site and I could not
  * reproduce it. Both halves of that turned out to be something else: the break was a backtick in
  * a GLSL comment taking the whole module down, and the crashes I kept hitting while investigating
- * were a 112 km2 lidar bake saturating the machine. `probes/corridor-splatseam.mjs` measures it
+ * were a 112 km2 lidar bake saturating the machine. `probes/splatseam.mjs` measures it
  * now -- inside a capture envelope it dissolves 83.6% of the frame at full strength and 41.9% at
  * half, and away from one it changes 0.0% -- so it is a crossfade rather than a switch, and it is
  * back on.
@@ -1869,7 +1869,7 @@ export let DRESS_WINDOW_WALLS = 3
 export let BUILDING_FACADES = 1
 export let FACADE_TEXTURE_PX = 512
 
-// --- physics (docs/corridor/PLAN-PHYSICS.md) ------------------------------------------------------
+// --- physics (docs/PLAN-PHYSICS.md) ------------------------------------------------------
 /**
  * Rapier, on or off.
  *
@@ -2180,13 +2180,13 @@ export function physCarProfile(fallback?: DriveProfile): DriveProfile {
  * Only the one matching the car you are driving is built, and the tab is invalidated when the car
  * is (re)built so the next open picks the right one. `undefined` means always.
  */
-export interface CorridorSection extends TuneSection {
+export interface GameSection extends TuneSection {
   when?: () => boolean
 }
 
 export interface TuneTab {
   name: string
-  sections: CorridorSection[]
+  sections: GameSection[]
 }
 
 /**
@@ -2194,8 +2194,8 @@ export interface TuneTab {
  * when the hero car is the Rapier actor. The keys are built once above so persistence, Copy JSON
  * and the site file all know them; this just groups them for the panel.
  */
-export function physCarSections(): CorridorSection[] {
-  const out: CorridorSection[] = PHYS_CAR_GROUPS.map((g) => ({
+export function physCarSections(): GameSection[] {
+  const out: GameSection[] = PHYS_CAR_GROUPS.map((g) => ({
     title: `physics car — ${g.title}`,
     collapsed: g.collapsed,
     when: () => CAR_MODEL === 'physics',

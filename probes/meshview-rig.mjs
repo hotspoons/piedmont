@@ -24,7 +24,7 @@ if (!(await stat(GLB).catch(() => null))) { console.error(`no glb at ${GLB}`); p
 
 // Serve the glb and the Draco decoder from one origin, so decodeAudioData's cousin — the
 // DRACOLoader — can actually fetch its wasm.
-const VENDOR = path.resolve('apps/corridor/public/assets/vendor/draco')
+const VENDOR = path.resolve('apps/game/public/assets/vendor/draco')
 const server = createServer(async (req, res) => {
   const p = decodeURIComponent((req.url ?? '/').split('?')[0])
   try {
@@ -70,7 +70,7 @@ const shellStub = {
 }
 
 const bundle = await build({
-  stdin: { contents: "export * from './meshview'", resolveDir: 'apps/corridor/src/editor/library', loader: 'ts' },
+  stdin: { contents: "export * from './meshview'", resolveDir: 'apps/game/src/editor/library', loader: 'ts' },
   bundle: true, format: 'iife', globalName: 'MV', write: false, target: 'es2020',
   plugins: [shellStub],
   /*

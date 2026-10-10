@@ -1,4 +1,4 @@
-# Build and publish ghcr.io/hotspoons/blender, both architectures, each on its OWN native runner.
+# Build and publish ghcr.io/hotspoons/piedmont-blender, both architectures, each on its OWN native runner.
 #
 # NATIVE, NOT QEMU. Every other image in this repo builds arm64 under emulation on an amd64 runner,
 # which is fine for `npm ci` and hopeless for a C++ project this size: arm64 has no official
@@ -18,13 +18,13 @@ on:
   push:
     branches: [main]
     paths:
-      - 'tools/blender/**'
+      - 'pipelines/blender/**'
       - '.devcontainer/blender.env'
       - '.github/workflows/blender-image.yml'
   workflow_dispatch:
 
 env:
-  IMAGE: ghcr.io/hotspoons/blender
+  IMAGE: ghcr.io/hotspoons/piedmont-blender
 
 concurrency:
   group: blender-image-${{ github.ref }}
@@ -80,8 +80,8 @@ jobs:
       - id: build
         uses: docker/build-push-action@v6
         with:
-          context: tools/blender
-          file: tools/blender/Dockerfile
+          context: pipelines/blender
+          file: pipelines/blender/Dockerfile
           platforms: ${{ matrix.platform }}
           build-args: |
             BLENDER_VERSION=${{ steps.v.outputs.version }}

@@ -1,6 +1,6 @@
 // Listen to the engine you are editing, from the form.
 //
-// docs/corridor/PLAN-VEHICLES-ACTORS.md §4 item 2: "the enginesim setup picker and its audio mix,
+// docs/PLAN-VEHICLES-ACTORS.md §4 item 2: "the enginesim setup picker and its audio mix,
 // with a **listen** button — audio you cannot hear while tuning is audio nobody tunes."
 //
 // WHY THIS IS A FILE AND NOT FOUR LINES IN THE FORM. An `AudioContext` is a resource with a
@@ -12,7 +12,7 @@
 //
 // IT IS A DYNO, NOT THE GAME'S PATH. `setFree({ dyno: true })` hands the drivetrain back to
 // engine-sim so it revs against its own inertia — which is what you want on a bench and is NOT what
-// the game does (`enginesound.ts` drives rpm through corridor's own gearbox). Tuning against the
+// the game does (`enginesound.ts` drives rpm through the game's own gearbox). Tuning against the
 // dyno and playing against the gearbox is the right split: the bench is for the engine's voice, the
 // game is for what the car does with it.
 //
@@ -25,7 +25,7 @@ import { EngineSim, ENGINES, RPM_PER_RAD, enginesByGroup, type EngineProfile } f
  * An engine script's rev range, in RPM.
  *
  * `EngineProfile.redline` is RADIANS PER SECOND, and `RPM_PER_RAD` is 60/2π ≈ 9.549 — so RPM is
- * rad/s **times** it. The doc comment on that field in `packages/enginesim/src/EngineSim.ts` says
+ * rad/s **times** it. The doc comment on that field in `vendor/arcade/packages/enginesim/src/EngineSim.ts` says
  * "divide by RPM_PER_RAD for RPM", which is backwards: a 7000 rpm engine declares 733 rad/s, and
  * 733 × 9.549 is 7000 while 733 ÷ 9.549 is 77. Nothing depended on it before this file, which is
  * presumably why it survived.
@@ -104,7 +104,7 @@ export function engineSetups(): string[] {
  * The bench. One at a time, deliberately.
  *
  * A second engine started while the first is running is two combustion simulations in the audio
- * thread — about 90% of a core, measured on the machine `packages/enginesim/scripts/measure.mjs`
+ * thread — about 90% of a core, measured on the machine `vendor/arcade/packages/enginesim/scripts/measure.mjs`
  * was run on — and the second one is the only one anybody wanted. So `listen` stops whatever was
  * playing before it starts.
  */

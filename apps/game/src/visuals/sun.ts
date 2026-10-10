@@ -13,7 +13,7 @@
 // which is what "adjust the arc" wants; `tiltDeg` then exaggerates it for a world that is not
 // pretending to be Maryland.
 //
-// Everything here is pure: no three, no DOM, so probes/corridor-sun.mjs can check it against
+// Everything here is pure: no three, no DOM, so probes/sun.mjs can check it against
 // published sunrise and transit times.
 
 const RAD = Math.PI / 180
@@ -93,7 +93,7 @@ export function sunPosition(ms: number, latDeg: number, lonDeg: number): SunPos 
   // NOAA's own branch, which is easy to get mirrored: BEFORE solar noon (hour angle negative) the
   // sun is in the east and the arccos is measured the other way round. Getting it backwards still
   // puts the sun due south at noon and still gives the right elevations all day — it only shows up
-  // as sunrise in the west, which is why probes/corridor-sun.mjs checks the equinox horizons.
+  // as sunrise in the west, which is why probes/sun.mjs checks the equinox horizons.
   let azimuth: number
   const denom = Math.cos(lat) * Math.sin(zenith * RAD)
   if (Math.abs(denom) > 1e-9) {

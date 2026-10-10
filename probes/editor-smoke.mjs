@@ -15,13 +15,13 @@ p.on('console', (m) => { if (m.type() === 'error' && !/404|Failed to load resour
 p.on('dialog', (d) => d.accept())
 
 await p.goto(`http://localhost:5207/editor.html#${slug}:areas`, { waitUntil: 'load' })
-await p.waitForFunction(() => document.querySelector('#status')?.textContent === '' && !!window.corridor?.site, null, { timeout: 300000 })
+await p.waitForFunction(() => document.querySelector('#status')?.textContent === '' && !!window.piedmont?.site, null, { timeout: 300000 })
 await p.waitForTimeout(1200)
 let bad = 0
 const check = (name, ok, detail = '') => { console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  ' + detail : ''}`); if (!ok) bad++ }
 
-check('site loaded', await p.evaluate(() => !!window.corridor.site), await p.evaluate(() => window.corridor.site.manifest.slug))
-check('areas seeded', (await p.evaluate(() => window.corridor.areas.doc.areas.length)) > 0, `${await p.evaluate(() => window.corridor.areas.doc.areas.length)} areas`)
+check('site loaded', await p.evaluate(() => !!window.piedmont.site), await p.evaluate(() => window.piedmont.site.manifest.slug))
+check('areas seeded', (await p.evaluate(() => window.piedmont_bake.areas.doc.areas.length)) > 0, `${await p.evaluate(() => window.piedmont_bake.areas.doc.areas.length)} areas`)
 
 for (const [key, mode] of [['1', 'areas'], ['2', 'place'], ['3', 'grow'], ['4', 'structures']]) {
   await p.keyboard.press(key)
@@ -32,7 +32,7 @@ for (const [key, mode] of [['1', 'areas'], ['2', 'place'], ['3', 'grow'], ['4', 
 
 // the area detail panel is where the new keys live
 await p.keyboard.press('1')
-await p.evaluate(() => window.corridor.areas.select(window.corridor.areas.doc.areas[0].id))
+await p.evaluate(() => window.piedmont_bake.areas.select(window.piedmont_bake.areas.doc.areas[0].id))
 await p.waitForTimeout(400)
 const fields = await p.evaluate(() => [...document.querySelectorAll('#body .field span:first-child')].map((s) => s.textContent))
 check('area panel has the new keys', ['markings', 'centre line', 'ground cover'].every((k) => fields.includes(k)), fields.length + ' fields')
@@ -40,9 +40,9 @@ check('area panel has the new keys', ['markings', 'centre line', 'ground cover']
 // generate, then save through the real button
 await p.keyboard.press('3')
 await p.waitForTimeout(300)
-await p.evaluate(async () => { await window.corridor.grow.run(window.corridor.site, window.corridor.place.assets) })
+await p.evaluate(async () => { await window.piedmont.grow.run(window.piedmont.site, window.piedmont.place.assets) })
 await p.waitForTimeout(1500)
-const placed = await p.evaluate(() => window.corridor.place.doc.items.length)
+const placed = await p.evaluate(() => window.piedmont.place.doc.items.length)
 check('grow places items', placed > 0, `${placed} items`)
 
 await p.keyboard.down('Control'); await p.keyboard.press('s'); await p.keyboard.up('Control')
@@ -55,24 +55,24 @@ check('save writes a file', /saved/.test(st ?? ''), st ?? '')
 // the whole site through another agent's buildSite — so it is worth running before a handoff.
 if (process.argv.includes('--preview')) {
   await p.evaluate(() => document.querySelector('#preview').click())
-  await p.waitForFunction(() => window.corridor?.preview?.open === true, null, { timeout: 600000 })
+  await p.waitForFunction(() => window.piedmont?.preview?.open === true, null, { timeout: 600000 })
   await p.waitForTimeout(3000)
-  check('preview opens', await p.evaluate(() => window.corridor.preview.open))
+  check('preview opens', await p.evaluate(() => window.piedmont.preview.open))
   check('preview hides the editor overlays', await p.evaluate(() =>
-    window.corridor.scene.children.filter((c) => c.userData.editorOverlay).every((c) => !c.visible)))
-  check('preview shows the trees', await p.evaluate(() => window.corridor.site.layers.trees?.visible === true))
-  check('preview renders placements', await p.evaluate(() => window.corridor.site.layers.placements.visible === true))
+    window.piedmont.scene.children.filter((c) => c.userData.editorOverlay).every((c) => !c.visible)))
+  check('preview shows the trees', await p.evaluate(() => window.piedmont.site.layers.trees?.visible === true))
+  check('preview renders placements', await p.evaluate(() => window.piedmont.site.layers.placements.visible === true))
   // Read the NUMBER, not the word. The first version of this asserted /mph/ against the HUD and
   // passed on "0 mph   pavement" — i.e. it reported a car that had not moved as a car that moves.
   // Written twenty minutes after I warned main about exactly this pattern.
-  const before = await p.evaluate(() => window.corridor.preview.car?.speed ?? 0)
+  const before = await p.evaluate(() => window.piedmont.preview.car?.speed ?? 0)
   await p.keyboard.down('KeyW'); await p.waitForTimeout(6000); await p.keyboard.up('KeyW')
-  const after = await p.evaluate(() => ({ speed: window.corridor.preview.car?.speed ?? 0, hud: document.querySelector('.pv-hud')?.textContent ?? '' }))
+  const after = await p.evaluate(() => ({ speed: window.piedmont.preview.car?.speed ?? 0, hud: document.querySelector('.pv-hud')?.textContent ?? '' }))
   check('the car moves', after.speed > 1, `${before.toFixed?.(2) ?? before} -> ${after.speed.toFixed(2)} m/s  hud "${after.hud.trim()}"`)
   await p.keyboard.press('Escape')
   await p.waitForTimeout(800)
   check('preview closes and restores the overlays', await p.evaluate(() =>
-    window.corridor.preview.open === false && window.corridor.scene.children.some((c) => c.userData.editorOverlay && c.visible)))
+    window.piedmont.preview.open === false && window.piedmont.scene.children.some((c) => c.userData.editorOverlay && c.visible)))
 }
 
 check('no page errors', errs.length === 0, errs.slice(0, 3).join(' | '))

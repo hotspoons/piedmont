@@ -1,6 +1,6 @@
 """Imagery on the site's UTM lattice: NAIP at 30 cm in the United States, Sentinel-2 at 10 m elsewhere.
 
-TWO NAIP SOURCES since 2026-10-10, chosen by CORRIDOR_NAIP_SOURCE (auto | pc | usgs; default auto):
+TWO NAIP SOURCES since 2026-10-10, chosen by PIEDMONT_NAIP_SOURCE (auto | pc | usgs; default auto):
 
   pc     Microsoft's Planetary Computer: the USDA quarter-quad COGs, found by STAC search and read
          over HTTP range requests (`naip_pc.py`, which says why and what was measured). PRIMARY.
@@ -20,7 +20,7 @@ cycle is 60 cm and some states 30 cm, so 0.3 is at or past the source and never 
 `bandIds=0,1,2` is passed explicitly because the service carries a fourth NIR band and we want
 natural colour, not whatever the default rendering rule feels like today.
 
-exportImage caps at 4000 px a side, so the corridor is fetched as 1200 m tiles and stitched. The
+exportImage caps at 4000 px a side, so the road band is fetched as 1200 m tiles and stitched. The
 response JPEGs are cached; a re-run never leaves the machine.
 
 OUTSIDE THE UNITED STATES there is no NAIP, and the way the service says so is the trap — see
@@ -69,7 +69,7 @@ S2_RES = 10.0
 # different season, which would show snow on a pass that is dry today.
 S2_LOOKBACK_DAYS = 60
 session = requests.Session()
-session.headers["User-Agent"] = "apex-conduit corridor (github.com/hotspoons)"
+session.headers["User-Agent"] = "piedmont (github.com/hotspoons)"
 
 
 def _get_with_retry(url: str, params: dict, timeout: int, tries: int = 9, session: requests.Session | None = None):
@@ -112,13 +112,13 @@ def _thread_session() -> requests.Session:
 
 
 def source_choice() -> str:
-    """CORRIDOR_NAIP_SOURCE: `pc`, `usgs`, or `auto` (the default, and anything unrecognised)."""
-    v = os.environ.get("CORRIDOR_NAIP_SOURCE", "auto").strip().lower()
+    """PIEDMONT_NAIP_SOURCE: `pc`, `usgs`, or `auto` (the default, and anything unrecognised)."""
+    v = os.environ.get("PIEDMONT_NAIP_SOURCE", "auto").strip().lower()
     return v if v in ("auto", "pc", "usgs") else "auto"
 
 
 def _jobs(n: int | None = None) -> int:
-    return int(n) if n is not None else int(os.environ.get("CORRIDOR_NAIP_JOBS", "6") or "6")
+    return int(n) if n is not None else int(os.environ.get("PIEDMONT_NAIP_JOBS", "6") or "6")
 
 
 def _atomic_write(path: Path, data: bytes) -> None:
@@ -148,7 +148,7 @@ def fetch_tiles_parallel(tasks, jobs: int | None = None, label: str = "naip") ->
     The service averages ~40 s for a 4000x4000 tile and the tiles are independent, so a 44-tile
     shard block spent half an hour mostly waiting on one request at a time. The caller still writes
     the mosaic/site raster serially from the cache afterwards, because one GeoTIFF has one writer.
-    `CORRIDOR_NAIP_JOBS` caps the concurrency (default 6) so twelve shards do not open a hundred
+    `PIEDMONT_NAIP_JOBS` caps the concurrency (default 6) so twelve shards do not open a hundred
     sockets at USGS at once.
     """
     missing = [(h, p) for h, p in tasks if not h.exists()]
@@ -156,7 +156,7 @@ def fetch_tiles_parallel(tasks, jobs: int | None = None, label: str = "naip") ->
 
 
 def _pool(work: list, jobs: int | None, label: str) -> list:
-    """Run the callables in `work` on at most `jobs` threads (CORRIDOR_NAIP_JOBS, default 6),
+    """Run the callables in `work` on at most `jobs` threads (PIEDMONT_NAIP_JOBS, default 6),
     printing progress; return their results. The first failure is raised."""
     if not work:
         return []
@@ -278,7 +278,7 @@ def year_policy(frame: Frame, area_bbox) -> "naip_pc.YearPolicy | None":
         pol = naip_pc.year_policy(frame, tuple(area_bbox), tries=naip_pc.TRIES if mode == "pc" else naip_pc.SHORT_TRIES)
     except Exception as exc:
         if mode == "pc":
-            raise BakeFault(f"naip: CORRIDOR_NAIP_SOURCE=pc and the year could not be chosen: {exc}") from exc
+            raise BakeFault(f"naip: PIEDMONT_NAIP_SOURCE=pc and the year could not be chosen: {exc}") from exc
         print(f"  naip    Planetary Computer unreachable for the year choice ({exc})", flush=True)
         return None
     cov = pol.coverage.get("by_state") or {}
@@ -288,7 +288,7 @@ def year_policy(frame: Frame, area_bbox) -> "naip_pc.YearPolicy | None":
 
 
 def fetch_tiles(frame: Frame, tiles: list[Tile], label: str = "naip", jobs: int | None = None, policy=None) -> dict:
-    """Make sure every tile has a cached piece, from whichever source CORRIDOR_NAIP_SOURCE allows.
+    """Make sure every tile has a cached piece, from whichever source PIEDMONT_NAIP_SOURCE allows.
 
     `auto`: Planetary Computer first, with SHORT patience (about two minutes of 5xx); when it fails
     — the search, or a tile read — a breaker trips and every remaining tile goes to the ImageServer
@@ -306,7 +306,7 @@ def fetch_tiles(frame: Frame, tiles: list[Tile], label: str = "naip", jobs: int 
             items = naip_pc.search(frame.bbox_wgs(min(xs), min(ys), max(xs), max(ys)), tries=naip_pc.TRIES if mode == "pc" else naip_pc.SHORT_TRIES)
         except Exception as exc:
             if mode == "pc":
-                raise BakeFault(f"naip: CORRIDOR_NAIP_SOURCE=pc and the Planetary Computer search failed: {exc}") from exc
+                raise BakeFault(f"naip: PIEDMONT_NAIP_SOURCE=pc and the Planetary Computer search failed: {exc}") from exc
             breaker["down"] = f"search failed: {exc}"
             print(f"  {label}    Planetary Computer unreachable ({exc}); the USGS ImageServer serves these tiles", flush=True)
         if items == [] and mode == "auto":
@@ -324,7 +324,7 @@ def fetch_tiles(frame: Frame, tiles: list[Tile], label: str = "naip", jobs: int 
                 return "pc"
             except Exception as exc:
                 if mode == "pc":
-                    raise BakeFault(f"naip: CORRIDOR_NAIP_SOURCE=pc and tile {t.stem} could not be read: {exc}") from exc
+                    raise BakeFault(f"naip: PIEDMONT_NAIP_SOURCE=pc and tile {t.stem} could not be read: {exc}") from exc
                 with lock:
                     if breaker["down"] is None:
                         breaker["down"] = str(exc)
@@ -562,7 +562,7 @@ def fetch_horizon_image(frame: Frame, out: Path, bbox: tuple[float, float, float
                 return None
         except Exception as exc:
             if mode == "pc":
-                raise BakeFault(f"horizon imagery: CORRIDOR_NAIP_SOURCE=pc and the Planetary Computer failed: {exc}") from exc
+                raise BakeFault(f"horizon imagery: PIEDMONT_NAIP_SOURCE=pc and the Planetary Computer failed: {exc}") from exc
             print(f"  horizon Planetary Computer failed ({exc}); asking the USGS ImageServer", flush=True)
     xmin, ymin, xmax, ymax = bbox
     r = _get_with_retry(

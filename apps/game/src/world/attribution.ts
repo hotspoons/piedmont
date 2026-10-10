@@ -10,7 +10,7 @@
 //                      name in this world comes from.
 //   Macrostrat         CC-BY 4.0. Also a licence condition. Only shown when a site actually
 //                      carries geology, which most do not.
-//   Meta / WRI canopy  CC-BY 4.0, used only where lidar does not reach (corridor/canopy.py).
+//   Meta / WRI canopy  CC-BY 4.0, used only where lidar does not reach (piedmont_bake/canopy.py).
 //   Copernicus         GLO-30 DEM and Sentinel-2, for sites outside the United States.
 //   USGS / USDA        3DEP lidar, NAIP imagery, LANDFIRE vegetation. Public domain as US
 //                      federal works, so not a condition — but a world made of someone's survey

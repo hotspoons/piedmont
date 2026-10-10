@@ -5,7 +5,7 @@
 // something at a point for a given condition. We need these kinds of livability helpers, and these
 // need to be advertised to the MCP tools for the editor as well."*
 //
-// THE ROWS ARE THE EDITOR'S OWN. `worldThings` (apps/corridor/src/game/world/worldthings.ts) turns
+// THE ROWS ARE THE EDITOR'S OWN. `worldThings` (apps/game/src/game/world/worldthings.ts) turns
 // a world's documents into ids, descriptions and snippets, and it is imported from the app's source
 // here — Node runs it with its types stripped — rather than copied. A copy of the snippets would be
 // a second answer to "what does a zone row insert" and the two would part company the first time
@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url'
 import { soundSlots } from './vocab.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const APP = path.resolve(HERE, '../../apps/corridor/src')
+const APP = path.resolve(HERE, '../../apps/game/src')
 
 /*
  * LOADED WHEN ASKED, not at the top. A pod missing the app's source (an image built before the

@@ -1,10 +1,10 @@
 """What the road was blasted through: Macrostrat geologic map units along the spine.
 
 Macrostrat merges state and national geologic maps at several scales and serves the units under a
-point. Sampled every `step_m` along the corridor and de-duplicated by map unit, this is the list
+point. Sampled every `step_m` along the road band and de-duplicated by map unit, this is the list
 of formations the cut faces expose — "Rockwell Formation: interbedded gray silty shale, light gray
 to tan sandstone" is a prop brief in itself. The polygons at the photo point are saved too so the
-unit boundaries can be drawn against the corridor.
+unit boundaries can be drawn against the road band.
 
 Credit Macrostrat (CC-BY) wherever this is shown.
 """
@@ -23,7 +23,7 @@ from .geo import Frame
 
 API = "https://macrostrat.org/api/v2/geologic_units/map"
 session = requests.Session()
-session.headers["User-Agent"] = "apex-conduit corridor (github.com/hotspoons)"
+session.headers["User-Agent"] = "piedmont (github.com/hotspoons)"
 KEEP = ("map_id", "source_id", "name", "strat_name", "age", "lith", "descrip", "comments", "b_age", "t_age", "b_int_name", "t_int_name", "color")
 
 

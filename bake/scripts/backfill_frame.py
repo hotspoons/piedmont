@@ -5,9 +5,9 @@ anchor without re-baking or re-exporting anything. Writes atomically; touches on
 """
 import json, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-from corridor.geo import Frame
+from piedmont_bake.geo import Frame
 
-root = pathlib.Path('/workspaces/apex-conduit/tools/corridor/data/sites')
+root = pathlib.Path('/workspaces/piedmont/data/sites')
 n = 0
 for mf in sorted(root.glob('*/web/manifest.json')):
     m = json.loads(mf.read_text())

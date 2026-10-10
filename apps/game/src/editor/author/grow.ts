@@ -1,4 +1,4 @@
-// Mode 3: run the autogen rules over the corridor, then override whatever they got wrong.
+// Mode 3: run the autogen rules over the road band, then override whatever they got wrong.
 //
 // The rules are in `autogen.ts`; this is the loop around them. What makes it a loop rather than a
 // one-shot is the bookkeeping, and it is the whole point of the mode:
@@ -19,11 +19,11 @@ import { confirm } from '../../ui/shell'
 import { el, slider } from './ui'
 
 const KNOBS: [keyof Params, string, number, number, number, string][] = [
-  ['max_lat_m', 'corridor ±m', 40, 300, 10, 'ignore footprints further than this from the centreline; the bake only reaches 300 m'],
+  ['max_lat_m', 'road band ±m', 40, 300, 10, 'ignore footprints further than this from the centreline; the bake only reaches 300 m'],
   ['keepout_real_m', 'keep-out m (real)', 0, 20, 0.5, 'how close a MEASURED footprint may come to a pavement edge. Small on purpose: a house is metres from its own driveway, and the bake says the building is there'],
   ['keepout_m', 'keep-out m (invented)', 0, 40, 1, 'how close INVENTED frontage may come. Larger, because it is a guess rather than a measurement'],
   ['min_area_m2', 'min m²', 10, 300, 5, 'below this a footprint is map noise, not a building — the first decile is 13 m²'],
-  ['max_items', 'max items', 100, 15000, 100, 'ceiling on generated items. The editor draws one object per placement, and crofton-crownsville has 12,287 footprints inside its corridor'],
+  ['max_items', 'max items', 100, 15000, 100, 'ceiling on generated items. The editor draws one object per placement, and crofton-crownsville has 12,287 footprints inside its road band'],
   ['scale_min', 'fit min ×', 0.3, 1, 0.05, 'how far DOWN a catalog asset may be scaled to match a footprint before it is the wrong object'],
   ['scale_max', 'fit max ×', 1, 3, 0.05, 'how far UP a catalog asset may be scaled before it is the wrong object'],
   ['invent_spacing_m', 'invent every m', 30, 200, 5, 'mean frontage gap when inventing; jittered per site'],
@@ -103,7 +103,7 @@ export class GrowMode {
 
     root.append(el('h2', '', 'what the bake measured'))
     if (!buildings) {
-      root.append(el('p', 'dim', 'This site has no `buildings` in its manifest — re-export it (`python -m corridor export <slug>`) and reload.'))
+      root.append(el('p', 'dim', 'This site has no `buildings` in its manifest — re-export it (`python -m piedmont_bake export <slug>`) and reload.'))
       return
     }
     root.append(el('p', 'dim', `${buildings} footprints · ${landuse} land-use polygons · ${pois} points of interest`))
@@ -211,7 +211,7 @@ export class GrowMode {
     cb.checked = this.params.invent
     cb.onchange = () => { this.params.invent = cb.checked; this.onChange() }
     inv.append(el('span', '', 'invent frontage'), cb)
-    inv.title = 'AUTOGEN.md R5: where the corridor is bare, seed buildings along both verges — commercial near a junction, rural away from one. Off by default: it makes up a town that is not there.'
+    inv.title = 'AUTOGEN.md R5: where the road band is bare, seed buildings along both verges — commercial near a junction, rural away from one. Off by default: it makes up a town that is not there.'
     root.append(inv)
     for (const [key, label, min, max, step, note] of KNOBS) {
       if (key.startsWith('invent') && !this.params.invent) continue

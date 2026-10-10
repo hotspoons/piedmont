@@ -5,8 +5,8 @@ Two signals we already have, neither of which is a guess:
   LIDAR RETURN INTENSITY on ground-classified points inside the travelled lanes. Asphalt is a
   near-black target for a 1064 nm laser; concrete is bright. On Braddock I-70 the pavement median
   is ~5,900 (16-bit) against ~34,000 for the grass verge — a 6:1 gap — and it drifts 4,400–7,200
-  along the corridor as the surface ages and gets patched. Concrete would sit above ~15,000.
-  Intensity is per-project (sensor, gain), so thresholds are relative to the corridor's own verge.
+  along the road band as the surface ages and gets patched. Concrete would sit above ~15,000.
+  Intensity is per-project (sensor, gain), so thresholds are relative to the road band's own verge.
 
   NAIP COLOUR inside the same lane region: brightness and chroma. Fresh asphalt is dark and
   neutral (~50-70), aged asphalt greys up toward 100-130, concrete is 140+ and slightly warm;
@@ -19,7 +19,7 @@ The output is a per-station record and a class per OSM segment:
 
     asphalt_new | asphalt_aged | asphalt_patched | concrete | chipseal | unknown
 
-That class is what the game maps to a texture set (tools/surfaces). The thresholds here are a
+That class is what the game maps to a texture set (pipelines/surfaces). The thresholds here are a
 FIRST CALIBRATION against one interstate; they belong in the manifest so a later fit can move them.
 """
 from __future__ import annotations
@@ -118,7 +118,7 @@ def _bin_median(values, bins, n: int, min_count: int):
     """`np.median` of `values` per bin 0..n-1, NaN where a bin holds fewer than `min_count`.
 
     The old code looped `for b in range(n)` and rebuilt `m = mask & (bins == b)` every time — n
-    full-array passes (3,089 for this corridor). One argsort by bin and one median per contiguous
+    full-array passes (3,089 for this road band). One argsort by bin and one median per contiguous
     group is the same answer in a single pass over the points, plus n tiny groups.
     """
     out = np.full(n, np.nan)
@@ -161,7 +161,7 @@ def measure(site_dir: Path) -> dict | None:
     rec = {"s": s_arr.round(1).tolist(), "lanes": [lanes_at(v) for v in s_arr], "osm_surface": [osm_surface_at(v) for v in s_arr]}
 
     # --- lidar intensity: ground returns inside the lanes, and on the verge for a reference -----
-    laz = site_dir / "lidar" / "corridor.laz"
+    laz = site_dir / "lidar" / "road_band.laz"
     if laz.exists():
         las = laspy.read(laz)
         c = np.asarray(las.classification)
@@ -231,7 +231,7 @@ def measure(site_dir: Path) -> dict | None:
     # --- the call ------------------------------------------------------------------------------
     # Lidar intensity is NOT comparable between projects (Sideling's MD_Western_1 pavement reads
     # 14,300 where Braddock's MD_Western_2 reads 5,900 for the same asphalt), so intensity only
-    # ever votes RELATIVE to this corridor's own median: darker than usual = newer binder, brighter
+    # ever votes RELATIVE to this road band's own median: darker than usual = newer binder, brighter
     # = older or concrete. Imagery brightness is absolute and decides concrete versus asphalt.
     # Chip seal does not happen on a motorway; the road class gates it.
     hw = {g["tags"].get("highway") for g in segs}

@@ -18,7 +18,7 @@
 //   4  NOTHING IS LOST. Type, leave the tab, come back, reload the page: it is still there. This
 //      is the one that matters — the rest is navigation, this is somebody's work.
 //
-//   node probes/corridor-editor-files.mjs
+//   node probes/editor-files.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

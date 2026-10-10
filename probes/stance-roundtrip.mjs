@@ -2,10 +2,10 @@ import { chromium } from 'playwright'
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 1200, height: 800 } })
 await page.goto('http://127.0.0.1:5185/#braddock-i70?season=summer', { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 180000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 180000 })
 // drive, look hard right at the embankment, hide the panel, capture the stance URL
 await page.keyboard.press('Tab')
-await page.evaluate(() => { const d = window.corridor.drive; d.yaw = -1.1; d.pitch = -0.15; d.car.speed = 0 })
+await page.evaluate(() => { const d = window.piedmont.drive; d.yaw = -1.1; d.pitch = -0.15; d.car.speed = 0 })
 await page.keyboard.press('m')
 await page.waitForTimeout(1500)
 await page.keyboard.press('c')
@@ -20,11 +20,11 @@ await page.goto('about:blank') // same URL but for the hash = a same-document na
 await page.goto(url, { waitUntil: 'commit', timeout: 180000 }) // swiftshader makes a second load slow
 for (let i = 0; i < 36; i++) {
   await page.waitForTimeout(5000)
-  const st = await page.evaluate(() => ({ status: document.querySelector('#status')?.textContent, ready: !!window.corridor }))
+  const st = await page.evaluate(() => ({ status: document.querySelector('#status')?.textContent, ready: !!window.piedmont }))
   console.log(i * 5, JSON.stringify(st))
   if (st.status === '' && st.ready) break
 }
 await page.waitForTimeout(2500)
 await page.screenshot({ path: process.argv[2] + '-b.png', timeout: 120000 })
-console.log(await page.evaluate(() => JSON.stringify({ drive: window.corridor.drive.on, yaw: window.corridor.drive.yaw, panelHidden: document.querySelector('#panel').classList.contains('hidden') })))
+console.log(await page.evaluate(() => JSON.stringify({ drive: window.piedmont.drive.on, yaw: window.piedmont.drive.yaw, panelHidden: document.querySelector('#panel').classList.contains('hidden') })))
 await browser.close()

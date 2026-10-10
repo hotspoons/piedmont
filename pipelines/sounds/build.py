@@ -1,15 +1,15 @@
-"""The corridor sound bank, cut from CC0 sources.
+"""The game's sound bank, cut from CC0 sources.
 
-    python3 -m venv tools/sounds/.venv && tools/sounds/.venv/bin/pip install soundfile numpy
-    tools/sounds/.venv/bin/python -I tools/sounds/build.py            # everything
-    tools/sounds/.venv/bin/python -I tools/sounds/build.py gun.fire   # one slot
-    tools/sounds/.venv/bin/python -I tools/sounds/build.py --list     # the slots and what feeds them
-    tools/sounds/.venv/bin/python -I tools/sounds/build.py --spectrograms  # a PNG per slot in .cache, to look at the cuts
+    python3 -m venv pipelines/sounds/.venv && pipelines/sounds/.venv/bin/pip install soundfile numpy
+    pipelines/sounds/.venv/bin/python -I pipelines/sounds/build.py            # everything
+    pipelines/sounds/.venv/bin/python -I pipelines/sounds/build.py gun.fire   # one slot
+    pipelines/sounds/.venv/bin/python -I pipelines/sounds/build.py --list     # the slots and what feeds them
+    pipelines/sounds/.venv/bin/python -I pipelines/sounds/build.py --spectrograms  # a PNG per slot in .cache, to look at the cuts
 
-Sources (tools/sounds/sources.json) are downloaded once into tools/sounds/.cache/ and cut into
-apps/corridor/public/sounds/<slot>/<name>.ogg (+ .mp3 for browsers without Vorbis), each mono,
+Sources (pipelines/sounds/sources.json) are downloaded once into pipelines/sounds/.cache/ and cut into
+apps/game/public/sounds/<slot>/<name>.ogg (+ .mp3 for browsers without Vorbis), each mono,
 44.1 kHz, trimmed to its onset, peak-normalised to -1 dBFS, with a short fade either end. The
-manifest apps/corridor/public/sounds/bank.json lists every slot with its clips (file, duration,
+manifest apps/game/public/sounds/bank.json lists every slot with its clips (file, duration,
 loop, relative gain); the game loads from the manifest, never from file names, and a vehicle or
 actor document overrides a slot with its own clips through the same shape. CREDITS.md is written
 from sources.json — add a source there, not here.
@@ -23,7 +23,7 @@ CUTTING. Kenney's one-shots are used as they are. The BigSoundBank shots (0437 B
 .357, 0397 Winchester, 0532 shotgun) and Tabasco's range recordings hold several shots per file;
 they are split on onsets (energy envelope jumping 8× over the preceding 200 ms, 300 ms apart) and
 each shot is cut to 450 ms with an exponential tail so a 10 Hz machine gun does not pile up tails.
-The tyres are Rich's own recordings (tools/sounds/own/README.md), his engines gated out of them
+The tyres are Rich's own recordings (pipelines/sounds/own/README.md), his engines gated out of them
 by `isolate_squeal`, cut into three loop levels and six skid passages — the BigSoundBank parking
 squeak this started with was "a mouse" (Rich, 2026-10-09). The missile
 launch is qubodup's CC0 rocket launch (OpenGameArt) under the SSE library's launching swooshes
@@ -45,10 +45,10 @@ from scipy import signal
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 CACHE = HERE / '.cache'
-OUT = ROOT / 'apps' / 'corridor' / 'public' / 'sounds'
+OUT = ROOT / 'apps' / 'game' / 'public' / 'sounds'
 SR = 44100
 PEAK = 10 ** (-1 / 20)  # -1 dBFS
-UA = {'User-Agent': 'Mozilla/5.0 (corridor sound bank build)'}
+UA = {'User-Agent': 'Mozilla/5.0 (piedmont sound bank build)'}
 
 SOURCES = json.loads((HERE / 'sources.json').read_text())['sources']
 
@@ -295,7 +295,7 @@ def own(name: str) -> np.ndarray:
 
 
 def slot_tire_squeal_loop():
-    """Rich's own tyres, isolated from his engines (tools/sounds/own). The BigSoundBank parking
+    """Rich's own tyres, isolated from his engines (pipelines/sounds/own). The BigSoundBank parking
     squeak this started with was, in his words, a mouse. Light is the Subaru scrubbing from
     outside the car, medium its tonal squeal, heavy the Lotus at the top of its pirouette."""
     light = make_loop(seconds(isolate_squeal(own('subaru-outside-a.wav'), (0.0, 0.5)), 1.0, 1.95))
@@ -487,7 +487,7 @@ def build(names: list[str], mp3: bool) -> None:
 
 
 def write_credits() -> None:
-    lines = ['# Sounds', '', 'Every clip under this directory is cut by `tools/sounds/build.py` from either a CC0 '
+    lines = ['# Sounds', '', 'Every clip under this directory is cut by `pipelines/sounds/build.py` from either a CC0 '
              '(public domain) recording — those cuts are CC0 too, and attribution is given because it is deserved — '
              'or from a recording Rich Siomporas made and holds the rights to (the tyres: `tire-*`), which ships with '
              'this game and is not free for anything else.', '']
@@ -496,7 +496,7 @@ def write_credits() -> None:
         for fid, f in s.get('files', {}).items():
             lines.append(f'  - #{fid} {f["name"]} <{f["url"]}>')
     lines += ['', 'The slot each clip serves is in `bank.json`; a world, vehicle or actor may replace any slot with '
-              'its own clips (see docs/corridor/SOUNDS.md).', '']
+              'its own clips (see docs/SOUNDS.md).', '']
     (OUT / 'CREDITS.md').write_text('\n'.join(lines))
 
 

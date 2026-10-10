@@ -1,10 +1,10 @@
-# corridor: bake real-road corridors (OSM + DEM + NAIP + lidar + geology) onto a volume, publish to R2.
+# piedmont-bake: bake real road bands (OSM + DEM + NAIP + lidar + geology) onto a volume, publish to R2.
 #
 # Pure-Python plus GDAL's CLI. Every dependency ships manylinux wheels for both amd64 and arm64
 # (rasterio, laspy, lazrs, shapely, pyproj, scipy), so — unlike the recon image — this builds
 # under QEMU in minutes and one workflow can emit both architectures. No CUDA, no compiler.
 #
-# Data never lives in the image. CORRIDOR_DATA is the mount (a PVC in the chart); sites.json
+# Data never lives in the image. PIEDMONT_DATA is the mount (a PVC in the chart); sites.json
 # rides along so a Job can bake without the photos, which stay on Rich's machine.
 FROM python:3.12-slim
 
@@ -16,7 +16,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt boto3
 
-# Khronos' `ktx` encoder, for the .ktx2 twins beside every baked .jpg (corridor/ktx2.py). Not a
+# Khronos' `ktx` encoder, for the .ktx2 twins beside every baked .jpg (piedmont_bake/ktx2.py). Not a
 # wheel and not vendored: scripts/fetch_ktx.sh pulls the release tarball for THIS architecture
 # into /app/.bin, which is where ktx2.encoder() looks. Without it a bake writes jpg only and the
 # manifest never says texture_ktx2 — the viewer would be right, and slower, and nothing would say
@@ -24,18 +24,18 @@ RUN pip install --no-cache-dir -r requirements.txt boto3
 COPY scripts/fetch_ktx.sh scripts/
 RUN bash scripts/fetch_ktx.sh
 
-COPY corridor/ corridor/
+COPY piedmont_bake/ piedmont_bake/
 COPY sites.json .
 
 RUN useradd -u 10001 -m app && mkdir -p /data && chown app /data
 USER 10001
 
-ENV CORRIDOR_DATA=/data \
-    CORRIDOR_SITES=/app/sites.json \
-    CORRIDOR_PYRAMID=1 \
-    CORRIDOR_KTX=/app/.bin/KTX-Software/bin/ktx \
+ENV PIEDMONT_DATA=/data \
+    PIEDMONT_SITES=/app/sites.json \
+    PIEDMONT_PYRAMID=1 \
+    PIEDMONT_KTX=/app/.bin/KTX-Software/bin/ktx \
     PYTHONUNBUFFERED=1
 VOLUME /data
 
-ENTRYPOINT ["python", "-m", "corridor"]
+ENTRYPOINT ["python", "-m", "piedmont_bake"]
 CMD ["report"]

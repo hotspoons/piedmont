@@ -36,8 +36,8 @@ from rasterio.transform import from_origin
 from shapely.geometry import box, mapping
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import BakeFault, naip, naip_pc  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import BakeFault, naip, naip_pc  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
 FRAME = Frame(32618, (355000.0, 4318000.0))
 AREA = (355000.0, 4318000.0, 355600.0, 4318600.0)  # 600 m at 0.6 m = 1000 px
@@ -135,7 +135,7 @@ class _Base(unittest.TestCase):
         self.dir = Path(self.tmp.name)
         self.cache = self.dir / "cache"
         naip_pc._SEARCHED.clear()
-        self.env = mock.patch.dict(os.environ, {"CORRIDOR_NAIP_SOURCE": "auto", "CORRIDOR_NAIP_JOBS": "2"})
+        self.env = mock.patch.dict(os.environ, {"PIEDMONT_NAIP_SOURCE": "auto", "PIEDMONT_NAIP_JOBS": "2"})
         self.env.start()
         self.sleeps: list[float] = []
         self.sleep = mock.patch("time.sleep", lambda s: self.sleeps.append(s))
@@ -173,7 +173,7 @@ class ItemChoiceTest(_Base):
         ])
 
     def bake(self):
-        from corridor import network_tiles
+        from piedmont_bake import network_tiles
 
         out = self.dir / "naip_1m.tif"
         with mock.patch.object(naip_pc, "_http_json", self.cat), self.usgs_never(), mock.patch.object(naip, "TILE_PX", 500):
@@ -227,7 +227,7 @@ class ItemChoiceTest(_Base):
         naip_pc._SEARCHED.clear()
         reads: list[str] = []
         real = naip_pc.warp_item
-        with mock.patch.dict(os.environ, {"CORRIDOR_NAIP_LEAF_ON_YEARS": "0"}), \
+        with mock.patch.dict(os.environ, {"PIEDMONT_NAIP_LEAF_ON_YEARS": "0"}), \
                 mock.patch.object(naip_pc, "warp_item", lambda it, *a, **k: reads.append(it.id) or real(it, *a, **k)):
             _out, meta = self.bake()
         self.assertTrue(reads, "pieces composed under the old rule were reused")
@@ -318,8 +318,8 @@ class LeafOnTest(unittest.TestCase):
 
     def test_leaf_on_two_years_older_beats_a_november_flight(self):
         with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("CORRIDOR_NAIP_LEAF_ON", None)
-            os.environ.pop("CORRIDOR_NAIP_LEAF_ON_YEARS", None)
+            os.environ.pop("PIEDMONT_NAIP_LEAF_ON", None)
+            os.environ.pop("PIEDMONT_NAIP_LEAF_ON_YEARS", None)
             va23 = self.item("va_2023_nov", "2023-11-13")
             va21 = self.item("va_2021_sep", "2021-09-10")
             md23 = self.item("md_2023_sep", "2023-09-01", 0.3)
@@ -333,9 +333,9 @@ class LeafOnTest(unittest.TestCase):
     def test_the_rule_is_configurable(self):
         va23 = self.item("va_2023_nov", "2023-11-13")
         va21 = self.item("va_2021_sep", "2021-09-10")
-        with mock.patch.dict(os.environ, {"CORRIDOR_NAIP_LEAF_ON_YEARS": "0"}):
+        with mock.patch.dict(os.environ, {"PIEDMONT_NAIP_LEAF_ON_YEARS": "0"}):
             self.assertEqual(self.order(va23, va21), ["va_2023_nov", "va_2021_sep"])
-        with mock.patch.dict(os.environ, {"CORRIDOR_NAIP_LEAF_ON": "5-11"}):
+        with mock.patch.dict(os.environ, {"PIEDMONT_NAIP_LEAF_ON": "5-11"}):
             self.assertEqual(self.order(va23, va21), ["va_2023_nov", "va_2021_sep"])  # November counts as leaf-on
             self.assertIn("months 5-11", naip_pc.ranking_rule())
 
@@ -356,7 +356,7 @@ class OneYearTest(_Base):
         return FakeCatalogue(feats)
 
     def bake(self, cat, env=None):
-        from corridor import network_tiles
+        from piedmont_bake import network_tiles
 
         out = self.dir / "naip_1m.tif"
         if out.exists():
@@ -399,13 +399,13 @@ class OneYearTest(_Base):
 
     def test_a_forced_year(self):
         cat = self.cat(("md_2023", ALL, "2023-07-12", GREEN, {}), ("md_2021", ALL, "2021-06-17", BLUE, {}))
-        meta, west, east, _ = self.bake(cat, {"CORRIDOR_NAIP_YEAR": "2021"})
+        meta, west, east, _ = self.bake(cat, {"PIEDMONT_NAIP_YEAR": "2021"})
         self.assertEqual(meta["year"]["year"], 2021)
         self.assertIn("forced", meta["year"]["why"])
         self.assertTrue(self.near(west, BLUE) and self.near(east, BLUE))
 
     def test_off_is_the_per_pixel_ranking(self):
-        meta, west, east, _ = self.bake(self.two_states(), {"CORRIDOR_NAIP_YEAR": "off"})
+        meta, west, east, _ = self.bake(self.two_states(), {"PIEDMONT_NAIP_YEAR": "off"})
         self.assertIsNone(meta["year"]["year"])
         self.assertTrue(self.near(east, GREEN), east)   # MD 2023, newest leaf-on
         self.assertTrue(self.near(west, PURPLE), west)  # VA 2021 leaf-on beats VA 2023 November
@@ -458,7 +458,7 @@ class OneYearTest(_Base):
 class CloudTest(_Base):
     """A cloud is bright where another flight over the same ground is not; a white roof is white in
     every flight. The Shaw cumulus in VA 2021-09-10 is the real case (12.6 ha, 81 brighter). Opt-in
-    (CORRIDOR_NAIP_CLOUDS=1): it also took water glint for cloud."""
+    (PIEDMONT_NAIP_CLOUDS=1): it also took water glint for cloud."""
 
     def compose(self, env=None):
         d = self.dir
@@ -474,7 +474,7 @@ class CloudTest(_Base):
         return px, [u.id for u in used]
 
     def test_a_cloud_is_a_hole_the_other_flight_fills_and_a_roof_is_not(self):
-        px, used = self.compose({"CORRIDOR_NAIP_CLOUDS": "1"})
+        px, used = self.compose({"PIEDMONT_NAIP_CLOUDS": "1"})
         self.assertEqual(px(355150, 4318450), (60, 100, 60))   # the 4.5 ha cloud: the other flight's ground
         self.assertEqual(px(355450, 4318450), (240, 240, 238))  # the 4 ha white roof, white in both: kept
         self.assertEqual(px(355450, 4318150), (235, 235, 232))  # a 0.8 ha cloud is let through (conservative)
@@ -483,7 +483,7 @@ class CloudTest(_Base):
 
     def test_the_cloud_mask_is_off_unless_asked(self):
         # it took Tidal Basin sun glint for a 33 ha cloud on the dc central block: opt-in only
-        os.environ.pop("CORRIDOR_NAIP_CLOUDS", None)
+        os.environ.pop("PIEDMONT_NAIP_CLOUDS", None)
         px, used = self.compose()
         self.assertEqual(px(355150, 4318450), (235, 235, 232))
         self.assertEqual(used, ["a"])
@@ -545,7 +545,7 @@ class FailureModeTest(_Base):
 
     def test_forced_pc_outage_is_a_fault(self):
         self.cat.fail = [RuntimeError("HTTP 504")] * 100
-        with mock.patch.dict(os.environ, {"CORRIDOR_NAIP_SOURCE": "pc"}), mock.patch.object(naip_pc, "_http_json", self.cat), self.usgs_never():
+        with mock.patch.dict(os.environ, {"PIEDMONT_NAIP_SOURCE": "pc"}), mock.patch.object(naip_pc, "_http_json", self.cat), self.usgs_never():
             with self.assertRaisesRegex(BakeFault, "Planetary Computer"):
                 naip.covered(FRAME, AREA)
         self.assertEqual(len(self.sleeps), naip_pc.TRIES - 1)  # full patience: nothing behind it
@@ -564,13 +564,13 @@ class FailureModeTest(_Base):
     def test_an_empty_control_is_not_an_answer(self):
         self.cat.features = []
         self.cat.control = False
-        with mock.patch.dict(os.environ, {"CORRIDOR_NAIP_SOURCE": "pc"}), mock.patch.object(naip_pc, "_http_json", self.cat):
+        with mock.patch.dict(os.environ, {"PIEDMONT_NAIP_SOURCE": "pc"}), mock.patch.object(naip_pc, "_http_json", self.cat):
             with self.assertRaisesRegex(BakeFault, "control"):
                 naip.covered(FRAME, AREA)
 
     def test_pc_down_and_usgs_up_serves_from_usgs(self):
         # the reverse fallback: the catalogue answers nothing for minutes, the ImageServer is fine
-        from corridor import network_tiles
+        from piedmont_bake import network_tiles
 
         self.cat.fail = [RuntimeError("HTTP 503")] * 100
         colourful = mock.Mock(status_code=200, headers={"content-type": "image/jpeg"}, content=_jpeg(None))

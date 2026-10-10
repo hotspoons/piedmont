@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # Anonymous Cloudflare quick tunnel to the dev server, for testing on a phone
-# or from anywhere. Starts `just bridge-dev` if nothing is listening on :5180
+# or from anywhere. Starts `just bridge-dev` if nothing is listening on :5185
 # yet (so it can also attach to a dev server you already have running), then
 # prints the public https URL and keeps streaming cloudflared's log.
 #
 #   just tunnel            # prints  ➜  TUNNEL: https://<random>.trycloudflare.com
-#   cat .tunnel-url.conduit   # the same URL, for scripts (.tunnel-url.<app>)
+#   cat .tunnel-url.game      # the same URL, for scripts (.tunnel-url.<app>)
 #
 # HTTPS matters: phones only expose motion sensors on secure origins.
 set -euo pipefail
-PORT="${PORT:-5180}"
+PORT="${PORT:-5185}"
 
 if ! (ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null) | grep -q ":$PORT "; then
   echo "no dev server on :$PORT — starting one (bridge enabled)"
-  APEX_BRIDGE="${APEX_BRIDGE:-apex-dev}" npm run dev -w "apps/${APP:-conduit}" >/dev/null 2>&1 &
+  APEX_BRIDGE="${APEX_BRIDGE:-apex-dev}" npm run dev -w "apps/${APP:-game}" >/dev/null 2>&1 &
   DEV=$!
   trap 'kill $DEV 2>/dev/null || true' EXIT
   for _ in $(seq 1 30); do

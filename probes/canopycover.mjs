@@ -1,6 +1,6 @@
 // Does the canopy rule already keep grass off a forest floor?
 //
-//   PORT=5201 SLUG=chesterfield-rd node probes/corridor-canopycover.mjs
+//   PORT=5201 SLUG=chesterfield-rd node probes/canopycover.mjs
 //
 // Chesterfield Rd is closed canopy end to end except a west clearing and the church at the east
 // (Rich). Under CHM > 3 m the verge must read as forest floor, not turf, and the grass generator
@@ -15,10 +15,10 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug && !!window.corridor.site.grass, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug && !!window.piedmont.site.grass, SLUG, { timeout: 300000 })
 
 console.log(JSON.stringify(await page.evaluate(() => {
-  const site = window.corridor.site, grass = site.grass, mod = window.corridor.THREE
+  const site = window.piedmont.site, grass = site.grass, mod = window.piedmont.THREE
   // walk the verge on a 2 m lattice and classify each cell the way grass.generate() does
   let verge = 0, underCanopy = 0, open = 0
   const bands = []
@@ -39,7 +39,7 @@ console.log(JSON.stringify(await page.evaluate(() => {
   }
   // and what the generator actually produced, with the camera parked mid-site
   const p = site.spineAt(site.manifest.spine.photo_s)
-  const cam = window.corridor.camera
+  const cam = window.piedmont.camera
   cam.position.set(p.pos.x, p.pos.y + 1.6, p.pos.z)
   const fwd = new mod.Vector3(p.dir.x, 0, p.dir.z).normalize()
   let g = 0

@@ -1,8 +1,8 @@
 // What the grass costs the CPU while driving, measured without the renderer in the way.
 //
-//   PORT=5201 SLUG=bowie-racetrack-rd SPEED=30 SECONDS=8 node probes/corridor-grasscpu.mjs
+//   PORT=5201 SLUG=bowie-racetrack-rd SPEED=30 SECONDS=8 node probes/grasscpu.mjs
 //
-// WHY THIS EXISTS. corridor-grassperf.mjs measures real frame time, which is the number that
+// WHY THIS EXISTS. grassperf.mjs measures real frame time, which is the number that
 // matters — but this dev box has no GPU (no /dev/dri, no nvidia), so Chromium falls back to
 // swiftshader, and at Rich's density (275 k blades × 11 triangles, DoubleSide) it renders about
 // ONE frame in ten seconds. Eight seconds of driving produced zero sampled frames. Frame time
@@ -28,12 +28,12 @@ page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
 // the app picks its site from location.hash; a new bake reorders index.json, so assert it
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug && !!window.corridor.site.grass, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug && !!window.piedmont.site.grass, SLUG, { timeout: 300000 })
 
 const result = await page.evaluate(async ({ speed, seconds, hz, ms }) => {
-  if (ms != null) window.corridor.tune.set('GRASS_MS_PER_FRAME', ms)
+  if (ms != null) window.piedmont.tune.set('GRASS_MS_PER_FRAME', ms)
   const THREEup = { x: 0, y: 1, z: 0 }
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const grass = site.grass
   // stop the app's own loop: frame() re-arms itself through rAF, so a no-op rAF ends it after the
   // frame in flight. Nothing else touches grass.update after that, so the eye path below is ours.
@@ -41,7 +41,7 @@ const result = await page.evaluate(async ({ speed, seconds, hz, ms }) => {
   window.requestAnimationFrame = () => 0
   await new Promise((r) => realRaf(() => realRaf(r)))
 
-  const camera = window.corridor.camera
+  const camera = window.piedmont.camera
   const eye = camera.position.clone()
   const fwd = camera.getWorldDirection(new (eye.constructor)())
   const step = speed / hz
@@ -111,8 +111,8 @@ const result = await page.evaluate(async ({ speed, seconds, hz, ms }) => {
     cards_mean: Math.round(cards.reduce((t, v) => t + v, 0) / cards.length),
     triangles_mean: Math.round(tris.reduce((t, v) => t + v, 0) / tris.length),
     tiles_cached: grass.counts.tiles,
-    ms_per_frame: window.corridor.tune.get('GRASS_MS_PER_FRAME'),
-    grass_radius: window.corridor.tune.get('GRASS_RADIUS'),
+    ms_per_frame: window.piedmont.tune.get('GRASS_MS_PER_FRAME'),
+    grass_radius: window.piedmont.tune.get('GRASS_RADIUS'),
   }
 }, { speed: SPEED, seconds: SECONDS, hz: HZ, ms: MS })
 

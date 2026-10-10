@@ -1,6 +1,6 @@
 // The same car, driven by Rapier instead of by the hand-written model.
 //
-// docs/corridor/PLAN-PHYSICS.md §2.2. `PHYS_CAR` picks which of the two the viewer is driving, and
+// docs/PLAN-PHYSICS.md §2.2. `PHYS_CAR` picks which of the two the viewer is driving, and
 // BOTH STAY — at least until the Stunts profile has been driven back to back with the model it was
 // ported from, because that comparison is the only real test of the port and no screenshot can make
 // it.
@@ -15,7 +15,7 @@
 // state is never read — it is the BODY, and this file poses it every frame from the rigid body's
 // own transform. That is a slightly odd object to hold and it is much the cheapest correct answer:
 // the alternative is extracting six hundred lines of mesh building into a third file, which would
-// also break `probes/corridor-carpose.mjs`, which reads two specific lines out of `car.ts` by name.
+// also break `probes/carpose.mjs`, which reads two specific lines out of `car.ts` by name.
 //
 // THE QUATERNION IS USED WHOLE. `Car.updateMesh` builds its orientation from yaw, then a pitch about
 // local Z and a roll about local X — an Euler chain that cannot express a car on its roof, which is
@@ -84,7 +84,7 @@ export class RapierCar implements DrivableCar {
    * Hold the car onto a surface that is not the ground — the inside of a loop, a banked corkscrew.
    *
    * `up` is in THREE's frame. The engine does the turning and the pulling (`Vehicle.stick`); what
-   * corridor knows, and the engine cannot, is WHICH surface you are on, which is why this is a
+   * the game knows, and the engine cannot, is WHICH surface you are on, which is why this is a
    * pass-through rather than something the vehicle works out for itself.
    */
   hold(up: { x: number; y: number; z: number }, dt: number, opts: { strength?: number; align?: number; pull?: number } = {}): void {

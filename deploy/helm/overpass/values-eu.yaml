@@ -2,9 +2,9 @@
 # Maryland release, which kept serving the whole time.
 #
 # Recorded here because this was assembled on the command line the first time and the flags are
-# not guessable: see docs/corridor/OVERPASS-PLANET.md for what each one cost in hours.
+# not guessable: see docs/OVERPASS-PLANET.md for what each one cost in hours.
 #
-#   helm upgrade --install overpass-eu tools/overpass/chart -n default -f tools/overpass/values-eu.yaml
+#   helm upgrade --install overpass-eu deploy/helm/overpass -n "$NAMESPACE" -f deploy/helm/overpass/values-eu.yaml
 #
 # BEFORE re-running this against an existing volume, read the note on useAreas in
 # chart/values.yaml. A container that dies anywhere in the entrypoint's && chain never reaches
@@ -37,11 +37,11 @@ resources:
   limits: { cpu: "16", memory: 32Gi }
 
 # Not exposed. Clients reach it in-cluster, and it goes into no client's list until
-# tools/overpass/verify.sh passes against it.
+# services/overpass/verify.sh passes against it.
 ingress:
   enabled: false
 
-# Adding regions to this instance (tools/overpass/README.md, "Adding a region to an instance").
+# Adding regions to this instance (services/overpass/README.md, "Adding a region to an instance").
 # Off until somebody wants it: turning it on restarts the pod. `primary` is the region this instance
 # was built from, which the delete filter defers to.
 regions:

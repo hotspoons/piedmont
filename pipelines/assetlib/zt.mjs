@@ -2,12 +2,12 @@
 // A thin client for the zip-ties agent harness on :8400, so work can be handed to a local model
 // instead of to Claude.
 //
-//   node tools/assetlib/zt.mjs agents
-//   node tools/assetlib/zt.mjs new --name Rigger
-//   node tools/assetlib/zt.mjs ask --dep dep_xxx --text "..."       # send and wait for the reply
-//   node tools/assetlib/zt.mjs ask --dep dep_xxx --file brief.md
-//   node tools/assetlib/zt.mjs say --dep dep_xxx --text "..."       # fire and forget
-//   node tools/assetlib/zt.mjs read --dep dep_xxx                   # last reply
+//   node pipelines/assetlib/zt.mjs agents
+//   node pipelines/assetlib/zt.mjs new --name Rigger
+//   node pipelines/assetlib/zt.mjs ask --dep dep_xxx --text "..."       # send and wait for the reply
+//   node pipelines/assetlib/zt.mjs ask --dep dep_xxx --file brief.md
+//   node pipelines/assetlib/zt.mjs say --dep dep_xxx --text "..."       # fire and forget
+//   node pipelines/assetlib/zt.mjs read --dep dep_xxx                   # last reply
 //
 // WHY THIS EXISTS. Rich: "I want it either scriptable, or more realistically done with a reasonably
 // sized model that can run on a high end consumer GPU... doesn't depend on a $200/mo Anthropic

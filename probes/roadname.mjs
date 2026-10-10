@@ -1,5 +1,5 @@
 // The readout names the road you are on — and it is the same road the physics has you on.
-//   PORT=5185 node probes/corridor-roadname.mjs [slug]
+//   PORT=5185 node probes/roadname.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -8,13 +8,13 @@ const p = await b.newPage({ viewport: { width: 700, height: 450 } })
 p.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await p.route('**/@vite/client', (r) => r.abort())
 await p.goto(`http://localhost:${PORT}/#${slug}?lite=1&fresh`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await p.waitForTimeout(3000)
 let fails = 0
 const ok = (what, cond, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++ }
 // the site's own answer for a point ON the spine, against the manifest's own name for it
 const check = await p.evaluate(() => {
-  const site = window.corridor.site, m = site.manifest
+  const site = window.piedmont.site, m = site.manifest
   const c = m.spine.coords[Math.floor(m.spine.coords.length / 2)]
   const onSpine = site.roadAt(c[0], -c[1])
   const spineName = m.spine.segments?.[0]?.tags?.name ?? null
@@ -36,16 +36,16 @@ await p.waitForTimeout(1500)
 const hud = await p.evaluate(() => document.querySelector('.hud-pos, #pos, [class*="pos"]')?.textContent ?? '')
 ok('the drive readout carries the road name', /mph/.test(hud) && hud.split('·').length >= 3, JSON.stringify(hud))
 const withName = await p.evaluate(() => {
-  const car = window.corridor.drive.car
-  return window.corridor.site.roadAt(car.pos.x, car.pos.z)?.name ?? null
+  const car = window.piedmont.drive.car
+  return window.piedmont.site.roadAt(car.pos.x, car.pos.z)?.name ?? null
 })
 ok('and it is the road the car is actually on', !!withName && hud.includes(withName), `readout ${JSON.stringify(hud)} vs roadAt ${withName}`)
 // the knob turns it off
-await p.evaluate(() => window.corridor.tune.set('HUD_ROAD_NAME', 0))
+await p.evaluate(() => window.piedmont.tune.set('HUD_ROAD_NAME', 0))
 await p.waitForTimeout(1200)
 const off = await p.evaluate(() => document.querySelector('.hud-pos, #pos, [class*="pos"]')?.textContent ?? '')
 ok('HUD_ROAD_NAME 0 hides it', !withName || !off.includes(withName), JSON.stringify(off))
-await p.evaluate(() => window.corridor.tune.set('HUD_ROAD_NAME', 1))
+await p.evaluate(() => window.piedmont.tune.set('HUD_ROAD_NAME', 1))
 console.log(fails ? `FAIL ${fails}` : 'PASS')
 await b.close()
 process.exit(fails ? 1 : 0)

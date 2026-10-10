@@ -11,7 +11,7 @@
 // WORLD must be a world whose site directory is safe to write (a scratch overlay — see the lane
 // rules); the probe restores surfaces.json to what it read.
 //
-//   PORT=5196 WORLD=crofton-triangle SHOTS=/tmp/shots node probes/corridor-buildingclasses.mjs
+//   PORT=5196 WORLD=crofton-triangle SHOTS=/tmp/shots node probes/buildingclasses.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

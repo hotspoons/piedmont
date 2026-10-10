@@ -58,7 +58,7 @@ export class ModelResolver {
   constructor(k8s, env = process.env, { namespace = 'default', ttlMs = 60000 } = {}) {
     this.k8s = k8s
     this.env = env
-    this.namespace = env.WORLDEDITOR_NAMESPACE ?? namespace
+    this.namespace = env.PIEDMONT_EDITOR_NAMESPACE ?? namespace
     this.ttlMs = ttlMs
     this.cache = new Map()
   }
@@ -127,7 +127,7 @@ export class ModelResolver {
     const looked = []
 
     // 1. the environment wins, always: this is how a laptop points at a port-forward
-    for (const prefix of ['MODEL_URL', 'ASSETSVC_URL', 'WORLDEDITOR_MODEL_URL']) {
+    for (const prefix of ['MODEL_URL', 'ASSETSVC_URL', 'PIEDMONT_EDITOR_MODEL_URL']) {
       const v = this.env[envKey(prefix, kind)]
       if (v) return { url: v.replace(/\/+$/, ''), via: 'env', model: cfg.model, detail: envKey(prefix, kind) }
     }

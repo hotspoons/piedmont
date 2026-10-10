@@ -1,6 +1,6 @@
 # Cloudflare: what the deploy needs from the account
 
-The world editor's Deploy panel (docs/corridor/DEPLOY.md) publishes a world as a Worker with static
+The world editor's Deploy panel (docs/DEPLOY.md) publishes a world as a Worker with static
 assets, with the world's data in an R2 bucket. This is what has to be true of the Cloudflare account
 before the first deploy, how to make the token, and what to switch on afterwards to keep the bill at
 zero. Rich, 2026-09-30: *"a document for Cloudflare setup requirements (I needed to add R2 to the
@@ -61,8 +61,8 @@ token cannot (it has no user) and is verified by listing the accounts it can see
 ## 3. The bucket
 
 The panel lists the account's buckets and can create one (3–63 characters, lower-case letters,
-digits, dashes). Everything a deploy writes lives under one prefix, `corridor/<world>-<stamp>/`,
-plus a ledger at `corridor/deployments.json`. Nothing else has to be set on the bucket: no public
+digits, dashes). Everything a deploy writes lives under one prefix, `piedmont/<world>-<stamp>/`,
+plus a ledger at `piedmont/deployments.json`. Nothing else has to be set on the bucket: no public
 access, no custom domain — the Worker reads it through a binding, and players never touch R2
 directly.
 
@@ -110,7 +110,7 @@ not R2 reads at all.
 ## 7. What a deploy does, for the record
 
 Plan → objects to the bucket under the prefix (parallel, one PUT each) → `deploy.json` manifest and
-the `corridor/deployments.json` ledger → the app's files as Worker assets (only what Cloudflare does
+the `piedmont/deployments.json` ledger → the app's files as Worker assets (only what Cloudflare does
 not already have is uploaded) → the Worker script with three bindings (`ASSETS`, `DATA` = the
 bucket, `PREFIX`) → the workers.dev subdomain and/or the custom hostname → optionally, older
 deploys of the same worlds deleted from the bucket by their own manifests. Every step logs; the

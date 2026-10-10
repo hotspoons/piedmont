@@ -11,12 +11,12 @@
 //      for the first 272 m of its 2,516 m, because a closure read an array's length when it ran
 //      instead of when it was made, so every re-graded branch wrote its length into the LAST
 //      branch's slot. The asphalt was drawn in full and the field said "+57 m to the nearest
-//      road" while you stood on it. `probes/corridor-fieldcoverage.mjs` now guards that.
+//      road" while you stood on it. `probes/fieldcoverage.mjs` now guards that.
 //   2. the MASKS — parking, walks, bare ground, paved imagery — have hard edges and no gradient,
 //      so stepping to a blade along the geometry's gradient steps straight over them.
 //   3. beside a DRIVEWAY the geometry itself bends faster than a straight line can follow.
 //
-//   PORT=5185 node probes/corridor-grassroad.mjs
+//   PORT=5185 node probes/grassroad.mjs
 import { chromium } from 'playwright'
 const PORT = process.env.PORT ?? '5185'
 const SPOTS = [
@@ -28,12 +28,12 @@ const page = await browser.newPage({ viewport: { width: 700, height: 450 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#crofton-triangle?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await page.waitForTimeout(3000)
 
 const out = await page.evaluate(async (SPOTS) => {
-  const site = window.corridor.site
-  const THREE = window.corridor.THREE
+  const site = window.piedmont.site
+  const THREE = window.piedmont.THREE
   const d = (x, z) => site.edgeInfo(x, z, undefined, true).d
   const blocked = (x, z) => site.grassBlocked(x, z)
   const res = []
@@ -52,7 +52,7 @@ const out = await page.evaluate(async (SPOTS) => {
     let onMask = 0
     let worst = 0
     const eg = []
-    window.corridor.scene.traverse((o) => {
+    window.piedmont.scene.traverse((o) => {
       if (!o.isMesh || !o.geometry) return
       const root = o.geometry.getAttribute('aRoot')
       const card = o.geometry.getAttribute('aCard')

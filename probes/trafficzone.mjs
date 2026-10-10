@@ -9,7 +9,7 @@ import { readFileSync, existsSync, unlinkSync } from 'node:fs'
 
 const SLUG = process.env.SLUG ?? 'bowie-racetrack-rd'
 const EDITOR = process.env.EDITOR ?? 'http://127.0.0.1:5185/editor.html'
-const FILE = `/workspaces/apex-conduit/tools/corridor/data/sites/${SLUG}/zones.json`
+const FILE = `/workspaces/piedmont/data/sites/${SLUG}/zones.json`
 const shot = (n) => `/tmp/claude-1000/-workspaces-apex-conduit/12eaed6d-83ff-4605-9fb1-f5c0b0bc5019/scratchpad/zone-${n}.png`
 
 // start from nothing, so a pass cannot be an old file
@@ -22,7 +22,7 @@ let bad = 0
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++ }
 
 await p.goto(`${EDITOR}#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 180000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 180000 })
 await p.waitForTimeout(6000)
 
 // into Traffic mode by its key
@@ -37,12 +37,12 @@ await p.screenshot({ path: shot('mode') })
  * whole point of the check at the end.
  */
 const box = await p.evaluate(() => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const mid = site.manifest.spine.length_m / 2
   /*
    * `spineAt(s)` is the only thing that knows where the road IS. It answers in THREE's frame —
    * x east, y up, z SOUTH — and everything authored is in site metres with y north, so the sign
-   * flip is the whole conversion and getting it wrong puts the zone a corridor-width away on the
+   * flip is the whole conversion and getting it wrong puts the zone a road-band-width away on the
    * wrong side. The first version of this probe looked for a polyline on the manifest, did not
    * find one, quietly fell back to the origin, and reported four green ticks about a zone nowhere
    * near the road.
@@ -64,8 +64,8 @@ if (!Number.isFinite(box.c.x) || (box.c.x === 0 && box.c.y === 0)) {
  * the probe was green throughout. A probe that bypasses the path it is testing tests the bypass.
  */
 const authored = await p.evaluate(({ c }) => {
-  const t = window.corridor.traffic
-  if (!t) return { error: 'window.corridor.traffic is not exposed' }
+  const t = window.piedmont.traffic
+  if (!t) return { error: 'window.piedmont.traffic is not exposed' }
   t.startDraw()
   for (const [dx, dy] of [[-60, -60], [60, -60], [60, 60], [-60, 60]]) t.click({ x: c.x + dx, y: c.y + dy })
   t.closeDraw()
@@ -81,7 +81,7 @@ check(authored.zones === 1 && !authored.drawing, 'clicking four corners and clos
 // IT IS ON THE MAP. `addMesh` only runs on the real draw path, so this is the check that the
 // invisible-but-saved failure cannot pass.
 const painted = await p.evaluate(() => {
-  const g = window.corridor.traffic.group
+  const g = window.piedmont.traffic.group
   const fills = []
   g.traverse((o) => { if (o.isMesh && o.userData.zoneId) fills.push({ id: o.userData.zoneId, colour: '#' + o.material.color.getHexString(), visible: o.visible }) })
   return { visible: g.visible, fills }
@@ -93,7 +93,7 @@ check(painted.fills[0]?.colour === '#8a1f1a', 'and it is painted maroon, because
 await p.waitForTimeout(800)
 await p.screenshot({ path: shot('drawn') })
 
-const saved = await p.evaluate(() => window.corridor.traffic.save().then((m) => m, (e) => 'ERROR ' + e.message))
+const saved = await p.evaluate(() => window.piedmont.traffic.save().then((m) => m, (e) => 'ERROR ' + e.message))
 console.log('save:', saved)
 check(!String(saved).startsWith('ERROR'), 'it saved')
 check(existsSync(FILE), 'zones.json is on disk')
@@ -104,10 +104,10 @@ if (existsSync(FILE)) {
   check(!!doc.frame, 'the frame is stamped, so a frame change is loud rather than silent')
   // THE REAL CHECK: does it answer on the road?
   const onRoad = await p.evaluate((d) => {
-    const { Zones } = window.corridor.zonesModule
+    const { Zones } = window.piedmont.zonesModule
     const z = new Zones()
     z.set(d.zones)
-    const site = window.corridor.site
+    const site = window.piedmont.site
     const pos = site.spineAt(site.manifest.spine.length_m / 2).pos
     return {
       onRoad: z.densityAt(pos.x, -pos.z),

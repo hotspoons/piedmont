@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 // One spec, end to end: flux.2-dev → keyed cut-out → TRELLIS.2 → a finished, lit glb.
 //
-//   node tools/assetlib/build.mjs --list
-//   node tools/assetlib/build.mjs --id rx7-fd --dry-run     # prompt only, nothing spent
-//   node tools/assetlib/build.mjs --id rx7-fd
-//   node tools/assetlib/build.mjs --class hero-car          # the whole roster
-//   node tools/assetlib/build.mjs --id rx7-fd --recon-only  # cut-out already on disk
+//   node pipelines/assetlib/build.mjs --list
+//   node pipelines/assetlib/build.mjs --id rx7-fd --dry-run     # prompt only, nothing spent
+//   node pipelines/assetlib/build.mjs --id rx7-fd
+//   node pipelines/assetlib/build.mjs --class hero-car          # the whole roster
+//   node pipelines/assetlib/build.mjs --id rx7-fd --recon-only  # cut-out already on disk
 //
-// WHAT IS BORROWED AND WHAT IS NOT. `keyChroma` and `chromaFor` come from tools/assetgen, and the
+// WHAT IS BORROWED AND WHAT IS NOT. `keyChroma` and `chromaFor` come from pipelines/assetgen, and the
 // comment above them is worth reading before touching anything here — the green-dominance test with
 // its relative shadow branch is the reason cut-outs do not arrive with a green rim around every
 // wheel and their own contact shadow still attached. `finish` comes from there too, but is called
 // with `unlit: false`: assetgen defaults to KHR_materials_unlit because coast bakes sprites and
-// would otherwise light the model a second time, and corridor is a lit scene that wants the PBR
+// would otherwise light the model a second time, and the game is a lit scene that wants the PBR
 // material it was given.
 //
 // RESUMABLE BY DEFAULT. A view already on disk is reused and a reconstruction already on disk is
@@ -26,15 +26,15 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
-import { chromaFor, keyChroma } from '../../../tools/assetgen/generate.mjs'
-import { finish } from '../../../tools/assetgen/finish.mjs'
+import { chromaFor, keyChroma } from '../assetgen/generate.mjs'
+import { finish } from '../assetgen/finish.mjs'
 import { fillHoles } from './fillholes.mjs'
 import { alphaTransmission, separateGlass } from './glass.mjs'
 import { buildPrompt, chromaForPaint } from './style.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const LIB = path.resolve(HERE, '..')
-const ROOT = path.resolve(LIB, '../..')
+const LIB = HERE
+const ROOT = path.resolve(HERE, '../..')
 
 // The public hostname's certificate does not chain in this container, and every client in the repo
 // works around it the same way (FLUX_VERIFY=0, curl -k). `rejectUnauthorized: false` is that.
@@ -50,7 +50,7 @@ try {
 
 const FLUX_HOST = process.env.FLUX_HOST || 'https://high-brine.richard-siomporas.basedweights.com'
 const FLUX_MODEL = process.env.FLUX_MODEL || 'flux.2-dev'
-// NOT the bradley default that tools/assetgen still hard-codes — that is the retired 4-node cluster.
+// NOT the bradley default that pipelines/assetgen still hard-codes — that is the retired 4-node cluster.
 const RECON_HOST = process.env.RECON_HOST || 'https://recon.richard-siomporas.basedweights.com'
 
 const magick = (args) => execFileSync('magick', args, { encoding: 'utf8', maxBuffer: 1 << 28 }).trim()
@@ -215,7 +215,7 @@ export async function build(spec, opts) {
       f = { bytes: statSync(out).size, from: statSync(glb).size }
       console.log(`  ${spec.id}-finished.glb  (reused)`)
     } else {
-      // unlit: false — corridor lights its own scene. See the header.
+      // unlit: false — the game lights its own scene. See the header.
       f = finish(glb, out, { ratio: opts.ratio, texture: opts.texture, unlit: false })
       console.log(`  ${spec.id}-finished.glb  ${(f.from / 1e6).toFixed(1)} MB → ${(f.bytes / 1e6).toFixed(2)} MB`)
     }
@@ -301,7 +301,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const by = {}
     for (const s of specs) (by[s.class] ??= []).push(s.id)
     for (const [k, v] of Object.entries(by)) console.log(`${k} (${v.length})\n  ${v.join('  ')}`)
-    if (!specs.length) console.log('no specs in tools/assetlib/specs/')
+    if (!specs.length) console.log('no specs in pipelines/assetlib/specs/')
     process.exit(0)
   }
 

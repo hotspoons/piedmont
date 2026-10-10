@@ -1,7 +1,7 @@
 // Preview: drop into the level you have been editing, without leaving the editor.
 //
 // THE PREVIEW IS THE EDITOR'S OWN SITE, not a second one built beside it. That is the whole
-// design. A second `buildSite` would double the memory (a corridor is a 22 MP drape, a fine
+// design. A second `buildSite` would double the memory (a road band is a 22 MP drape, a fine
 // terrain strip and up to 120k trees), and worse, it would be a second thing that can disagree
 // with the first — the bug you would never catch is the preview showing you something the game
 // does not. So: save, reload the one site, and look at it from the driver's seat.
@@ -16,7 +16,7 @@
 import * as THREE from 'three'
 import { Car, type CarInput, type DrivableCar } from '../../game/vehicle/car'
 import { RapierCar } from '../../game/vehicle/rapiercar'
-import { buildPhysics, type CorridorPhysics } from '../../game/world/physics'
+import { buildPhysics, type WorldPhysics } from '../../game/world/physics'
 import { addStuntColliders } from '../../game/stunt/stuntworld'
 import { profile as driveProfile } from '@apex/engine/physics/profiles'
 import type { Build } from '../../assets/assetsvc'
@@ -74,7 +74,7 @@ export class Preview {
    * NOT BUILT FOR A WORLD WITHOUT THEM. It is a 4.3 MB import and a grid of heightfield colliders,
    * and the hand-written car is what every other preview has always used.
    */
-  private physics: CorridorPhysics | null = null
+  private physics: WorldPhysics | null = null
   private surfaces = 0
   /**
    * Which handling model the preview's car is driving.

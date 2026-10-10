@@ -1,6 +1,6 @@
-// The published corridor: the built viewer as static assets, the world's data out of R2.
+// The published game: the built viewer as static assets, the world's data out of R2.
 //
-// This file is uploaded as the Worker's one module by `tools/worldeditor/deploy.mjs`. It knows
+// This file is uploaded as the Worker's one module by `services/worldeditor/deploy.mjs`. It knows
 // two things: which paths the viewer asks its own origin for that are DATA (the bake, the docs,
 // the levels, the assets it uses), and that everything else is the app. The data lives in the
 // bucket under `env.PREFIX` (one deploy, one prefix, so old revisions can be deleted whole),
@@ -18,7 +18,7 @@
 // `web/` are immutable for a year; the documents for a minute, so an edit and a redeploy under
 // the same prefix show up. Rich, 2026-09-30: "is there a way we can use their CDN as a pull
 // through cache to minimize the cost?" — this is it; the rest is a dashboard switch (see
-// docs/corridor/CLOUDFLARE.md).
+// docs/CLOUDFLARE.md).
 
 const DATA = ['/sites/', '/levels/', '/assetsvc/', '/api/']
 

@@ -18,7 +18,7 @@ export interface RegionNode extends GeofabrikRegion {
 /**
  * A region's name for a person. Geofabrik's index names the US states BY THEIR ID — `"name":
  * "us/virginia"` — so a name with a slash in it is an id, and its last part is the name. Kept in
- * step with `regionLabel` in tools/worldeditor/coverage.mjs, which names the runs.
+ * step with `regionLabel` in services/worldeditor/coverage.mjs, which names the runs.
  */
 export function regionLabel(r: { id?: string; name?: string | null }): string {
   const n = String(r.name ?? r.id ?? '')

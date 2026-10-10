@@ -7,7 +7,7 @@ itself computed (scratch: a node one-liner over `new THREE.CatmullRomCurve3(pts,
 'centripetal')`, embedded below), because every road height goes through that spline and a
 polyline would be 25 cm off on a bend.
 
-    tools/corridor/.venv/bin/python -m pytest tools/corridor/tests/test_grade.py
+    bake/.venv/bin/python -m pytest bake/tests/test_grade.py
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import grade  # noqa: E402
+from piedmont_bake import grade  # noqa: E402
 
 # --- three.js reference ------------------------------------------------------------------------
 
@@ -87,7 +87,7 @@ def world(spine, branches=(), intersections=None, bbox=None, structures=(), driv
         "structures": list(structures),
         "driveways": list(driveways),
         "stubs": [],
-        # tight to the spine's ends by default, so the ends are "where we clipped the corridor"
+        # tight to the spine's ends by default, so the ends are "where we clipped the road band"
         # and not dead ends with bulbs of their own
         "bbox": bbox or [min(xs) - 10, -400.0, max(xs) + 10, 400.0],
     }

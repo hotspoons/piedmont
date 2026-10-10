@@ -1,6 +1,6 @@
 """Is this site safe to publish? One command, every invariant a consumer relies on.
 
-    .venv/bin/python -m corridor.verify [slug ...]      # all sites when no slug is given
+    .venv/bin/python -m piedmont_bake.verify [slug ...]      # all sites when no slug is given
 
 Written after three bugs in one evening that a viewer would have rendered perfectly:
 

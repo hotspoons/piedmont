@@ -109,7 +109,7 @@ export interface SignalProgram {
   /** every phase, in service order */
   phases: Phase[]
   /**
-   * Coordination. Junctions sharing a `cycleS` and given increasing `offsetS` down a corridor put
+   * Coordination. Junctions sharing a `cycleS` and given increasing `offsetS` down a road band put
    * a platoon through a run of greens — the "green wave". Leave `cycleS` unset and the controller
    * is free-running, which is what an isolated junction does.
    */

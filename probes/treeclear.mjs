@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync, copyFileSync, existsSync, unlinkSync } fro
 
 const SLUG = process.env.SLUG ?? 'bowie-racetrack-rd'
 const VIEWER = process.env.VIEWER ?? 'http://127.0.0.1:5185/index.html'
-const ADJ = `/workspaces/apex-conduit/tools/corridor/data/sites/${SLUG}/adjustments.json`
+const ADJ = `/workspaces/piedmont/data/sites/${SLUG}/adjustments.json`
 const BACKUP = `${ADJ}.treeclear-backup`
 
 const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })

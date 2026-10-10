@@ -8,7 +8,7 @@
 // volume. This walks the directory and PUTs every record and every map through the service's own
 // upload routes, one file per request, skipping what is already there at the same size.
 //
-//   node tools/assetsvc/seed-materials.mjs --from .local-assets/surfaces --to https://<worldeditor>/assetsvc
+//   node services/assetsvc/seed-materials.mjs --from .local-assets/surfaces --to https://<worldeditor>/assetsvc
 //
 // `raw*.jpg` (the untiled generation, kept for regenerating) is not sent: nothing renders it.
 

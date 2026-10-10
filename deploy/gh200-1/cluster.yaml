@@ -4,12 +4,20 @@
 # a release's values live beside this file.
 cluster:
   name: gh200-1
-  namespace: default
+  # Where every release below goes. A VALUE, not a convention: the charts name no namespace and
+  # address each other by short service names, so the whole stack moves by changing this line.
+  # `piedmont` is the new namespace the split is accepted in (docs/ACCEPTANCE.md); the arcade-era
+  # releases stay in `default` until they are retired.
+  namespace: piedmont
   # The charts do not name a storage class — the cluster's default applies, which is what its
   # admin has chosen. Recorded here so the reason is visible, not so anything reads it.
   note: "RWX is required (a bake writes while the editor serves); the default class provides it."
 releases:
   - name: worldeditor
-    chart: tools/worldeditor/chart
+    chart: deploy/helm/worldeditor
   - name: assetsvc
-    chart: tools/assetsvc/chart
+    chart: deploy/helm/assetsvc
+  # Maryland. A fresh volume IMPORTS before it serves (hours; see services/overpass/README.md).
+  # overpass-eu and overpass-na (values in overpass-na.yaml) are not listed: they stay in `default`.
+  - name: overpass
+    chart: deploy/helm/overpass

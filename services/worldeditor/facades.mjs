@@ -10,7 +10,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-export const BUILTIN_FILE = path.resolve(HERE, '../../apps/corridor/src/world/facades.json')
+export const BUILTIN_FILE = path.resolve(HERE, '../../apps/game/src/world/facades.json')
 export const FIELDS = ['walls', 'roofs', 'metalness', 'roughness', 'glass']
 
 /** the app's built-in classes, as it ships them */

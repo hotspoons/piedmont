@@ -1,6 +1,6 @@
 // Stage 4 and 5 of the game pipeline: what is IN the world, and what it looks like.
 //
-// docs/corridor/PLAN-GAME-PIPELINE.md, from Rich's own description of the loop: "apply an ECS
+// docs/PLAN-GAME-PIPELINE.md, from Rich's own description of the loop: "apply an ECS
 // config, bind assets to entities". The ECS itself has been real since the traffic work — bitECS,
 // components, systems, the fixed step. What was missing is the layer that says which entities a
 // LEVEL wants, how many, and where; today a level can write `simulations: [{kind, seed}]` and

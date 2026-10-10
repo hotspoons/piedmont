@@ -5,7 +5,7 @@ lines and "branch ... profiled" (Rich, 2026-10-05). These tests pin the two fixe
 a minute: the timestamp stream prefixes each line, and `Progress` reports a count and an ETA that
 can be read back synchronously.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import progress  # noqa: E402
+from piedmont_bake import progress  # noqa: E402
 
 
 class StampStreamTest(unittest.TestCase):

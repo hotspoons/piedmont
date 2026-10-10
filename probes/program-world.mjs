@@ -14,11 +14,11 @@
 //   THE IDS HAVE TO BE ON SCREEN. `api.placed('p-07')` is useless if the only way to learn that
 //   `p-07` exists is to open placements.json in another tab.
 //
-//   node probes/corridor-program-world.mjs [world-slug]
+//   node probes/program-world.mjs [world-slug]
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'
-const API = process.env.WORLDEDITOR ?? 'http://localhost:8780'
+const API = process.env.PIEDMONT_EDITOR ?? 'http://localhost:8780'
 const WORLD = process.argv[2] ?? 'arrowhead-farms-network'
 const FILE = 'zzprobe-template'
 

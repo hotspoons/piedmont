@@ -1,14 +1,14 @@
 // The blend band where the surface class changes: is it there, is it the width the knob says, and
 // does it overlap anything (a transition strip that overlaps its neighbours z-fights).
 //
-//   node probes/corridor-blend.mjs [site] [out.png]
+//   node probes/blend.mjs [site] [out.png]
 //
 // Geometry first — the strips are their own meshes named road:blend:<from>><to>, so their extent
 // along the road is measurable — then a top-down shot at the first class change for the eye.
 import { chromium } from 'playwright'
 const site = process.argv[2] ?? 'bowie-racetrack-rd'
 const out = process.argv[3] ?? null
-const PORT = process.env.CORRIDOR_PORT ?? '5202'
+const PORT = process.env.PIEDMONT_PORT ?? '5202'
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 760, height: 520 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
@@ -16,11 +16,11 @@ const shaderErrors = []
 page.on('console', (m) => { const t = m.text(); if (/WebGLProgram|shader|GLSL/i.test(t)) shaderErrors.push(t.slice(0, 400)) })
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite`, { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 240000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 240000 })
 
-const knobs = Object.fromEntries((process.env.CORRIDOR_KNOBS ?? '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, Number(v)] }))
+const knobs = Object.fromEntries((process.env.PIEDMONT_KNOBS ?? '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, Number(v)] }))
 const r = await page.evaluate(async ({ knobs }) => {
-  const c = window.corridor
+  const c = window.piedmont
   const keys = (c.tune ?? []).flatMap((t) => t.sections.flatMap((s) => s.keys))
   const applied = {}
   for (const [n, v] of Object.entries(knobs)) { const k = keys.find((q) => q.name === n); if (k) { k.set(v); applied[n] = v } }
@@ -59,11 +59,11 @@ if (out && r.first_changes?.length) {
   // through the app's own stance URL instead (?stance=<base64>), which sets the orbit target too.
   const s = r.first_changes[Math.min(1, r.first_changes.length - 1)]
   const st = await page.evaluate((s) => {
-    const p = window.corridor.site.spineAt(s)
+    const p = window.piedmont.site.spineAt(s)
     const layers = {}
     for (const el of document.querySelectorAll('input[data-layer]')) layers[el.dataset.layer] = el.checked
     return {
-      v: 1, site: window.corridor.site.manifest.slug, season: 'summer', mode: 'fly', lite: true, layers,
+      v: 1, site: window.piedmont.site.manifest.slug, season: 'summer', mode: 'fly', lite: true, layers,
       // Oblique, not straight down: with the eye directly over the target the view's roll is
       // degenerate and two runs of the same stance come out rotated differently, which makes them
       // useless as a before/after pair. 9 m up, 16 m back along the road.
@@ -73,14 +73,14 @@ if (out && r.first_changes?.length) {
       },
     }
   }, s)
-  // the game's address: the world and then its options, all in the hash (apps/corridor/src/url.ts)
+  // the game's address: the world and then its options, all in the hash (apps/game/src/url.ts)
   const q = new URLSearchParams({ lite: '', stance: Buffer.from(JSON.stringify(st)).toString('base64') })
   await page.goto(`http://127.0.0.1:${PORT}/#${st.site}?${q}`, { waitUntil: 'domcontentloaded', timeout: 180000 })
-  await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 240000 })
+  await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 240000 })
   await page.evaluate(async (knobs) => {
-    const keys = (window.corridor.tune ?? []).flatMap((t) => t.sections.flatMap((x) => x.keys))
+    const keys = (window.piedmont.tune ?? []).flatMap((t) => t.sections.flatMap((x) => x.keys))
     for (const [n, v] of Object.entries(knobs)) keys.find((q) => q.name === n)?.set(v)
-    if (Object.keys(knobs).length) { window.corridor.site.retune(); await new Promise((ok) => setTimeout(ok, 1500)) }
+    if (Object.keys(knobs).length) { window.piedmont.site.retune(); await new Promise((ok) => setTimeout(ok, 1500)) }
   }, knobs)
   await page.waitForTimeout(3000)
   await page.screenshot({ path: out, timeout: 180000, animations: 'disabled' })

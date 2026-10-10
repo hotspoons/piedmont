@@ -5,7 +5,7 @@ across `pool`, and `overview()` reads its 1 m VRTs in parallel strips instead of
 that ran for hours with no log line. These tests pin the pool's ordering/split contract and the
 strip reader's geometry without needing a real world.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import pool  # noqa: E402
+from piedmont_bake import pool  # noqa: E402
 
 
 def _square(x):
@@ -53,16 +53,16 @@ class MapChunksTest(unittest.TestCase):
         self.assertEqual(pool.map_chunks(_square, [], "test"), [])
 
     def test_default_jobs_honours_env(self):
-        old = os.environ.get("CORRIDOR_TILE_JOBS")
+        old = os.environ.get("PIEDMONT_TILE_JOBS")
         try:
-            os.environ["CORRIDOR_TILE_JOBS"] = "3"
+            os.environ["PIEDMONT_TILE_JOBS"] = "3"
             self.assertEqual(pool.default_jobs(100), 3)
             self.assertEqual(pool.default_jobs(2), 2)  # never more workers than tasks
         finally:
             if old is None:
-                os.environ.pop("CORRIDOR_TILE_JOBS", None)
+                os.environ.pop("PIEDMONT_TILE_JOBS", None)
             else:
-                os.environ["CORRIDOR_TILE_JOBS"] = old
+                os.environ["PIEDMONT_TILE_JOBS"] = old
 
 
 class ForkLockTest(unittest.TestCase):
@@ -74,7 +74,7 @@ class ForkLockTest(unittest.TestCase):
         # child a fresh lock. The check is non-blocking so a regression fails rather than hangs.
         import select
 
-        from corridor import progress
+        from piedmont_bake import progress
 
         progress.install_timestamps()
         progress._LOCK.acquire()  # pretend the outer heartbeat is mid-print at fork time
@@ -122,7 +122,7 @@ class ReadStripsTest(unittest.TestCase):
     def test_strips_reconstruct_the_whole_read(self):
         import numpy as np
 
-        from corridor import network_tiles
+        from piedmont_bake import network_tiles
 
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "t.tif"
@@ -140,7 +140,7 @@ class ReadStripsTest(unittest.TestCase):
 class VividPickleTest(unittest.TestCase):
     def test_vivid_is_module_level_and_picklable(self):
         # `vivid` used to be a closure inside export_site, which no forked worker can unpickle.
-        from corridor import export
+        from piedmont_bake import export
 
         self.assertIs(pickle.loads(pickle.dumps(export.vivid)), export.vivid)
 
@@ -154,7 +154,7 @@ class PyramidBakeTest(unittest.TestCase):
         import json
         import tempfile
 
-        from corridor import pyramid
+        from piedmont_bake import pyramid
 
         with tempfile.TemporaryDirectory() as d:
             Path(d, "site.json").write_text(json.dumps({"slug": "x"}))
@@ -163,13 +163,13 @@ class PyramidBakeTest(unittest.TestCase):
 
 class EnsureOverviewTest(unittest.TestCase):
     def test_repair_passes_the_frame_not_the_raw_origin(self):
-        # `ensure_overview` (the `python -m corridor.overview` repair) handed `ox, oy` positionally
+        # `ensure_overview` (the `python -m piedmont_bake.overview` repair) handed `ox, oy` positionally
         # to `overview`, which now takes a `frame` object — so the repair raised TypeError instead
         # of rebuilding anything. Capture the call to pin the frame (2026-10-07).
         import json
         import tempfile
 
-        from corridor import buildings, network_tiles
+        from piedmont_bake import buildings, network_tiles
 
         with tempfile.TemporaryDirectory() as d:
             site = Path(d)

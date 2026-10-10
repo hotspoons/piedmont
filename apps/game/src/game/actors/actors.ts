@@ -92,7 +92,7 @@ export const Visual = { asset: u16(), scale: f32() }
  *
  * `voice` is which simulated engine is speaking for this entity, 1-based, 0 for none. It is not a
  * flag and there will not be many: a full engine-sim voice costs a real slice of a core (measured
- * — packages/enginesim/scripts/measure.mjs), so the player gets one and traffic will get recorded
+ * — vendor/arcade/packages/enginesim/scripts/measure.mjs), so the player gets one and traffic will get recorded
  * samples driven off these same two fields. Writing rpm and pedal for a traffic car is free and
  * correct whether or not anything is listening, which is why the component is not reserved for
  * whatever happens to be voiced.
@@ -133,7 +133,7 @@ export const Health = { hp: u16(), max: u16() }
  * How something exists in the PHYSICS world, if it does at all.
  *
  * `mode` is the field that decides whether a busy road is affordable, and it is worth the paragraph
- * (docs/corridor/PLAN-PHYSICS.md §2.5):
+ * (docs/PLAN-PHYSICS.md §2.5):
  *
  *   NONE       no body. Scenery, distant traffic, anything outside the physics radius.
  *   KINEMATIC  a collider things bounce off, moved by the ECS. **This is what traffic is.**

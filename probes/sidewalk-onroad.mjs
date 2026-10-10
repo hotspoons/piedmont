@@ -13,7 +13,7 @@
 // number returns undefined and every comparison then quietly reports zero offenders, which is how
 // this probe first "passed".
 //
-//   PORT=5185 node probes/corridor-sidewalk-onroad.mjs [slug]
+//   PORT=5185 node probes/sidewalk-onroad.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -22,12 +22,12 @@ const page = await browser.newPage({ viewport: { width: 700, height: 450 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await page.waitForTimeout(4000)
 
 const out = await page.evaluate(() => {
-  const site = window.corridor.site
-  const THREE = window.corridor.THREE
+  const site = window.piedmont.site
+  const THREE = window.piedmont.THREE
   const info = site.edgeInfo ? (x, z) => site.edgeInfo(x, z, undefined, true).d : (x, z) => site.edgeDistance(x, z)
   // CONTROL: the field must be able to say both "on the road" and "off it", or a clean result
   // means only that the instrument is dead. Sampling rather than picking two points by hand —
@@ -50,7 +50,7 @@ const out = await page.evaluate(() => {
   let worst = 0
   const hist = [0, 0, 0, 0, 0, 0] // 0-.5, .5-1, 1-1.5, 1.5-2, 2-4, >4 m past the kerb
   const examples = []
-  window.corridor.scene.traverse((o) => {
+  window.piedmont.scene.traverse((o) => {
     if (!o.isMesh || !/sidewalk:concrete/.test(o.name || '')) return
     const pos = o.geometry.getAttribute('position')
     o.updateMatrixWorld(true)

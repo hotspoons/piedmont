@@ -283,7 +283,7 @@
  * so a tab that does not own a scroller of its own is simply CLIPPED — and a clipped list looks
  * exactly like a short one. In the dialog the tab body happened to scroll, which is why it was only
  * ever reported from world.html. Sounds was fixed on its own the day before; this is that fix as a
- * class any tab can wear, and `probes/corridor-library-scroll.mjs` measures every tab on both
+ * class any tab can wear, and `probes/library-scroll.mjs` measures every tab on both
  * pages so the next one cannot break quietly.
  *
  * On the PANEL, as with `.snd-screen`: a flex child under a block panel grows to its content. And

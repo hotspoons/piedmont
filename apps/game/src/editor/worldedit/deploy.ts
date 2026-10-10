@@ -33,7 +33,7 @@ const MiB = (n: number) => `${(n / 2 ** 20).toFixed(1)} MiB`
  * 2026-10-08: "keep my free R2 bucket size down"). Remembered per browser, so whoever deploys a full
  * copy for the editor keeps getting one.
  */
-const SOURCES_KEY = 'corridor.deploy.sources'
+const SOURCES_KEY = 'piedmont.deploy.sources'
 function storedSources(): boolean {
   try {
     return localStorage.getItem(SOURCES_KEY) === '1'
@@ -100,9 +100,9 @@ export class DeployPanel {
     const w = this.worlds
     if (!this.form.prefixTouched) {
       const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z').replace('T', '-')
-      this.form.prefix = w.length ? `corridor/${w.length === 1 ? w[0] : `${w[0]}+${w.length - 1}`}-${stamp}` : ''
+      this.form.prefix = w.length ? `piedmont/${w.length === 1 ? w[0] : `${w[0]}+${w.length - 1}`}-${stamp}` : ''
     }
-    if (!this.form.workerTouched) this.form.worker = w.length ? `corridor-${w.length === 1 ? w[0] : 'worlds'}` : 'corridor'
+    if (!this.form.workerTouched) this.form.worker = w.length ? `piedmont-${w.length === 1 ? w[0] : 'worlds'}` : 'piedmont'
   }
 
   private async query() {
@@ -342,7 +342,7 @@ export class DeployPanel {
     }
     const buckets = this.cf?.buckets ?? []
     xb.append(select({ label: 'Bucket', value: f.newBucket ? '' : f.bucket, options: [...buckets.map((b) => ({ value: b.name, label: b.name })), { value: '', label: 'a new one…' }], note: buckets.length ? undefined : 'query Cloudflare to list buckets, or name a new one', onChange: (v) => { f.bucket = v; if (v) f.newBucket = ''; this.render() } }))
-    if (!f.bucket || f.newBucket) xb.append(textField({ label: 'New bucket', value: f.newBucket, placeholder: 'corridor-games', note: 'made on the first deploy if it does not exist', onChange: (v) => (f.newBucket = v.trim()) }))
+    if (!f.bucket || f.newBucket) xb.append(textField({ label: 'New bucket', value: f.newBucket, placeholder: 'piedmont-games', note: 'made on the first deploy if it does not exist', onChange: (v) => (f.newBucket = v.trim()) }))
     xb.append(textField({ label: 'Prefix', value: f.prefix, note: 'every object of this deploy lives under it, so an old copy can be deleted whole', onChange: (v) => { f.prefix = v.trim(); f.prefixTouched = true } }))
     xb.append(toggle({ label: 'delete older copies of these worlds from the bucket afterwards', value: f.prune, onChange: (v) => (f.prune = v) }))
     xb.append(toggle({
@@ -363,7 +363,7 @@ export class DeployPanel {
     host.append(where)
 
     /* 5 · the plan, then the deploy */
-    const go = group('5 · Deploy', { note: st.app ? `app: ${st.app} · setup: docs/corridor/CLOUDFLARE.md` : 'setup: docs/corridor/CLOUDFLARE.md' })
+    const go = group('5 · Deploy', { note: st.app ? `app: ${st.app} · setup: docs/CLOUDFLARE.md` : 'setup: docs/CLOUDFLARE.md' })
     const gb = bodyOf(go)
     gb.append(button({ label: this.planning ? 'Planning…' : 'Plan (dry run)', icon: 'beaker', variant: 'ghost', disabled: this.planning || !this.worlds.length, onClick: () => void this.makePlan() }))
     const p = this.plan

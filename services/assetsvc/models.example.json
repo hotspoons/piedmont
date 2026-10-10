@@ -47,7 +47,7 @@
       "url": "http://recon.default.svc",
       "pollMs": 3000,
       "timeoutMs": 1800000,
-      "$note": "tools/recon-service. One GPU, one job at a time — it serialises internally, and assetsvc's own queue is concurrency 1 on the mesh lane so we do not race it into an out-of-memory. Send KEYED cut-outs: it keeps an alpha channel when one is present and our chroma key beats the background remover it would otherwise run."
+      "$note": "services/recon. One GPU, one job at a time — it serialises internally, and assetsvc's own queue is concurrency 1 on the mesh lane so we do not race it into an out-of-memory. Send KEYED cut-outs: it keeps an alpha channel when one is present and our chroma key beats the background remover it would otherwise run."
     }
   },
 

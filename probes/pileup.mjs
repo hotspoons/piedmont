@@ -101,7 +101,7 @@ const r = await p.evaluate(async () => {
   out.dents = t.stats.dents
 
   // ---- 4. the cap: wreck more cars near the player with the cap at four; the oldest come back as cars
-  window.corridor.tune.set('TRAFFIC_WRECKS_MAX', 4)
+  window.piedmont.tune.set('TRAFFIC_WRECKS_MAX', 4)
   const wokenBefore = t.woken
   const near = []
   for (let i = 0; i < t.count && near.length < 12; i++) {
@@ -125,7 +125,7 @@ const r = await p.evaluate(async () => {
   // ---- 5. respawns: run the traffic for two minutes of world time with the player parked
   const before = t.respawned
   for (let i = 0; i < 50 * 120; i++) t.tick(1 / 50, eye)
-  out.respawn = { n: t.respawned - before, minM: +t.respawnMin.toFixed(0), parked: t.parked, limit: window.corridor.tune.get('TRAFFIC_RESPAWN_M') }
+  out.respawn = { n: t.respawned - before, minM: +t.respawnMin.toFixed(0), parked: t.parked, limit: window.piedmont.tune.get('TRAFFIC_RESPAWN_M') }
   // and no car on the road sits still where it was put back: every non-wrecked visible car near the player is moving or queued behind another
   let still = 0, visible = 0
   for (let i = 0; i < t.count; i++) {

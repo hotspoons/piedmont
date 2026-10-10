@@ -14,7 +14,7 @@
 //   * a byte offset into a file on a volume is resumable from any tab, any reload, any pod.
 // `GET /api/runs/<id>/log?offset=N` is the whole protocol.
 //
-// TWO RUNNERS, ONE INTERFACE. In the cluster a run is a Job built to match `tools/corridor/chart`
+// TWO RUNNERS, ONE INTERFACE. In the cluster a run is a Job built to match `deploy/helm/bake`
 // exactly. On a laptop it is a subprocess. Same record, same log file, same endpoints — which is
 // what makes it possible to prove the thing works without booking a GH200.
 
@@ -83,12 +83,12 @@ export class Runs {
   /**
    * Start a bake of one world (or `all`).
    *
-   * `corridor fetch` is the whole bake: it fetches, measures, and writes `web/` plus
+   * `piedmont_bake fetch` is the whole bake: it fetches, measures, and writes `web/` plus
    * `sites/index.json` at the end (see `fetch_site`). There is no second export step to run, and
    * adding one would re-export every site on the volume.
    */
   async bake(slug, opts = {}) {
-    // A WORLD TOO BIG FOR ONE JOB GOES PLAN -> SHARD -> FINALIZE (docs/corridor/PLAN-SHARDED-BAKE.md).
+    // A WORLD TOO BIG FOR ONE JOB GOES PLAN -> SHARD -> FINALIZE (docs/PLAN-SHARDED-BAKE.md).
     // The three phases are three sets of Jobs in one run: one cheap plan Job, N shard Jobs fanned
     // across the cluster, one cheap finalizer. `run.phase`/`run.jobs` carry the state so a pod
     // restart resumes at the phase it was in (reconcile below).
@@ -130,7 +130,7 @@ export class Runs {
   /**
    * The Overpass upstreams that hold ALL of this world, fences stripped, and why.
    *
-   * THE BAKE DOES NOT UNDERSTAND FENCES. `osm.py` splits `CORRIDOR_OVERPASS_URL` on commas and
+   * THE BAKE DOES NOT UNDERSTAND FENCES. `osm.py` splits `PIEDMONT_OVERPASS_URL` on commas and
    * posts to the first entry, and a `#south/west/north/east` fragment is never sent on the wire —
    * so handing it this service's whole fenced list sent a MARYLAND world to the EUROPE extract,
    * which answered 200 with no elements and the bake raised "no ways for roads [] within 1219 m".
@@ -194,7 +194,7 @@ export class Runs {
    * a log on the volume, one Job, the same viewer, the same cancel.
    *
    * THE JOB DOES THE HEAVY HALF AND THE INSTANCE DOES THE WRITE. Measured on a local copy of the
-   * instance's own image (docs in tools/overpass/README.md, "Adding a region"): `update_from_dir`
+   * instance's own image (docs in services/overpass/README.md, "Adding a region"): `update_from_dir`
    * applied Maryland as one osmChange of creates into a LIVE Washington database through its
    * dispatcher in 279 s, while queries kept answering (217 of them, p95 180 ms). But it has to go
    * THROUGH the dispatcher, and the dispatcher's shared memory is the overpass pod's own /dev/shm
@@ -204,12 +204,12 @@ export class Runs {
    *   this Job        on the instance's NODE (its volume is ReadWriteOnce), with the instance's
    *                   volume at /db: download the .pbf, check it, convert it to an osmChange,
    *                   stage it in /db/regions/<id>/, then wait and stream the apply log;
-   *   the instance    a `regions` sidecar in the overpass pod (tools/overpass/chart, values
+   *   the instance    a `regions` sidecar in the overpass pod (deploy/helm/overpass, values
    *                   `regions.enabled`), sharing /db AND /dev/shm with the dispatcher, applies the
    *                   staged change through it — the same call the instance's own daily diffs make —
    *                   and from then on follows the region's own diff stream too.
    *
-   * The Job's spec is `osmImportJob` below, and tools/overpass/osm-import-job.yaml is the same
+   * The Job's spec is `osmImportJob` below, and services/overpass/osm-import-job.yaml is the same
    * thing written out for review; a test holds the two together. It needs NO RBAC this editor does
    * not already have: it creates a Job, and reads the instance's pod to learn its node.
    */
@@ -305,7 +305,7 @@ export class Runs {
 
   async #start({ kind, slug, args, label, needsBucket = false, sharded = false, phaseArgs = {}, refreshOsm = false }) {
     if (needsBucket && !this.cfg.bucket) {
-      throw Object.assign(new Error('no bucket configured — set WORLDEDITOR_S3_BUCKET and mount the credentials Secret'), { status: 400 })
+      throw Object.assign(new Error('no bucket configured — set PIEDMONT_EDITOR_S3_BUCKET and mount the credentials Secret'), { status: 400 })
     }
     const id = `${kind}-${slug}-${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}-${randomUUID().slice(0, 4)}`
     const run = {
@@ -363,29 +363,29 @@ export class Runs {
   /**
    * The Job, built to be the chart's Job.
    *
-   * Differences from `tools/corridor/chart/templates/job.yaml`, all deliberate:
+   * Differences from `deploy/helm/bake/templates/job.yaml`, all deliberate:
    *   * `backoffLimit: 0` — the chart retries once, which is right for an unattended nightly and
    *     wrong for a person watching: a failed bake that silently restarts prints its log twice and
    *     looks like a hang. Here, a failure is a failure and the person presses the button again.
-   *   * `CORRIDOR_SITES=/data/sites.json` always, because the world being baked was drawn a minute
+   *   * `PIEDMONT_SITES=/data/sites.json` always, because the world being baked was drawn a minute
    *     ago and is not in the image.
-   *   * `CORRIDOR_PYRAMID=1` always. A bake from this editor is a tile pyramid. Leaving it unset
+   *   * `PIEDMONT_PYRAMID=1` always. A bake from this editor is a tile pyramid. Leaving it unset
    *     is how a world came out as one mesh: the bake image treats the variable as opt-in, and
    *     nothing in the job used to set it. There is no switch in the panel to turn LOD off.
    *   * no ConfigMap: the chart mounts sites.json as one, which caps at 1 MiB and needs a fresh
    *     object per revision. The volume is already mounted and already holds the materialised list.
    */
   async #jobSpec(run, args, { spread = false, tag = '' } = {}) {
-    const name = `corridor-${run.kind}-${tag ? `${tag}-` : ''}${short(run.slug)}-${Date.now().toString(36)}-${randomUUID().slice(0, 4)}`.slice(0, 60).replace(/-+$/, '')
+    const name = `piedmont-${run.kind}-${tag ? `${tag}-` : ''}${short(run.slug)}-${Date.now().toString(36)}-${randomUUID().slice(0, 4)}`.slice(0, 60).replace(/-+$/, '')
     const overpass = run.overpass !== undefined ? run.overpass : await this.#overpassFor(run.slug)
     const env = [
-      { name: 'CORRIDOR_DATA', value: '/data' },
-      { name: 'CORRIDOR_SITES', value: '/data/sites.json' },
-      { name: 'CORRIDOR_HORIZON_M', value: String(this.cfg.horizonM ?? 30000) },
-      { name: 'CORRIDOR_PYRAMID', value: '1' },
+      { name: 'PIEDMONT_DATA', value: '/data' },
+      { name: 'PIEDMONT_SITES', value: '/data/sites.json' },
+      { name: 'PIEDMONT_HORIZON_M', value: String(this.cfg.horizonM ?? 30000) },
+      { name: 'PIEDMONT_PYRAMID', value: '1' },
       { name: 'PYTHONUNBUFFERED', value: '1' }, // or the log arrives in 4 KiB lumps, minutes late
       // No BLAS/GDAL thread pool, so the forked per-tile/profile pools cannot inherit a held lock.
-      // `corridor/__main__.py` sets the same defaults before numpy loads; these make it explicit in
+      // `piedmont_bake/__main__.py` sets the same defaults before numpy loads; these make it explicit in
       // the manifest and cover a container that starts some other entrypoint. See the comment there
       // (dc-metro-take-2 deadlocked in profile_many, 2026-10-05).
       { name: 'OPENBLAS_NUM_THREADS', value: '1' },
@@ -394,22 +394,22 @@ export class Runs {
       { name: 'NUMEXPR_NUM_THREADS', value: '1' },
       { name: 'GDAL_NUM_THREADS', value: '1' },
     ]
-    if (overpass) env.push({ name: 'CORRIDOR_OVERPASS_URL', value: overpass })
+    if (overpass) env.push({ name: 'PIEDMONT_OVERPASS_URL', value: overpass })
     // the control: osm.py refuses a query whose area its upstream does not hold (BakeFault)
     const cov = this.#coverageEnv('/data')
-    if (overpass && cov) env.push({ name: 'CORRIDOR_OVERPASS_COVERAGE', value: cov })
+    if (overpass && cov) env.push({ name: 'PIEDMONT_OVERPASS_COVERAGE', value: cov })
     // FRESH OSM ONCE, NOT ONCE PER SHARD. The plan phase (or a single-Job bake) asks the whole
     // network's queries; the shards ask the same ones and should read what the plan just fetched.
     // With the refresh on every phase, all 25 dc-metro shards sent the full-world roads query to
     // overpass-na at the same moment (2026-10-10) and one got a non-JSON 200 back — the bake died
     // on a load the plan had already done.
-    if (run.refreshOsm && tag !== 'finalize' && !tag.startsWith('shard')) env.push({ name: 'CORRIDOR_OSM_REFRESH', value: '1' })
+    if (run.refreshOsm && tag !== 'finalize' && !tag.startsWith('shard')) env.push({ name: 'PIEDMONT_OSM_REFRESH', value: '1' })
     if (this.cfg.bucket) {
       env.push(
-        { name: 'CORRIDOR_S3_BUCKET', value: this.cfg.bucket },
-        { name: 'CORRIDOR_S3_ENDPOINT', value: this.cfg.endpoint ?? '' },
-        { name: 'CORRIDOR_S3_REGION', value: this.cfg.region ?? 'auto' },
-        { name: 'CORRIDOR_S3_PREFIX', value: this.cfg.prefix ?? 'corridor' },
+        { name: 'PIEDMONT_S3_BUCKET', value: this.cfg.bucket },
+        { name: 'PIEDMONT_S3_ENDPOINT', value: this.cfg.endpoint ?? '' },
+        { name: 'PIEDMONT_S3_REGION', value: this.cfg.region ?? 'auto' },
+        { name: 'PIEDMONT_S3_PREFIX', value: this.cfg.prefix ?? 'piedmont' },
       )
     }
     const spec = {
@@ -428,10 +428,10 @@ export class Runs {
             restartPolicy: 'Never',
             containers: [
               {
-                name: 'corridor',
+                name: 'bake',
                 image: this.cfg.image,
                 imagePullPolicy: 'Always',
-                command: ['python', '-m', 'corridor', ...args],
+                command: ['python', '-m', 'piedmont_bake', ...args],
                 env,
                 ...(this.cfg.secretName ? { envFrom: [{ secretRef: { name: this.cfg.secretName, optional: true } }] } : {}),
                 resources: this.cfg.resources,
@@ -775,24 +775,24 @@ export class Runs {
     const cov = this.#coverageEnv(this.store.root)
     const env = {
       ...process.env,
-      CORRIDOR_DATA: this.store.root,
-      CORRIDOR_SITES: `${this.store.root}/sites.json`,
+      PIEDMONT_DATA: this.store.root,
+      PIEDMONT_SITES: `${this.store.root}/sites.json`,
       // same rule as the cluster Job: a bake from this editor is a pyramid, on a laptop too
-      CORRIDOR_PYRAMID: '1',
+      PIEDMONT_PYRAMID: '1',
       PYTHONUNBUFFERED: '1',
-      ...(overpass ? { CORRIDOR_OVERPASS_URL: overpass } : {}),
-      ...(overpass && cov ? { CORRIDOR_OVERPASS_COVERAGE: cov } : {}),
-      ...(run.refreshOsm ? { CORRIDOR_OSM_REFRESH: '1' } : {}),
+      ...(overpass ? { PIEDMONT_OVERPASS_URL: overpass } : {}),
+      ...(overpass && cov ? { PIEDMONT_OVERPASS_COVERAGE: cov } : {}),
+      ...(run.refreshOsm ? { PIEDMONT_OSM_REFRESH: '1' } : {}),
       ...(this.cfg.bucket
         ? {
-            CORRIDOR_S3_BUCKET: this.cfg.bucket,
-            CORRIDOR_S3_ENDPOINT: this.cfg.endpoint ?? '',
-            CORRIDOR_S3_REGION: this.cfg.region ?? 'auto',
-            CORRIDOR_S3_PREFIX: this.cfg.prefix ?? 'corridor',
+            PIEDMONT_S3_BUCKET: this.cfg.bucket,
+            PIEDMONT_S3_ENDPOINT: this.cfg.endpoint ?? '',
+            PIEDMONT_S3_REGION: this.cfg.region ?? 'auto',
+            PIEDMONT_S3_PREFIX: this.cfg.prefix ?? 'piedmont',
           }
         : {}),
     }
-    const child = spawn(this.cfg.python, ['-m', 'corridor', ...run.args], { cwd: this.cfg.cwd, env, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(this.cfg.python, ['-m', 'piedmont_bake', ...run.args], { cwd: this.cfg.cwd, env, stdio: ['ignore', 'pipe', 'pipe'] })
     // EVERY HANDLER BEFORE THE FIRST await. `spawn` reports a missing interpreter by emitting
     // 'error' on the next tick, and an unhandled 'error' on a ChildProcess throws — so an `await`
     // between the spawn and the handler takes the whole SERVICE down when the python path is
@@ -1002,7 +1002,7 @@ const short = (s) => String(s).replace(/[^a-z0-9-]/g, '').slice(0, 24)
 
 /**
  * The Job an `osm-import` creates. PURE, and exported so the reviewed manifest
- * (tools/overpass/osm-import-job.yaml) can be held against it by a test.
+ * (services/overpass/osm-import-job.yaml) can be held against it by a test.
  *
  * What an admin should check, line by line:
  *   * it runs the INSTANCE's own image, which already carries curl, osmium and pyosmium — nothing
@@ -1039,7 +1039,7 @@ export function osmImportJob({ name, runId, upstream, region, node, image, ttlSe
             {
               name: 'import',
               image,
-              imagePullPolicy: 'IfNotPresent',
+              imagePullPolicy: 'Always',
               command: ['/bin/bash', '/opt/regions/import.sh'],
               env: [
                 { name: 'UPSTREAM', value: upstream },

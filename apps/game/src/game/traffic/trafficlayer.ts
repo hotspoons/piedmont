@@ -42,7 +42,7 @@ import { loadCarModel } from '../vehicle/carmodel'
 import { defaultVehicle, lampCounts, lampOffsets, type VehicleDoc } from '../vehicle/vehicles'
 import type { SoundOverrides } from '../audio/soundbank'
 import type { Site } from '../../world/scene'
-import type { CorridorPhysics } from '../world/physics'
+import type { WorldPhysics } from '../world/physics'
 import * as T from '../../tuning'
 
 /** What a level's `simulations` entry may say. Everything is optional; a bare `{ kind: 'traffic' }` runs. */
@@ -248,7 +248,7 @@ export class TrafficLayer {
   readonly zones = new Zones()
   private site: Site
   private actors: ActorWorld
-  private physics: CorridorPhysics | null
+  private physics: WorldPhysics | null
   private roads: Road[] = []
   private shown: Shown[] = []
   private models = new Map<string, { object: THREE.Object3D; doc: VehicleDoc }>()
@@ -345,7 +345,7 @@ export class TrafficLayer {
   /** what could not be done, in words — a level with a set that names no built vehicle should say so */
   problems: string[] = []
 
-  constructor(site: Site, actors: ActorWorld, physics: CorridorPhysics | null) {
+  constructor(site: Site, actors: ActorWorld, physics: WorldPhysics | null) {
     this.site = site
     this.actors = actors
     this.physics = physics

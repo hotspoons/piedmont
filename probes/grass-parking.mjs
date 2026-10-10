@@ -1,6 +1,6 @@
 // Does turf grow on car parks?
 //
-//   PORT=5185 SLUG=crofton-crownsville node probes/corridor-grass-parking.mjs
+//   PORT=5185 SLUG=crofton-crownsville node probes/grass-parking.mjs
 //
 // The verge planter only knows distance from the PAVEMENT EDGE, and a lot sits beyond that edge,
 // so grass grew straight across the asphalt. This asserts the mechanism rather than the look: it

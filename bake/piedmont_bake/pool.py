@@ -3,15 +3,15 @@
 The long offline stages are chains of independent, CPU-heavy per-tile jobs — one `.pack` per 1 km
 tile (network_tiles.export_tiles), one pyramid tile per (z, x, y) (pyramid.bake). They used to run
 in a serial `for` loop, which is why 643 tiles of the Capital Beltway took ~67 minutes and its
-1,272-tile pyramid another ~60 (corridor-bake-495-mutyn7k8, 2026-10-04).
+1,272-tile pyramid another ~60 (piedmont-bake-495-mutyn7k8, 2026-10-04).
 
 WHY A FORK POOL AND NOT THREADS. Every worker opens its own rasterio datasets (never shares a GDAL
 handle across processes — a shared file offset corrupts pread), and most of the wall time is inside
 PIL PNG encode and numpy, both of which hold the GIL, so threads would serialize on it. Fork gives
-real parallelism. It is safe only because `corridor/__main__` pins BLAS/OpenMP/GDAL to one thread
+real parallelism. It is safe only because `piedmont_bake/__main__` pins BLAS/OpenMP/GDAL to one thread
 before numpy loads: forking a process with a BLAS thread pool alive deadlocks the child on the
 inherited lock (dc-metro-take-2, 2026-10-05). `default_jobs` is deliberately conservative and can be
-overridden with `CORRIDOR_TILE_JOBS`.
+overridden with `PIEDMONT_TILE_JOBS`.
 
 The worker callable must be a module-level function (it is pickled by reference); its arguments must
 be picklable too, which is why the tile stages pass paths and plain data rather than closures —
@@ -21,14 +21,14 @@ from __future__ import annotations
 
 import os
 
-#: overrides everything; the container and the charts set CORRIDOR_JOBS for the profile pool but a
+#: overrides everything; the container and the charts set PIEDMONT_JOBS for the profile pool but a
 #: tile stage is lighter per worker (no 20 GiB cloud inherited), so it may want a different number.
-_ENV = "CORRIDOR_TILE_JOBS"
+_ENV = "PIEDMONT_TILE_JOBS"
 
 
 def default_jobs(n_tasks: int) -> int:
-    """Workers for a tile pool: CORRIDOR_TILE_JOBS, else CORRIDOR_JOBS, else min(cpu, 16)."""
-    for name in (_ENV, "CORRIDOR_JOBS"):
+    """Workers for a tile pool: PIEDMONT_TILE_JOBS, else PIEDMONT_JOBS, else min(cpu, 16)."""
+    for name in (_ENV, "PIEDMONT_JOBS"):
         env = os.environ.get(name, "").strip()
         if env:
             try:

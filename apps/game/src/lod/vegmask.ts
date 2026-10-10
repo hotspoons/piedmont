@@ -13,7 +13,7 @@
 // majority: grass and canopy are strongly positive, asphalt and concrete sit at zero, bare soil
 // and roofs go negative. Summer NAIP; a dry lawn is still green enough. The honest version of
 // this is NDVI from NAIP's near-infrared band, which the BAKE has and the jpg does not — a
-// `veg.png` per tile is the follow-up in docs/corridor/PLAN-STREAMING-WORLD.md.
+// `veg.png` per tile is the follow-up in docs/PLAN-STREAMING-WORLD.md.
 //
 // Lazy like everything else near the eye: `update(x, y)` fetches the nearest unloaded tile's
 // photo inside VEG_RADIUS_M, at most two in flight, and tells the caller which tile just landed.

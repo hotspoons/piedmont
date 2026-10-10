@@ -1,5 +1,5 @@
 // Where are the stop bars at one junction, and are they drawn? Reads the live geometry: no screenshot.
-//   PORT=5185 node probes/corridor-barcheck.mjs [junction id]
+//   PORT=5185 node probes/barcheck.mjs [junction id]
 import { chromium } from 'playwright'
 const PORT = process.env.PORT ?? '5185'
 const JID = process.argv[2] ?? 'x1646027193'
@@ -7,9 +7,9 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#crofton-triangle`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 300000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 300000 })
 console.log(await page.evaluate((jid) => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const L = site.layers.stopbars
   const X = site.manifest.intersections.list.find((q) => q.id === jid)
   const bars = (site.manifest.signals?.bars ?? []).filter((b) => b.x_id === jid)

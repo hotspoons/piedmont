@@ -1,10 +1,10 @@
 // Render a stance URL, with the isolation switches an embankment/float bug needs.
 //
-//   PORT=5201 node probes/corridor-stanceshot.mjs '<stance url>' out.png
-//   HIDE=terrain,strip  THIN=1  WIRE=1  node probes/corridor-stanceshot.mjs '<url>' out.png
+//   PORT=5201 node probes/stanceshot.mjs '<stance url>' out.png
+//   HIDE=terrain,strip  THIN=1  WIRE=1  node probes/stanceshot.mjs '<url>' out.png
 //
-// Why not probes/corridor-stance.mjs: this box has no GPU, and at Rich's grass density
-// swiftshader takes seconds per frame, so a screenshot times out (probes/corridor-grassload.mjs
+// Why not probes/stance.mjs: this box has no GPU, and at Rich's grass density
+// swiftshader takes seconds per frame, so a screenshot times out (probes/grassload.mjs
 // has the curve). THIN=1 (the default) turns the grass down far enough to render and says so in
 // the printed counts; THIN=0 shoots it as Rich has it, slowly.
 //
@@ -28,14 +28,14 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(local, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 300000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 300000 })
 await page.waitForTimeout(1500)
 // the strips and buildings are built lazily around the eye (scene.ts gradeNear): wait until
 // nothing within range is left, or the shot shows bare terrain where a strip will be
-await page.waitForFunction(() => { const g = window.corridor?.site?.graded?.(); return !g || (g.pendingNear === 0 && g.built > 0) }, null, { timeout: 300000 }).catch(() => console.log('grading did not settle'))
+await page.waitForFunction(() => { const g = window.piedmont?.site?.graded?.(); return !g || (g.pendingNear === 0 && g.built > 0) }, null, { timeout: 300000 }).catch(() => console.log('grading did not settle'))
 
 console.log(await page.evaluate(({ thin, hide, wire }) => {
-  const c = window.corridor, site = c.site
+  const c = window.piedmont, site = c.site
   if (thin && site.grass) {
     c.tune.set('GRASS_RADIUS', 40)
     c.tune.set('GRASS_SPRITE_RADIUS', 150)
@@ -85,7 +85,7 @@ console.log(await page.evaluate(({ thin, hide, wire }) => {
 
 if (WEATHER != null) {
   console.log(await page.evaluate(({ w, settle, RATE }) => {
-    const c = window.corridor, site = c.site
+    const c = window.piedmont, site = c.site
     c.tune.set('WEATHER', w)
     // swiftshader cannot draw twenty thousand transparent quads; thin them and say by how much
     c.tune.set('WEATHER_RATE', Number(RATE))

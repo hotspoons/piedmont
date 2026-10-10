@@ -397,7 +397,7 @@ export async function dryRun(js: string, { seconds = 5, step = 0.05 }: { seconds
  * the volume as you type is a different and much worse promise.
  */
 
-/** What may live here. Matches PROGRAM_EXT in tools/worldeditor/store.mjs, which is the authority. */
+/** What may live here. Matches PROGRAM_EXT in services/worldeditor/store.mjs, which is the authority. */
 const EXT = ['.ts', '.tsx', '.js', '.mjs', '.json', '.md', '.txt', '.glsl', '.frag', '.vert', '.css', '.yaml', '.yml']
 
 /** The ones the TypeScript service should know about: what a program can actually import. */
@@ -971,7 +971,7 @@ export class ProgramPanel {
   private exposeForProbes(): void {
     // for probes and the console, the way the viewer exposes its knobs. The toolkit is three
     // asynchronous services behind an editor, and every one of them fails by doing nothing
-    // visible; this is how probes/corridor-program-editor.mjs asks them directly.
+    // visible; this is how probes/program-editor.mjs asks them directly.
     ;(window as unknown as { __apexProgram: unknown }).__apexProgram = {
       id: this.active,
       open: () => [...this.open.keys()],

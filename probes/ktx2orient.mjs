@@ -10,7 +10,7 @@
 // GPU has no compressed format, which is what swiftshader does) and the jpg, and compare the mean
 // luma of their top and bottom rows. Same orientation -> top matches top.
 //
-//   PORT=5185 node probes/corridor-ktx2orient.mjs '<stance url>'
+//   PORT=5185 node probes/ktx2orient.mjs '<stance url>'
 import { chromium } from 'playwright'
 const [, , url] = process.argv
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
@@ -18,11 +18,11 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 300000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 300000 })
 // let the stream bring a tile in
-await page.waitForFunction(() => (window.corridor.site.tiles?.()?.resident ?? 0) > 0, null, { timeout: 120000 }).catch(() => null)
+await page.waitForFunction(() => (window.piedmont.site.tiles?.()?.resident ?? 0) > 0, null, { timeout: 120000 }).catch(() => null)
 console.log(await page.evaluate(async () => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const counts = site.tiles?.()
   const st = site.tileStream
   const [key, tex] = [...(st?.loaded ?? new Map()).entries()][0] ?? []

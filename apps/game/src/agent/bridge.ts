@@ -6,7 +6,7 @@
 //
 // WHAT THIS PAGE BRINGS, and it is deliberately only the things that cannot live on the service.
 // Worlds, levels, programs, the catalog, the runs and the splats are all `/api` handlers and are
-// implemented in `tools/worldeditor/mcptools.mjs`, so they work with no browser open. Three things
+// implemented in `services/worldeditor/mcptools.mjs`, so they work with no browser open. Three things
 // are not:
 //
 //   the shell     a wasm build of coreutils, python and js in a Worker, whose filesystem is the

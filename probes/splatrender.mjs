@@ -1,6 +1,6 @@
 // Do the gaussians actually DRAW in the viewer?
 //
-// corridor-splatseam.mjs deliberately loads none: the full tiles are 52-97 MB and pulling two of
+// splatseam.mjs deliberately loads none: the full tiles are 52-97 MB and pulling two of
 // them through a software rasteriser kills the tab, so it measures the envelope with the stream
 // switched off. That leaves the render path itself -- the part Rich actually looks at -- asserted
 // by nobody.
@@ -16,7 +16,7 @@
 //      gaussians reached the screen rather than merely being parsed
 //   4. it changes IN the capture envelope and not outside it
 //
-//   PORT=5185 node probes/corridor-splatrender.mjs [slug]
+//   PORT=5185 node probes/splatrender.mjs [slug]
 import { chromium } from 'playwright'
 
 const slug = process.argv[2] ?? 'arrowhead-farms-network'
@@ -36,12 +36,12 @@ await page.route(`**/sites/${slug}/splats.json`, async (route) => {
 })
 
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.tune, null, { timeout: 600000 })
-await page.waitForFunction(() => !!window.corridor?.site && !!window.corridor.splats?.().length, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.tune, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site && !!window.piedmont.splats?.().length, null, { timeout: 600000 })
 
 // Put the sun up: a night measurement compares two black frames and passes nothing.
 await page.evaluate(async () => {
-  const c = window.corridor
+  const c = window.piedmont
   const lon = c.site.manifest.frame?.anchor?.lon ?? 0
   c.time.setLocal('2026-09-26', `${String(Math.round((12 - lon / 15 + 24) % 24)).padStart(2, '0')}:00`)
   await new Promise((r) => requestAnimationFrame(r))
@@ -49,10 +49,10 @@ await page.evaluate(async () => {
 
 // Stand on a capture pass, where the tiles are.
 const spot = await page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   const f = c.splats()[0]
   const t = f.tiles ?? f.resident
-  // the corridor's own points, transformed to site metres by the field itself
+  // the envelope's own points, transformed to site metres by the field itself
   const p = c.splatProbePoint?.() ?? null
   if (p) return p
   const bb = c.site.manifest.bbox
@@ -66,10 +66,10 @@ const spot = await page.evaluate(() => {
 if (!spot) { console.error('FAIL: no point inside the capture envelope'); await browser.close(); process.exit(1) }
 console.log(`  standing at site (${spot.x.toFixed(0)}, ${spot.z.toFixed(0)}), inside the envelope`)
 
-// Camera low and along the road: a splat corridor is thin, and looking down at it from 26 m
+// Camera low and along the road: a splat road band is thin, and looking down at it from 26 m
 // mostly frames the bake.
 await page.evaluate(({ p }) => {
-  const c = window.corridor
+  const c = window.piedmont
   const g = c.site.groundAt(p.x, p.z) ?? 0
   c.camera.position.set(p.x, g + 2.3, p.z)          // the measured rig height
   c.orbit.target.set(p.x + 30, g + 2.3, p.z)
@@ -80,7 +80,7 @@ await page.evaluate(({ p }) => {
 // Let the stream run. Spark sorts OFF THE MAIN THREAD, so a single render after a load can
 // legitimately draw nothing -- the viewer lane lost an evening to exactly that. Drive frames.
 const res = await page.evaluate(() => new Promise((resolve) => {
-  const c = window.corridor
+  const c = window.piedmont
   let n = 0
   const tick = () => {
     n++
@@ -103,7 +103,7 @@ if (!res.resident || !res.gaussians) {
 // straight after a render is both faster and closer to the question -- it is the pixels the
 // renderer just produced, not a composited page.
 const diff = await page.evaluate(async () => {
-  const c = window.corridor
+  const c = window.piedmont
   const gl = c.renderer.getContext()
   const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight
   const grab = async (on) => {

@@ -7,7 +7,7 @@ tests pin the two rules that make that safe: a chain's slice is exactly the poin
 selected, in the same order, and the pool returns results in task order (a failure is a None, not
 a dead bake).
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ import numpy as np
 from shapely.geometry import LineString
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import network_tiles as nt  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import network_tiles as nt  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
 LON, LAT = -76.685, 39.007
 FRAME = Frame.at(LON, LAT)

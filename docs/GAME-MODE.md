@@ -18,7 +18,7 @@ Settings dialog and the Escape menu read and write the same fields, and both ask
 Where a page starts (`resolveUiMode` in `src/gamepolicy.ts`):
 
 1. `ui=game` or `ui=dev` in the address: `#<world>?ui=game` (`src/url.ts`).
-2. The player's remembered choice (`apex-corridor.settings.v1`, field `ui`).
+2. The player's remembered choice (`piedmont.settings.v1`, field `ui`).
 3. Otherwise a **production build is a game**; the **dev server is a workbench**
    (`import.meta.env.PROD`).
 
@@ -27,12 +27,12 @@ select) is the player's, whatever the link said, and is remembered. A program th
 `api.ui.developer(false)` shows the game view and removes the toggle — unless the link said
 `?ui=dev`, which is the developer's own hatch into a level that forbids it.
 
-So a deployed world opens as a game. `just corridor-view` opens as the developer view it always
+So a deployed world opens as a game. `just dev` opens as the developer view it always
 was. A link from the world editor that wants the developer view should carry `#<world>?ui=dev`.
 
 ## The Escape menu
 
-`src/ui/gamemenu.ts`, on the engine's `MenuStack` (`packages/engine/src/app/Menus.ts`), the same
+`src/ui/gamemenu.ts`, on the engine's `MenuStack` (`vendor/arcade/packages/engine/src/app/Menus.ts`), the same
 one Turbo Radrun, stuntin and conduit use. Screens are data; the menu asks a `GameMenuHost` for
 each setting's getter and setter, and `main.ts` implements that host over the viewer's real
 state.
@@ -175,7 +175,7 @@ camera, so there is no player character model yet — `model:` puts any library 
 The world is **not drawn** while the screen is up. The frame the run ended on is drawn once more
 and copied off the canvas into a sixth-size texture in the same task (before the browser presents
 it, so no `preserveDrawingBuffer`); after that each frame is two passes on the app's own renderer
-— that copy blurred and darkened in one 25-tap full-screen quad, then the turntable. Measured on crofton-triangle with `probes/corridor-finish.mjs` (headless, software
+— that copy blurred and darkened in one 25-tap full-screen quad, then the turntable. Measured on crofton-triangle with `probes/finish.mjs` (headless, software
 GL — the agent box has no GPU, so these are counts and relative times, not a real card's
 milliseconds):
 
@@ -197,14 +197,14 @@ every frame and blurs the car with it.
 ### Probing it
 
 ```
-PORT=5198 OUT=/tmp/shots node probes/corridor-finish.mjs [slug]
+PORT=5198 OUT=/tmp/shots node probes/finish.mjs [slug]
 ```
 
 The probe serves its own level and program by route (nothing is written to a world editor), and
 checks the screen is hidden until the finish, the count-up lands on the reported total, the world's
 draw calls stop, the turntable turns, the keys move and choose, Restart is a second `setup` on a
 fresh clock, Escape lands on the menu's root with Levels, and `'character'` (asked for, and by
-default on foot) puts the figure up. From a console or a bridge: `corridor.finish` — `open`,
+default on foot) puts the figure up. From a console or a bridge: `piedmont.finish` — `open`,
 `result`, `buttons`, `choose(id)`, `draws`.
 
 ## The map's double-click
@@ -242,8 +242,8 @@ menu blips (`src/ui/uisound.ts`) sit on master × interface.
 ## Probing it
 
 ```
-PORT=5185 node probes/corridor-gamemode.mjs [slug]
+PORT=5185 node probes/gamemode.mjs [slug]
 ```
 
-and from the console or a bridge: `corridor.chrome` — `mode`, `set(mode)`, `policy`, `settings`,
+and from the console or a bridge: `piedmont.chrome` — `mode`, `set(mode)`, `policy`, `settings`,
 `input`, `menu`, `hud`, `pause()`, `resume()`, `paused`, `teleport(x, y)`.

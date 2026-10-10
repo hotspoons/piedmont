@@ -29,7 +29,7 @@ const PORT = 8000 + Math.floor(Math.random() * 900)
 const DATA = mkdtempSync(path.join(tmpdir(), 'we-mcp-'))
 
 const child = spawn(process.execPath, [path.join(HERE, 'server.mjs')], {
-  env: { ...process.env, WORLDEDITOR_DATA: DATA, WORLDEDITOR_PORT: String(PORT), WORLDEDITOR_RUNNER: 'local' },
+  env: { ...process.env, PIEDMONT_EDITOR_DATA: DATA, PIEDMONT_EDITOR_PORT: String(PORT), PIEDMONT_EDITOR_RUNNER: 'local' },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 let stderr = ''

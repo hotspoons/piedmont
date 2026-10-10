@@ -10,7 +10,7 @@
 // asserts the WHOLE NETWORK and not one road: a single wrong road looks like a bad tag, 400 wrong
 // roads look like nothing at all.
 //
-//   PORT=5185 node probes/corridor-lanes.mjs [slug]
+//   PORT=5185 node probes/lanes.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -19,11 +19,11 @@ const page = await browser.newPage({ viewport: { width: 700, height: 450 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await page.waitForTimeout(3000)
 
 const out = await page.evaluate(() => {
-  const m = window.corridor.site.manifest
+  const m = window.piedmont.site.manifest
   const br = m.branches ?? []
   // what the bake wrote
   const kinds = { number: 0, string: 0, array: 0, nullish: 0 }
@@ -48,11 +48,11 @@ const out = await page.evaluate(() => {
   }
   // and what is actually ON SCREEN: the widest road mesh the viewer built
   const widths = []
-  window.corridor.site.group.traverse((o) => {
+  window.piedmont.site.group.traverse((o) => {
     if (!o.isMesh || !/^road:/.test(o.name || '')) return
     o.geometry.computeBoundingBox?.()
   })
-  return { branches: br.length, kinds, wouldBeWrong, mismatched, laneWidth: window.corridor.tune?.get?.('LANE_WIDTH') ?? null }
+  return { branches: br.length, kinds, wouldBeWrong, mismatched, laneWidth: window.piedmont.tune?.get?.('LANE_WIDTH') ?? null }
 })
 console.log(JSON.stringify(out, null, 1))
 await browser.close()

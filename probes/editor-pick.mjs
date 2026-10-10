@@ -14,7 +14,7 @@ import { existsSync, unlinkSync, writeFileSync } from 'node:fs'
 
 const SLUG = process.env.SLUG ?? 'bowie-racetrack-rd'
 const EDITOR = process.env.EDITOR ?? 'http://127.0.0.1:5185/editor.html'
-const FILE = `/workspaces/apex-conduit/tools/corridor/data/sites/${SLUG}/stunts.json`
+const FILE = `/workspaces/piedmont/data/sites/${SLUG}/stunts.json`
 if (existsSync(FILE)) unlinkSync(FILE)
 
 const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
@@ -24,13 +24,13 @@ let bad = 0
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++ }
 
 await p.goto(`${EDITOR}#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 180000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 180000 })
 await p.waitForTimeout(6000)
 
 // put a stunt on the road, then go back to the areas tab
 const made = await p.evaluate(() => {
-  const st = window.corridor.stunts
-  const site = window.corridor.site
+  const st = window.piedmont.stunts
+  const site = window.piedmont.site
   const at = site.spineAt(site.manifest.spine.length_m / 2).pos
   st.arm('loop')
   const id = st.placeAt({ x: at.x, y: -at.z })
@@ -40,7 +40,7 @@ check(!!made.id, 'a fixture is on the road')
 
 await p.keyboard.press('1') // areas
 await p.waitForTimeout(800)
-check(await p.evaluate(() => window.corridor.mode() === 'areas'), 'and the editor is on the areas tab')
+check(await p.evaluate(() => window.piedmont.mode() === 'areas'), 'and the editor is on the areas tab')
 
 /*
  * THE ASK: click the loop while in areas, and arrive at the loop's own panel.
@@ -48,15 +48,15 @@ check(await p.evaluate(() => window.corridor.mode() === 'areas'), 'and the edito
  */
 const jumped = await p.evaluate((at) => {
   // deselect first, or "it is selected" proves nothing — it was selected when it was placed
-  window.corridor.stunts.select(null)
-  window.corridor.click({ x: at[0], y: at[1] })
+  window.piedmont.stunts.select(null)
+  window.piedmont.click({ x: at[0], y: at[1] })
   // Since 2026-10-10 the ACTIVE mode's thing comes first (Rich: "be first on selection when
   // clicking"), so if an area lies under the loop the first click takes the area — and a second
   // click on the same spot goes to the next thing there, the loop (editor/view/pickorder.ts).
-  if (window.corridor.mode() === 'areas' && window.corridor.areas.selected) window.corridor.click({ x: at[0], y: at[1] })
+  if (window.piedmont.mode() === 'areas' && window.piedmont_bake.areas.selected) window.piedmont.click({ x: at[0], y: at[1] })
   return {
-    mode: window.corridor.mode(),
-    selected: window.corridor.stunts.selected,
+    mode: window.piedmont.mode(),
+    selected: window.piedmont.stunts.selected,
     panel: (document.querySelector('.inspector-body')?.textContent ?? '').slice(0, 60),
   }
 }, made.at)
@@ -69,12 +69,12 @@ check(jumped.selected === made.id, `and selects the one you clicked (${jumped.se
  * inside a traffic zone throws you into the traffic panel mid-polygon.
  */
 const whileDrawing = await p.evaluate((at) => {
-  const a = window.corridor.areas
-  window.corridor.setMode('areas')
+  const a = window.piedmont_bake.areas
+  window.piedmont.setMode('areas')
   a.startDraw()
-  const before = window.corridor.mode()
-  window.corridor.click({ x: at[0], y: at[1] })
-  const after = window.corridor.mode()
+  const before = window.piedmont.mode()
+  window.piedmont.click({ x: at[0], y: at[1] })
+  const after = window.piedmont.mode()
   const verts = a.drawing ? 'still drawing' : 'not drawing'
   a.startDraw?.() // leave it tidy for the next check
   return { before, after, verts }

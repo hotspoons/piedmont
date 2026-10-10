@@ -2,14 +2,14 @@
 //
 // Rich, 2026-09-30, over Maine: "No coast line unless you zoom way out." The only shore was Natural
 // Earth's 1:110m country outline — one straight diagonal through Bar Harbor at zoom 8, faded out
-// by zoom 9. The `coast` layer (tools/worldeditor/layers.mjs) is OSM's natural=coastline.
+// by zoom 9. The `coast` layer (services/worldeditor/layers.mjs) is OSM's natural=coastline.
 //
 // ASSERTED ON WHAT WAS DRAWN, not on a request going out: coastline tiles have to come back with
 // ways in them (a regional Overpass answers out of its area with an empty 200, which caches as a
 // perfectly ordinary empty tile), and the painter has to have stroked some of them in view.
 //
-//   PORT=5187 node probes/corridor-coastline.mjs
-//   BASE=https://worldeditor.richard-siomporas.basedweights.com node probes/corridor-coastline.mjs
+//   PORT=5187 node probes/coastline.mjs
+//   BASE=https://worldeditor.richard-siomporas.basedweights.com node probes/coastline.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

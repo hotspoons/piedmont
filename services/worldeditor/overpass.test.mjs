@@ -6,7 +6,7 @@
 //   http://overpass/api/interpreter#37.9/-79.5/39.8/-75.0    the mid-Atlantic
 //
 // The service understands those fences. The BAKE does not — `osm.py` splits
-// `CORRIDOR_OVERPASS_URL` on commas and posts to the first entry, and a `#fragment` is never sent
+// `PIEDMONT_OVERPASS_URL` on commas and posts to the first entry, and a `#fragment` is never sent
 // on the wire. So handing the bake this whole string sent a Maryland world to the Europe extract,
 // which answered HTTP 200 with zero elements, and the bake raised "no ways for roads [] within
 // 1219 m of 38.998846,-76.692896". A working mirror, a correct query, and a silent empty — which

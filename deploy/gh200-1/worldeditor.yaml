@@ -6,7 +6,8 @@ fullnameOverride: worldeditor
 
 image:
   # Pinned. `latest` would make "what is deployed" depend on when the pod last restarted.
-  tag: sha-e19d154
+  # `latest` until piedmont's first image build lands; then `just deploy-bump gh200-1` pins a sha-.
+  tag: latest
 
 ingress:
   enabled: true
@@ -22,9 +23,13 @@ ingress:
 # What each instance holds is now `overpassRegions`: the Geofabrik region(s) it was built from (and
 # any added by an osm-import, which the editor keeps on its volume). Routing uses the extracts' real
 # outlines, and the bake refuses a query its instance does not hold (BakeFault). See
-# tools/overpass/README.md, "Where the OSM comes from".
-overpassUrl: "http://overpass-eu/api/interpreter,http://overpass/api/interpreter,http://overpass-na/api/interpreter"
-overpassRegions: "overpass-eu=europe,overpass=us/maryland,overpass-na=north-america"
+# services/overpass/README.md, "Where the OSM comes from".
+#
+# The Maryland instance is this release's own (`overpass` in cluster.yaml). Europe and North America
+# are 250 GB imports that took days; they keep serving from the `default` namespace, read across by
+# their fully-qualified names, until they are re-imported here or retired.
+overpassUrl: "http://overpass/api/interpreter,http://overpass-eu.default.svc/api/interpreter,http://overpass-na.default.svc/api/interpreter"
+overpassRegions: "overpass=us/maryland,overpass-eu.default.svc=europe,overpass-na.default.svc=north-america"
 # the image the three instances run (kubectl get pod -l app=overpass-na -o jsonpath=...imageID),
 # so an osm-import Job pulls nothing new onto the node
 osmImportImage: "wiktorn/overpass-api@sha256:9bb5f4a9b54cd225bf828c04c67e7f4010650ff4d70b72157a9473a9ba02d93c"
@@ -36,7 +41,7 @@ gpuVisibility: true
 
 # The Deploy panel's Cloudflare token. A token typed into the panel is forgotten whenever this
 # release rolls; to keep one, create the Secret once and name it here:
-#   kubectl -n default create secret generic cloudflare --from-literal=CLOUDFLARE_API_TOKEN=<token>
+#   kubectl -n "$NAMESPACE" create secret generic cloudflare --from-literal=CLOUDFLARE_API_TOKEN=<token>
 # cloudflare:
 #   secretName: cloudflare
 

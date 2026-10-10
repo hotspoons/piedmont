@@ -8,7 +8,7 @@
 //   <root>/<id>/item.json        the spec, the state, and the provenance of every step
 //   <root>/<id>/views/*.png      generated 2D views, newest last; `chosen` names the one to mesh
 //   <root>/<id>/mesh.glb         what the mesh model returned, raw
-//   <root>/<id>/mesh.finished.glb  after tools/assetgen/finish.mjs — the one a game loads
+//   <root>/<id>/mesh.finished.glb  after pipelines/assetgen/finish.mjs — the one a game loads
 //
 // PROVENANCE IS NOT OPTIONAL. Every generated file records which model made it, from which prompt,
 // with which seed, at which time. An asset whose origin nobody can reconstruct is one you cannot
@@ -126,7 +126,7 @@ export class Catalog {
        * `kind` answers "which sort of vehicle"; `type` answers "is this a vehicle at all", and
        * only the second decides which documents an asset can have. Stored only when somebody sets
        * it: the client derives it from `kind` otherwise, so the mapping lives in exactly one place
-       * (`apps/corridor/src/classes.ts`) rather than in a copy here that drifts.
+       * (`apps/game/src/classes.ts`) rather than in a copy here that drifts.
        */
       type: spec.type ?? before.type ?? null,
       prompt: spec.prompt ?? before.prompt ?? '',
@@ -192,7 +192,7 @@ export class Catalog {
        * level may still override — the document holds a profile REFERENCE plus overrides, never a
        * copy, so improving `street` improves every car that names it.
        *
-       * The schema and every unit are in `apps/corridor/src/vehicles.ts`; this only stores it. The
+       * The schema and every unit are in `apps/game/src/vehicles.ts`; this only stores it. The
        * service deliberately does not validate it: the editor reports every problem at once while
        * somebody is typing, which is better than a 400 from here naming the first one.
        */

@@ -77,7 +77,7 @@ DAYMET_YEARS = (2014, 2023)  # a ten-year normal; Daymet's single-pixel API is h
 RES = 30.0  # every source here is a 30 m product; the grid is theirs, not ours
 
 session = requests.Session()
-session.headers["User-Agent"] = "apex-conduit corridor (github.com/hotspoons)"
+session.headers["User-Agent"] = "piedmont (github.com/hotspoons)"
 
 
 def _get(url: str, params: dict | None, cache: Path, suffix: str, tries: int = 5, timeout: int = 180) -> bytes:
@@ -119,7 +119,7 @@ def evt_table(cache: Path) -> dict[int, dict]:
 
     The ImageServer's `rasterAttributeTable` endpoint returns `{}` — the RAT is not published with
     the service — so the class names come from the CSV LANDFIRE ships beside the product. Without
-    it a corridor is a histogram of integers.
+    it a road band is a histogram of integers.
     """
     raw = _get(EVT_CSV, None, cache / "landfire", ".csv")
     out: dict[int, dict] = {}
@@ -145,7 +145,7 @@ def ref_species(cache: Path) -> tuple[dict[str, dict], dict[str, dict]]:
     A group word resolves to ONE genus, the one with the most species under it, and only if at
     least three species share the word. Both rules are there because the naive version was wrong in
     two visible ways: "pine" expanded to Pinus *and* Araucaria and Casuarina (4 ornamentals against
-    54 real pines) so a corridor's mix listed `pine 0%` twice, and the single species "myrtle of the
+    54 real pines) so a road band's mix listed `pine 0%` twice, and the single species "myrtle of the
     river" made the word "river" a tree group, which put a Calyptranthes in a Maryland oak wood.
     """
     raw = _get(REF_SPECIES, None, cache / "fia", ".csv")
@@ -190,7 +190,7 @@ def ref_species(cache: Path) -> tuple[dict[str, dict], dict[str, dict]]:
 # the ground-cover taxonomy, derived from EVT's own fields
 
 #: What a class of ground looks like underfoot. Every branch below is a rule over LANDFIRE's OWN
-#: attribute fields — no site, state or region appears anywhere in it, so a new corridor anywhere
+#: attribute fields — no site, state or region appears anywhere in it, so a new road band anywhere
 #: in the country classifies without anybody adding a row.
 GROUND_CLASSES = (
     "mown", "perennial_grass", "annual_grass", "forb", "crop", "marsh",
@@ -266,7 +266,7 @@ def leaf_cycle(a: dict) -> str:
 
 
 def _evt_service(frame: Frame, bbox: tuple[float, float, float, float], cache: Path) -> tuple[str, str]:
-    """Which regional EVT mosaic holds this corridor. Asked of the services, not of a state list."""
+    """Which regional EVT mosaic holds this road band. Asked of the services, not of a state list."""
     lon0, lat0, lon1, lat1 = frame.bbox_wgs(*bbox)
     for region, svc in EVT_SERVICES:
         info = json.loads(_get(svc, {"f": "json"}, cache / "landfire", ".json"))
@@ -278,11 +278,11 @@ def _evt_service(frame: Frame, bbox: tuple[float, float, float, float], cache: P
         xs, ys = tr.transform([lon0, lon1, lon0, lon1], [lat0, lat0, lat1, lat1])
         if min(xs) >= ext["xmin"] and max(xs) <= ext["xmax"] and min(ys) >= ext["ymin"] and max(ys) <= ext["ymax"]:
             return region, svc
-    raise RuntimeError("no LANDFIRE EVT mosaic covers this corridor")
+    raise RuntimeError("no LANDFIRE EVT mosaic covers this road band")
 
 
 def _grid(bbox: tuple[float, float, float, float]) -> tuple[tuple[float, float, float, float], int, int]:
-    """Snap the corridor bbox out to the 30 m lattice the sources are served on."""
+    """Snap the road band bbox out to the 30 m lattice the sources are served on."""
     x0 = math.floor(bbox[0] / RES) * RES
     y0 = math.floor(bbox[1] / RES) * RES
     x1 = math.ceil(bbox[2] / RES) * RES
@@ -295,15 +295,15 @@ def _read_tif(data: bytes) -> tuple[np.ndarray, "rasterio.Affine"]:
         return src.read(1), src.transform
 
 
-def evt_grid(frame: Frame, corridor: Polygon, cache: Path) -> dict:
-    """The EVT raster over the corridor bbox, on the SITE frame's 30 m lattice, plus the mask of
-    pixels actually inside the corridor polygon.
+def evt_grid(frame: Frame, road_band: Polygon, cache: Path) -> dict:
+    """The EVT raster over the road band bbox, on the SITE frame's 30 m lattice, plus the mask of
+    pixels actually inside the road band polygon.
 
     Asking the service for `imageSR` = the site's UTM zone means the flora grid lines up with every
     other layer in the site directory; nothing downstream sees an Albers metre. Nearest-neighbour,
     because these are class numbers — bilinear on a class raster invents classes.
     """
-    bbox, w, h = _grid(corridor.bounds)
+    bbox, w, h = _grid(road_band.bounds)
     region, svc = _evt_service(frame, bbox, cache)
     data = _export_image(svc, {
         "bbox": "%f,%f,%f,%f" % bbox, "bboxSR": str(frame.epsg), "imageSR": str(frame.epsg),
@@ -311,7 +311,7 @@ def evt_grid(frame: Frame, corridor: Polygon, cache: Path) -> dict:
         "interpolation": "RSP_NearestNeighbor", "noDataInterpretation": "esriNoDataMatchAny",
     }, cache / "landfire")
     a, transform = _read_tif(data)
-    mask = rasterize([(corridor, 1)], out_shape=a.shape, transform=transform, fill=0, dtype="uint8").astype(bool)
+    mask = rasterize([(road_band, 1)], out_shape=a.shape, transform=transform, fill=0, dtype="uint8").astype(bool)
     return {"values": a, "transform": transform, "mask": mask, "bbox": bbox, "size": (w, h), "region": region, "service": svc}
 
 
@@ -320,7 +320,7 @@ def evt_grid(frame: Frame, corridor: Polygon, cache: Path) -> dict:
 
 
 def fhp_catalog(frame: Frame, bbox: tuple[float, float, float, float], cache: Path) -> dict[str, int]:
-    """Which species rasters exist over this corridor, and their year.
+    """Which species rasters exist over this road band, and their year.
 
     The service holds 7017 rasters — one per species per year per FIA production zone — so asking
     for all 340 species everywhere would be 340 requests of which most are outside their zone. A
@@ -356,14 +356,14 @@ def fhp_catalog(frame: Frame, bbox: tuple[float, float, float, float], cache: Pa
 _ROLLUP = re.compile(r"(_spp|^other_unknown)")
 
 
-def fhp_species(frame: Frame, corridor: Polygon, grid: dict, cache: Path) -> dict:
-    """Basal area per species over the corridor, as arrays on the EVT lattice.
+def fhp_species(frame: Frame, road_band: Polygon, grid: dict, cache: Path) -> dict:
+    """Basal area per species over the road band, as arrays on the EVT lattice.
 
     One exportImage per species, `multidimensionalDefinition` pinning the variable and the year.
     The obvious cheaper call — `getSamples` with `processAsMultidimensional` — is a trap; see the
-    module docstring's companion in docs/corridor/FLORA.md.
+    module docstring's companion in docs/FLORA.md.
     """
-    bbox, w, h = _grid(corridor.bounds)
+    bbox, w, h = _grid(road_band.bounds)
     want = {v: y for v, y in fhp_catalog(frame, bbox, cache).items() if not _ROLLUP.search(v)}
     arrays: dict[str, np.ndarray] = {}
     for var, year in sorted(want.items()):
@@ -495,7 +495,7 @@ def canopy_heights(site_dir: Path, grid: dict) -> np.ndarray | None:
 
     This is the cross-check that stops the species pick from being a guess about size. A species'
     basal area is a weight per pixel; the CHM height under that weight says how tall the trees of
-    that species actually are IN THIS CORRIDOR — measured here, by the lidar, not read out of a
+    that species actually are IN THIS ROAD BAND — measured here, by the lidar, not read out of a
     field guide. Where the lidar or the basal area is missing the height is simply null and the
     pick falls back to the mix weights alone.
 
@@ -532,10 +532,10 @@ def _mix(weights: dict[str, float], limit: int = 8) -> list[dict]:
     return [{"key": k, "weight": round(w / scale, 4)} for k, w in ranked]
 
 
-def for_site(site: dict, frame: Frame, corridor: Polygon, cache: Path, out_dir: Path) -> dict:
+def for_site(site: dict, frame: Frame, road_band: Polygon, cache: Path, out_dir: Path) -> dict:
     table = evt_table(cache)
     exact, group = ref_species(cache)
-    grid = evt_grid(frame, corridor, cache)
+    grid = evt_grid(frame, road_band, cache)
     values, mask = grid["values"], grid["mask"]
     inside = values[mask]
     total = max(1, inside.size)
@@ -564,7 +564,7 @@ def for_site(site: dict, frame: Frame, corridor: Polygon, cache: Path, out_dir: 
         })
 
     # --- species, per class, measured first and read off the class name second -------------------
-    fhp = fhp_species(frame, corridor, grid, cache)
+    fhp = fhp_species(frame, road_band, grid, cache)
     chm = canopy_heights(out_dir, grid)
     ba_any = np.zeros(values.shape, bool)
     for a in fhp["arrays"].values():
@@ -652,7 +652,7 @@ def for_site(site: dict, frame: Frame, corridor: Polygon, cache: Path, out_dir: 
         ground_weights[c["ground"]] += c["share"]
 
     # --- the class grid, for the viewer ----------------------------------------------------------
-    # 8-bit indices into `classes`, 255 = outside the corridor. A corridor is a few hundred by a
+    # 8-bit indices into `classes`, 255 = outside the road band. A road band is a few hundred by a
     # few thousand metres at 30 m, so this is a few tens of kB; it goes out as a PNG in export.py.
     idx = np.full(values.shape, 255, np.uint8)
     for v, i in index.items():
@@ -695,9 +695,9 @@ def for_site(site: dict, frame: Frame, corridor: Polygon, cache: Path, out_dir: 
     }
 
 
-def along_spine(spine: LineString, frame: Frame, site: dict, corridor: Polygon, cache: Path, out_dir: Path) -> dict:
+def along_spine(spine: LineString, frame: Frame, site: dict, road_band: Polygon, cache: Path, out_dir: Path) -> dict:
     """Entry point matching the other fetch stages' shape."""
     del spine
-    out = for_site(site, frame, corridor, cache, out_dir)
+    out = for_site(site, frame, road_band, cache, out_dir)
     (out_dir / "flora.json").write_text(json.dumps(out, indent=1))
     return out

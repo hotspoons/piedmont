@@ -1,6 +1,6 @@
 // A signalised junction through a whole cycle, and a residential crossroads with its signs.
 //
-//   PORT=5210 SLUG=crofton-triangle node probes/corridor-intersectionshot.mjs /tmp/x-
+//   PORT=5210 SLUG=crofton-triangle node probes/intersectionshot.mjs /tmp/x-
 //
 // The signal shots are the point: the same frame at four moments of one cycle, so the difference
 // between them is only the aspect. SIGNAL_RATE is turned up so a 152 s cycle fits in a few seconds
@@ -28,12 +28,12 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
 await page.keyboard.press('m')
 
 // hide what a GPU-less box cannot draw fast enough to matter here
 const info = await page.evaluate(() => {
-  const c = window.corridor, site = c.site
+  const c = window.piedmont, site = c.site
   if (site.layers.trees) site.layers.trees.visible = false
   if (site.grass) site.grass.mesh.visible = false
   return { signals: site.signalCounts, bars: site.stopBarCounts, blades: site.bladeCounts }
@@ -41,7 +41,7 @@ const info = await page.evaluate(() => {
 console.log('counts', JSON.stringify(info))
 
 const park = async (pick, eye, height) => await page.evaluate(({ pick, eye, height }) => {
-  const c = window.corridor, site = c.site
+  const c = window.piedmont, site = c.site
   const model = site.manifest.intersections.list
   const X = pick === 'signals'
     ? model.filter((x) => x.control === 'signals').sort((a, b) => b.arms - a.arms)[0]
@@ -59,13 +59,13 @@ const park = async (pick, eye, height) => await page.evaluate(({ pick, eye, heig
 const sig = await park('signals', 26, 9)
 console.log('signal junction', JSON.stringify(sig))
 // 152 s of cycle in ~15 s of wall clock
-await page.evaluate(() => window.corridor.tune.set('SIGNAL_RATE', 10))
+await page.evaluate(() => window.piedmont.tune.set('SIGNAL_RATE', 10))
 await page.waitForTimeout(SETTLE_MS)
 for (let i = 0; i < 4; i++) {
   await page.waitForTimeout(3800)
   await shoot(page, `${OUT}signal-${i}.png`)
   const lit = await page.evaluate(() => {
-    const L = window.corridor.site.layers.signals.children[0]
+    const L = window.piedmont.site.layers.signals.children[0]
     if (!L?.instanceColor) return null
     const a = L.instanceColor.array
     let red = 0, amber = 0, green = 0
@@ -87,7 +87,7 @@ await shoot(page, `${OUT}stop.png`)
 
 // and the same one from a driver's eye
 await page.evaluate(() => {
-  const c = window.corridor, site = c.site
+  const c = window.piedmont, site = c.site
   const model = site.manifest.intersections.list
   const X = model.filter((x) => x.control !== 'signals' && (x.blades ?? []).length >= 2 && x.arms >= 4)[0] ?? model.find((x) => (x.blades ?? []).length >= 2)
   const a = X.approaches.find((q) => q.stop) ?? X.approaches[0]

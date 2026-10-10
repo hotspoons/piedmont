@@ -3,7 +3,7 @@
 // k·(z − z0) about the spine datum, the spine's own median must stay put, and the road
 // profile must move with the ground (or the strip would float / sink). Fails loudly if the
 // relief did not apply (both loads equal) or if only part of the world moved.
-//   PORT=5185 RELIEF=3 node probes/corridor-relief.mjs crofton-triangle
+//   PORT=5185 RELIEF=3 node probes/relief.mjs crofton-triangle
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -15,19 +15,19 @@ async function load(relief) {
   await page.route('**/@vite/client', (r) => r.abort())
   const url = `http://localhost:${PORT}/#${slug}?lite=1${relief !== 1 ? `&relief=${relief}` : ''}`
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 })
-  await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+  await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
   // the tile stream keeps swapping the 8 m overview for 1 m tiles after the site is ready; sample
   // once the counts have stopped changing so both loads answer from the same rasters
   await page.evaluate(async () => {
     let last = '', since = Date.now()
     while (Date.now() - since < 4000) {
-      const now = JSON.stringify(window.corridor.site.tiles?.() ?? null)
+      const now = JSON.stringify(window.piedmont.site.tiles?.() ?? null)
       if (now !== last) { last = now; since = Date.now() }
       await new Promise((r) => setTimeout(r, 250))
     }
   })
   const out = await page.evaluate(() => {
-    const site = window.corridor.site
+    const site = window.piedmont.site
     const m = site.manifest
     const zs = m.spine.coords.map((c) => c[2]).slice().sort((a, b) => a - b)
     const median = zs[zs.length >> 1]

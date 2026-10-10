@@ -1,4 +1,4 @@
-// Where a world's presets live: `tools/corridor/data/sites/<slug>/presets.json`, beside the
+// Where a world's presets live: `data/sites/<slug>/presets.json`, beside the
 // site's `tuning.json` and written through the same dev middleware and world-editor volume.
 //
 // Not a service. A preset is a property of a world, it is a few kilobytes, and it has to survive

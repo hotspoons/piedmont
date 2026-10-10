@@ -3,9 +3,9 @@
 Bake 495 wrote every 1 km tile and its VRTs and then died on the near-road cloud. The rerun could
 not tell that directory from an empty one, re-read 3.08 B cached points and rebuilt the tiles. The
 marker in network_tiles is that difference, and these tests pin the two rules that make it safe:
-reuse only for the same corridor, and only when every recorded output is still on disk.
+reuse only for the same road band, and only when every recorded output is still on disk.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ import numpy as np
 from shapely.geometry import LineString
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import network_tiles as nt  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import network_tiles as nt  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
 LON, LAT = -76.685, 39.007  # Crofton
 FRAME = Frame.at(LON, LAT)
@@ -35,7 +35,7 @@ WRITTEN = [(0, 0), (0, 1)]
 
 
 def near_points() -> dict:
-    """Three points on each chain, in the frame's metres, as corridor.laz records them."""
+    """Three points on each chain, in the frame's metres, as road_band.laz records them."""
     x = np.array([OX - 30, OX - 10, OX + 10, OX - 20, OX + 0, OX + 20], dtype=np.float64)
     y = np.array([OY, OY, OY, OY + 80, OY + 80, OY + 80], dtype=np.float64)
     return {
@@ -56,17 +56,17 @@ def write_laz(path: Path, pts: dict) -> None:
 
 
 def finish(ldir: Path, pts: dict | None) -> None:
-    """Lay down the stage the way lidar_tiled does: tiles, corridor.laz, then the marker."""
+    """Lay down the stage the way lidar_tiled does: tiles, road_band.laz, then the marker."""
     (ldir / "tiles").mkdir(parents=True, exist_ok=True)
     for tx, ty in WRITTEN:
         for kind in nt._TILE_KINDS:
             (ldir / "tiles" / f"{tx}_{ty}.{kind}.tif").write_bytes(b"tif")
     if pts is not None:
-        write_laz(ldir / "corridor.laz", pts)
+        write_laz(ldir / "road_band.laz", pts)
     result = {
         "source": "ept",
         "dataset": "NOAA:9235",
-        "points_in_corridor": 123456,
+        "points_in_road_band": 123456,
         "near_road_points": int(len(pts["x"])) if pts is not None else 0,
         "classes": {"ground": 3},
         "classification": {"tiles_demoted_17_18": 0, "class17_trusted": True},
@@ -88,7 +88,7 @@ class ResumeTest(unittest.TestCase):
             self.assertEqual(len(got["pts"]["x"]), 6)
 
     def test_the_road_index_is_recomputed_from_the_chains(self):
-        # corridor.laz does not store which chain a point belongs to; profile_tiled needs it, and
+        # road_band.laz does not store which chain a point belongs to; profile_tiled needs it, and
         # the only correct source is the same 2 m band the bake rasterised.
         with tempfile.TemporaryDirectory() as d:
             finish(Path(d), near_points())
@@ -101,7 +101,7 @@ class ResumeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             self.assertIsNone(nt._resume_lidar(FRAME, BBOX, CHAINS, Path(d)))
 
-    def test_a_changed_corridor_is_not_reused(self):
+    def test_a_changed_road_band_is_not_reused(self):
         with tempfile.TemporaryDirectory() as d:
             finish(Path(d), near_points())
             wider = (BBOX[0] - 500.0, BBOX[1] - 500.0, BBOX[2] + 500.0, BBOX[3] + 500.0)
@@ -119,7 +119,7 @@ class ResumeTest(unittest.TestCase):
     def test_a_lost_near_road_cloud_is_not_reused(self):
         with tempfile.TemporaryDirectory() as d:
             finish(Path(d), near_points())
-            (Path(d) / "corridor.laz").unlink()
+            (Path(d) / "road_band.laz").unlink()
             self.assertIsNone(nt._resume_lidar(FRAME, BBOX, CHAINS, Path(d)))
 
     def test_a_truncated_cloud_is_not_reused(self):

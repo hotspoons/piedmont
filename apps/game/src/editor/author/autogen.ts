@@ -1,6 +1,6 @@
-// Autogen: the rules from tools/corridor/AUTOGEN.md, over the bake's `buildings`/`landuse`/`pois`.
+// Autogen: the rules from bake/AUTOGEN.md, over the bake's `buildings`/`landuse`/`pois`.
 //
-// The bake measures the corridor; it does not know what anything IS. 2887 of the 3413 footprints
+// The bake measures the road band; it does not know what anything IS. 2887 of the 3413 footprints
 // across the nine sites are tagged `building=yes` and nothing else, so the category has to be
 // inferred from shape, height and context rather than read. That inference is what lives here.
 //
@@ -8,8 +8,8 @@
 // "generate, look at it, fix the six it got wrong, generate again" — and a loop with a shell
 // round trip and a re-bake in it is a loop nobody runs twice. Everything it needs is already in
 // `web/manifest.json`; the three quantities that genuinely need the GIS stack (the minimum
-// rotated rectangle, the lidar height, the corridor position) are precomputed there by
-// `tools/corridor/corridor/buildings.py`.
+// rotated rectangle, the lidar height, the road-band position) are precomputed there by
+// `bake/piedmont_bake/buildings.py`.
 //
 // Output is `placements.json` items with a `g-` id derived from the SOURCE BUILDING INDEX, so a
 // regeneration lands on the same ids and the human's overrides survive. See `grow.ts` for the
@@ -17,7 +17,7 @@
 import type { Manifest } from '../../world/site'
 import type { CatalogEntry } from './catalog'
 import type { Placement } from '../store/schema'
-import { bearingOf, normDeg, yawForLongAxis } from './corridor'
+import { bearingOf, normDeg, yawForLongAxis } from './roadband'
 import type { Site } from '../../world/scene'
 import * as THREE from 'three'
 
@@ -75,7 +75,7 @@ export interface Params {
   /** how far a catalog asset may be stretched to fit a footprint before it is the wrong object */
   scale_min: number
   scale_max: number
-  /** invent frontage where the corridor is bare (AUTOGEN.md R5) */
+  /** invent frontage where the road band is bare (AUTOGEN.md R5) */
   invent: boolean
   invent_spacing_m: number
   /** every slot is taken within this of an INTERCHANGE; nothing at all past `invent_falloff_m` */
@@ -86,7 +86,7 @@ export interface Params {
    *  interstate because every slot within 400 m of a farm track scored a certainty. */
   invent_rural_chance: number
   /** ceiling on generated items. crofton-crownsville has 28,413 footprints and 12,287 inside the
-   *  corridor; the editor draws one THREE object per placement, so an uncapped run there is tens
+   *  road band; the editor draws one THREE object per placement, so an uncapped run there is tens
    *  of thousands of draw calls. The cap is reported as a skip reason, never silent. */
   max_items: number
   seed: number
@@ -424,7 +424,7 @@ export function generate(manifest: Manifest, site: Site, catalogAll: CatalogEntr
     const { b, centre } = ctx.buildings[i]
     const [cx, cy] = centre
     if (b.area_m2 < p.min_area_m2) { drop('too small'); continue }
-    if (Math.abs(b.lat) > p.max_lat_m) { drop('outside the corridor'); continue }
+    if (Math.abs(b.lat) > p.max_lat_m) { drop('outside the road band'); continue }
     // Never on the road. `edgeDistance` is signed and in the WORLD frame (x, z).
     if (site.edgeDistance(cx, -cy) < p.keepout_real_m) { drop('in the carriageway'); continue }
     const zone = zoneOf(b, ctx)

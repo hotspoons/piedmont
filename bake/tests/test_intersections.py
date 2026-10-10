@@ -63,7 +63,7 @@ class SpineClass(unittest.TestCase):
         segs = [{"osm_id": 1, "tags": {"highway": "motorway", "name": "Capital Beltway", "oneway": "yes"}}]
         tmp = _site(primary, segs, [])
         with tmp:
-            from corridor.intersections import _roads
+            from piedmont_bake.intersections import _roads
 
             roads = _roads(Path(tmp.name), _Frame())
         self.assertEqual(roads[0]["highway"], "motorway")
@@ -76,7 +76,7 @@ class SpineClass(unittest.TestCase):
         primary = {"id": "r1", "ident": "Capital Beltway", "coords": [[0, 0], [200, 0]], "junctions": []}
         tmp = _site(primary, [{"tags": {"highway": "motorway"}}], [])
         with tmp:
-            from corridor.intersections import _roads
+            from piedmont_bake.intersections import _roads
 
             roads = _roads(Path(tmp.name), _Frame())
         self.assertNotEqual(roads[0]["highway"], "secondary")
@@ -95,7 +95,7 @@ class NoStopOnAFreeway(unittest.TestCase):
         ramp = _line([[200, 100], [200, 0]], [_LINK_JUNCTION], "motorway_link", oneway="yes", rid="r2", ident="ramp")
         tmp = _site(primary, segs, [ramp])
         with tmp:
-            from corridor.intersections import build
+            from piedmont_bake.intersections import build
 
             built = build(Path(tmp.name), _Frame())
         self.assertEqual(len(built["list"]), 1)
@@ -114,7 +114,7 @@ class NoStopOnAFreeway(unittest.TestCase):
         b = _line([[0, 0], [200, 0], [400, 0]], [{"node": 9, "x": 200.0, "y": 0.0, "s": 200.0, "with": []}], "motorway", oneway="no", rid="rB")
         tmp = _site(a, [{"tags": {"highway": "motorway"}}], [b])
         with tmp:
-            from corridor.intersections import build
+            from piedmont_bake.intersections import build
 
             built = build(Path(tmp.name), _Frame())
         ix = built["list"][0]
@@ -124,10 +124,10 @@ class NoStopOnAFreeway(unittest.TestCase):
         self.assertEqual(ix["control"], "uncontrolled")
 
 
-class CorridorGrouping(unittest.TestCase):
+class RouteGrouping(unittest.TestCase):
     def test_a_divided_arterial_is_one_road_not_a_crossroads(self):
         # two carriageways of Columbia Pike (same name) through one node + a residential crossing.
-        # Without corridor grouping `main` holds two roads and the whole thing goes all-way.
+        # Without route grouping `main` holds two roads and the whole thing goes all-way.
         primary = {
             "id": "r1", "ident": "Columbia Pike", "name": "Columbia Pike",
             "coords": [[0, 0], [200, 0], [400, 0]],
@@ -137,7 +137,7 @@ class CorridorGrouping(unittest.TestCase):
         cardinal = _line([[200, -200], [200, 0], [200, 200]], [{"node": 5, "x": 200.0, "y": 0.0, "s": 200.0, "with": []}], "residential", rid="r3", name="Cardinal Drive")
         tmp = _site(primary, [{"tags": {"highway": "trunk"}}], [pike_b, cardinal])
         with tmp:
-            from corridor.intersections import build
+            from piedmont_bake.intersections import build
 
             built = build(Path(tmp.name), _Frame())
         ix = built["list"][0]
@@ -148,7 +148,7 @@ class CorridorGrouping(unittest.TestCase):
             else:
                 self.assertTrue(a["stop"], "the residential yields to the arterial")
 
-    def test_two_unnamed_streets_are_not_the_same_corridor(self):
+    def test_two_unnamed_streets_are_not_the_same_route(self):
         # «unnamed» is a placeholder, not an identity; these two must stay distinct roads and their
         # crossing stays an all-way stop instead of collapsing to "one road forking".
         primary = {
@@ -159,7 +159,7 @@ class CorridorGrouping(unittest.TestCase):
         sib = _line([[200, -200], [200, 0], [200, 200]], [{"node": 6, "x": 200.0, "y": 0.0, "s": 200.0, "with": []}], "residential", rid="r2", ident="«unnamed»")
         tmp = _site(primary, [{"tags": {"highway": "residential"}}], [sib])
         with tmp:
-            from corridor.intersections import build
+            from piedmont_bake.intersections import build
 
             built = build(Path(tmp.name), _Frame())
         ix = built["list"][0]

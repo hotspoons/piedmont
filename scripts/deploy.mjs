@@ -207,7 +207,7 @@ let failed = 0
 for (const r of releases) {
   const values = path.join(DIR, `${r.name}.yaml`)
   if (!existsSync(values)) { console.error(`${r.name}: no ${values.replace(ROOT + '/', '')}`); failed++; continue }
-  const args = ['upgrade', '--install', r.name, r.chart, '-n', namespace, '-f', values]
+  const args = ['upgrade', '--install', r.name, r.chart, '-n', namespace, '--create-namespace', '-f', values]
   if (CHECK) {
     // --dry-run against the SERVER, so it is validated by the thing that will run it
     try {

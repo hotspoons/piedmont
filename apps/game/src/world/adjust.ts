@@ -1,5 +1,5 @@
 // Adjustment areas: the human's corrections to what the data inferred, authored in the editor
-// (apps/corridor/src/editor, the editor agent's) and consumed here.
+// (apps/game/src/editor, the editor agent's) and consumed here.
 //
 // Composition where areas overlap: scales multiply, offsets add, and for the two categorical
 // keys the SMALLEST polygon wins — which is also the one the editor selects on a click.

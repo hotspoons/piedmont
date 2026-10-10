@@ -4,7 +4,7 @@
 //   node probes/tuning-audit.mjs [--json]
 import { readFileSync } from 'node:fs'
 
-const src = readFileSync('apps/corridor/src/tuning.ts', 'utf8')
+const src = readFileSync('apps/game/src/tuning.ts', 'utf8')
 const declared = [...src.matchAll(/^export let (\w+)/gm)].map((m) => m[1])
 const tuned = new Set([...src.matchAll(/tune\('(\w+)'/g)].map((m) => m[1]))
 // which tab each declaration falls under, by the last `// --- name ---` banner above it

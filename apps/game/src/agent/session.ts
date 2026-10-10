@@ -11,7 +11,7 @@
 //
 // THE TRANSPORT IS A RELAY. A browser's WebSocket cannot send headers and the platform's tunnel
 // needs one, so the socket goes to this service's `/api/agent/tunnel` and the service holds the
-// token (tools/worldeditor/agentws.mjs). Nothing about the protocol changes; it is a pipe.
+// token (services/worldeditor/agentws.mjs). Nothing about the protocol changes; it is a pipe.
 //
 // PERMISSION IS NOT AUTOMATIC. `session/request_permission` is answered by asking, because the
 // thing on the other end is about to edit a world. The one exception is a read, which cannot

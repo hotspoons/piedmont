@@ -20,7 +20,7 @@ v = 1) and the terrain's UVs were written against that: north is v = 1 (gridarra
 A compressed texture cannot be flipped on upload — three's KTX2Loader hands back `flipY = false`
 and ignores the file's KTXorientation — so a twin written top-down, as `ktx create` does by
 default, draws MIRRORED north–south under the roads. Measured 2026-10-10 on a crofton-triangle
-pyramid tile drawn through three's own paths (probes/corridor-bakephases.mjs --phase orient):
+pyramid tile drawn through three's own paths (probes/bakephases.mjs --phase orient):
 row-profile correlation with the jpg −0.08, with the jpg reversed 0.906. `--convert-texcoord-origin
 bottom-left` flips the rows at encode so the two draw the same way up (0.903 after, the twin being ETC1S). Every twin
 this module has written before that date — the overview, the horizon, the flat tiles — is
@@ -28,7 +28,7 @@ mirrored, and a re-export rewrites them; the viewer never changed.
 
 The encoder is Khronos' `ktx` (KTX-Software >= 4.3). It is NOT vendored — it is a 7 MB binary with
 shared libraries and the repo should not carry one. `scripts/fetch_ktx.sh` puts it in
-tools/corridor/.bin, and CORRIDOR_KTX overrides the path. Absent, encoding is skipped with a note
+bake/.bin, and PIEDMONT_KTX overrides the path. Absent, encoding is skipped with a note
 and the bake carries on.
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ HERE = Path(__file__).resolve().parent.parent
 
 def encoder() -> Path | None:
     """The `ktx` binary, or None. Checked once a run by the caller, not per tile."""
-    env = os.environ.get("CORRIDOR_KTX")
+    env = os.environ.get("PIEDMONT_KTX")
     if env and Path(env).exists():
         return Path(env)
     local = HERE / ".bin" / "KTX-Software" / "bin" / "ktx"

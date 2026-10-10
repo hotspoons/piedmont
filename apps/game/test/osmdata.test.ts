@@ -6,10 +6,10 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 // the service's own label, imported straight out of the service, so the run says what the row says
-import { regionLabel as serviceLabel } from '../../../tools/worldeditor/coverage.mjs'
+import { regionLabel as serviceLabel } from '../../../services/worldeditor/coverage.mjs'
 import { buildRegionTree, fmtAge, fmtBytes, regionLabel, searchRegions, worldVerdict, type GeofabrikRegion } from '../src/editor/worldedit/osmregions'
 
-const seed = JSON.parse(readFileSync(new URL('../../../tools/worldeditor/geofabrik-seed.json', import.meta.url), 'utf8')) as {
+const seed = JSON.parse(readFileSync(new URL('../../../services/worldeditor/geofabrik-seed.json', import.meta.url), 'utf8')) as {
   features: { properties: { id: string; name: string; parent?: string; urls?: { pbf?: string; updates?: string } } }[]
 }
 

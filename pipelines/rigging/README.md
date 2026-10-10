@@ -1,6 +1,18 @@
-# Rigging a reconstruction, headlessly
+# rigging — rigging a reconstruction, headlessly
 
-`tools/recon-service` turns one keyed view of a character into a textured mesh. This turns that
+Three scripts, all run inside Blender:
+
+| Script | What |
+|---|---|
+| `rig_vehicle.py` | frees a reconstructed car's wheels from its body and gives each a bone (FL, FR, RL, RR) |
+| `rig_character.py` | a Rigify control rig with bone-heat weights for a reconstructed character (below) |
+| `bridge.py` | drives a long-lived headless Blender over the blender-mcp socket and gets renders back; the world editor's Blender supervisor (`services/worldeditor/blender.mjs`) and its MCP tools use the same transport |
+
+The plan and the state of each is [docs/PLAN-RIGGING.md](../../docs/PLAN-RIGGING.md).
+
+## rig_character.py
+
+`services/recon` turns one keyed view of a character into a textured mesh. This turns that
 mesh into a rigged character: a Rigify control rig, bone-heat weights, textures intact, exported as
 a `.glb` any engine will load.
 

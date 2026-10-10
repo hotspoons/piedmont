@@ -1,6 +1,6 @@
 // The Weapons tab, and the Ballistics group on a weapon's detail pane.
 //
-// docs/corridor/PLAN-VEHICLES-ACTORS.md §3. Third of three, same shape as the other two, and the
+// docs/PLAN-VEHICLES-ACTORS.md §3. Third of three, same shape as the other two, and the
 // document with all of its arithmetic is in `src/weapons.ts`.
 //
 // WHAT THE FORM SHOWS THAT THE DOCUMENT DOES NOT SAY: a weapon is balanced against a target, not in

@@ -2,8 +2,8 @@
 
 *Rich, 2026-09-21: "let's go geodetic … and let's go full in on designing this for scale."*
 
-This is the coordinate design corridor is moving to, why each piece is the way it is, and what was
-measured to decide it. Every number here comes from `packages/engine/test/wgs84*.test.ts`, which
+This is the coordinate design the game is moving to, why each piece is the way it is, and what was
+measured to decide it. Every number here comes from `vendor/arcade/packages/engine/test/wgs84*.test.ts`, which
 check the implementation against pyproj/PROJ rather than against itself.
 
 ## The three frames
@@ -14,7 +14,7 @@ check the implementation against pyproj/PROJ rather than against itself.
 | **ECEF** | WGS84 geocentric metres | float64 | the transit frame only — never stored, never rendered |
 | **local ENU** | east/north/up metres about a *floating origin* | float32 at the end | vertex buffers, physics, everything in the viewer |
 
-three.js world stays `(x, y, z) = (east, up, −north)`, which is exactly what corridor already used
+three.js world stays `(x, y, z) = (east, up, −north)`, which is exactly what the game already used
 (`toWorld = (x, y, z) => (x, z, −y)`). **Nothing downstream changes its idea of which way is up.**
 Only the derivation of the ENU metres changes: from "UTM easting/northing minus an origin" to a
 true tangent frame about a geodetic anchor.
@@ -24,7 +24,7 @@ true tangent frame about a geodetic anchor.
 trailworks (`viewer/src/render/geoMath.ts`) is a true WGS84 globe and renders in absolute ECEF
 scene coordinates. That is correct *for trailworks*, which is a terrain viewer seen from altitude.
 
-Corridor is a driving game with the camera 1.5 m off the deck looking at 0.1 m lane markings, and
+The game is a driving game with the camera 1.5 m off the deck looking at 0.1 m lane markings, and
 three.js vertex buffers are float32. Measured:
 
 ```
@@ -102,14 +102,14 @@ it now rather than bolting it on.
 2^z latitude rows. Sharing the scheme means the two projects address the world with the same ids,
 which is the precondition for ever sharing data between them.
 
-Note this is *not* what the corridor bake emits today. `export.py` already writes 1 km tiles on a
+Note this is *not* what the bake emits today. `export.py` already writes 1 km tiles on a
 site-local metre grid (`web/tiles/0/`, indexed by `manifest.layers.tiles`) — 59 tiles for
 crofton-triangle, 375 for crofton-crownsville, and **the viewer does not stream any of them yet**.
 Moving those onto the global quadtree is the step that turns sites into a world.
 
 ## Order of work — where it got to
 
-1. ✅ `packages/engine/src/geo/wgs84.ts` — the geodesy core, checked against PROJ.
+1. ✅ `vendor/arcade/packages/engine/src/geo/wgs84.ts` — the geodesy core, checked against PROJ.
 2. ✅ The bake declares a geodetic anchor (`frame.anchor`) and says which metres it holds
    (`frame.kind`). All 21 sites backfilled, then re-exported to true ENU and promoted.
 3. ✅ The viewer renders on the ellipsoid — `gridGeometry` places each vertex from the lattice and
@@ -120,7 +120,7 @@ Moving those onto the global quadtree is the step that turns sites into a world.
    all 125 would be 667 MB. Moving to the global quadtree is what would let sites share data with
    trailworks and with each other; it has not been done.
 5. **Open.** Floating origin: `Anchor.delta` and `deltaRotation` are written and tested, and
-   nothing calls them. Needed when corridor becomes continuous rather than a set of islands —
+   nothing calls them. Needed when the game becomes continuous rather than a set of islands —
    remember a rebase is a translation AND a rotation, ~0.009°/km, and ignoring the rotation loses
    ~141 m over 60 km.
 
@@ -137,7 +137,7 @@ and stamped them. Likewise `branches.json`: `export_branches` copied `junctions[
 while `coords` went through the conversion, so a re-export could not repair it.
 
 **A migration's blind spot is the data it does not own.** Both classes are now stamped with the
-frame they were written in, and `corridor.verify` fails a manifest whose junction offsets grow
+frame they were written in, and `piedmont_bake.verify` fails a manifest whose junction offsets grow
 with distance from the origin — the signature of a rotation rather than ordinary slop.
 
 ## The vertical half, which the first re-export missed
@@ -149,7 +149,7 @@ terrain mesh dropped `d²/2N` below the tangent plane (11.3 m at the car on `dc-
 25 km from the anchor). The road, its profile and its decks did not, so the carriageway floated
 above the ground drawn under it — the gap Rich saw at the Beltway interchange, 2026-10-06.
 
-It was invisible on a 3 km corridor (0.7 m) and only became a bug when the sites grew to full
+It was invisible on a 3 km road band (0.7 m) and only became a bug when the sites grew to full
 networks. The fix is `Frame.to_enu3`: the same horizontal at `h = 0` (every layer keeps ONE
 shared grid), plus the exact ellipsoid UP at each point's own height. Every `z` the bake writes
 now goes through it — `_enu_cols` for the coordinate arrays, `_enu_z` for the scalar points, and

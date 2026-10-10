@@ -62,7 +62,7 @@ Two already exist and one is missing:
 - **water level** — `WATER_LEVEL_M` is trailworks' flooding mechanic in one number; the sea plane
   is always drawn and rises to it. Waterworld is that knob plus the fantasy palette's turquoise.
 - **season / weather** — already stance and tuning state.
-- **terrain exaggeration** — built 2026-09-26 (`apps/corridor/src/relief.ts`). One affine map
+- **terrain exaggeration** — built 2026-09-26 (`apps/game/src/relief.ts`). One affine map
   `z' = z0 + k·(z − z0)` with `z0` the spine's median grade, applied ONCE at load to every
   absolute height: the rasters through `decodeHeights` (tiles, overview, horizon) and the
   manifest's own z (spine and branch profiles, junctions, decks, water, parking, sidewalks,
@@ -70,7 +70,7 @@ Two already exist and one is missing:
   does not). Because it is the same map everywhere, everything that lay on the ground still does,
   only steeper: the car gets real hills and the strip stays drivable. `?relief=3`, the stance
   carries it, the world record's `look.relief` sets a world's default, and the viewer has a Relief
-  select (a change reloads the site — it is geometry, not a uniform). `probes/corridor-relief.mjs`
+  select (a change reloads the site — it is geometry, not a uniform). `probes/relief.mjs`
   loads a site twice and asserts the mechanism: datum fixed, off-road ground moved by k·(z−z0),
   road surface = exaggerated profile + the strip's measured lift, water moved with the ground.
   The first version of that probe failed on a sample that sat on a road, because the strip's
@@ -90,15 +90,15 @@ What the bake already knows: `manifest.pois` — crofton-triangle has 237, of wh
   road, the nearest park) and distance banding. The minimap shows a direction arc, not a pin.
 - **Movement**: on foot (the fly camera at eye height with ground clamp — a walk mode is a few
   lines on `fly.ts`) and the car.
-- **Multiplayer** — built 2026-09-26: `tools/worldeditor/rooms.mjs`, a relay on the world-editor
+- **Multiplayer** — built 2026-09-26: `services/worldeditor/rooms.mjs`, a relay on the world-editor
   service. Server-Sent Events push room state, players POST a pose four times a second and a
   claim when they pick up; first claim wins and a late one is refused. `?room=name&player=Ava`
   joins. Friends are capsules with their name over their head; a squishy a friend claims vanishes
   for everyone with a toast. In memory, no dependencies, no authority beyond "who claimed it".
 - **Two worlds, one bake**: the same site with `style: realistic` and `style: fantasy`.
 
-Sits in the arcade catalog as a fourth cabinet; the corridor viewer is its engine, the game is a
-mode of it (`apps/corridor/src/games/squishy.ts`), not a new app.
+Sits in the arcade catalog as a fourth cabinet; the viewer is its engine, the game is a
+mode of it (`apps/game/src/games/squishy.ts`), not a new app.
 
 ## Parkour / Archer
 
@@ -128,7 +128,7 @@ scoring geometry are already there. Same engine, same catalog entry pattern.
    exaggeration: done the same day, `look.relief` (see Play knobs).
 3. ~~Squishy Hunt: hauls + hints + walk mode single-player, then the relay.~~ Done 2026-09-26; the world-editor pod needs redeploying for the relay to exist outside a dev box.
 4. Parkour: ~~the character, then tricks, then the bow, then enemies.~~ First pass 2026-09-26
-   (`apps/corridor/src/games/parkour.ts`, `?game=parkour` or P): a capsule runner on the real
+   (`apps/game/src/games/parkour.ts`, `?game=parkour` or P): a capsule runner on the real
    ground, the bake's buildings as solids with mantle-able roofs, jump + air spin scored (half
    turn, pirouette, roof landing, big air, clean roll on a second Space), a bow with falling
    arrows, six goblins that wander, chase within 25 m, knock back on contact and drop to an arrow;
@@ -163,7 +163,7 @@ record array is mutated in place, so `NearTrees.reindex()`, the collision grid a
 slots re-index rather than rebuild (the impostor capacity is the budget, not the first planting).
 Trees also plant from the tiles' 2 m CHM where a tile is resident, not the 8 m overview.
 
-Measured after (`probes/corridor-treedensity.mjs`, trees per CANOPY km², which is the comparable
+Measured after (`probes/treedensity.mjs`, trees per CANOPY km², which is the comparable
 number): 27,519 crownsville / 27,053 crofton-triangle / 27,318 arrowhead; implied cell
 6.0 / 6.1 / 6.1 m. A replant costs ~200 ms under swiftshader and is the next thing to chunk
 through the grading pump if it is felt on a real GPU.

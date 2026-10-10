@@ -1,5 +1,5 @@
 /*
- * corridor UI components. Every rule here reaches for a token from tokens.css — no raw colours.
+ * game UI components. Every rule here reaches for a token from tokens.css — no raw colours.
  *
  * Read this alongside shell.ts and controls.ts: each block below styles one thing those files
  * build, in the same order.

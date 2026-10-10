@@ -92,7 +92,7 @@ resolved result.
 ### 2. Buildings, furniture, blades, stop bars, signals per tile
 
 Same container, same idea: `buildings.bin` (trailworks baked exactly this — see
-`reference-corridor-tile-format`; we skipped it only because 563 ms was not worth 5.9 MB, and per
+the tile-format note in the agent memory; we skipped it only because 563 ms was not worth 5.9 MB, and per
 tile it is 100 kB and worth it), `furniture.bin` with the placed instances (the kerb walk that
 moves each mast off the centreline runs at bake time), the blade atlas per site. After this the
 manifest stops carrying `buildings`, `sidewalks`, `intersections` in full; it carries a tile index.
@@ -118,7 +118,7 @@ which lanes turn which direction and the general layout of the intersection."
 
 It does, and so does OSM, thinly: `lanes`, `lanes:forward/backward`, `turn:lanes` (e.g.
 `left|through|through;right`), `oneway`, `junction=roundabout`, and stop-line positions as
-`highway=stop` nodes. Crofton's coverage, measured 2026-09-22 (`project-corridor-street-spice`):
+`highway=stop` nodes. Crofton's coverage, measured 2026-09-22 (the street-spice lane note in the agent memory):
 35 signal nodes, 3 stop nodes, `lanes` on most collectors, `turn:lanes` on the arterials only.
 That is enough for the arterial junctions Rich actually drives (MD 450, MD 424, Crofton Parkway)
 and nothing for the subdivision T's, which are all "one lane each way, stop on the stem" and are
@@ -195,7 +195,7 @@ planter reads as "no trees". The photo says Crofton is heavily wooded; crownsvil
 one.
 
 The fix is in the bake, not the viewer: outside the lidar band the canopy tile should carry the
-global 1 m canopy (`corridor.canopy`, Meta/WRI — already fetched for the outside-US work) or
+global 1 m canopy (`piedmont_bake.canopy`, Meta/WRI — already fetched for the outside-US work) or
 nodata, never zero. It is a crownsville re-export of the CHM tiles, not a re-bake of the lidar.
 
 ## What this plan does not do

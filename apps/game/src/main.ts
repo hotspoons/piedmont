@@ -1,9 +1,9 @@
-// corridor viewer: look at what tools/corridor baked, from above and from the driver's seat.
+// game viewer: look at what bake baked, from above and from the driver's seat.
 import { registerBridgeContext, startDevBridge } from 'virtual:dev-bridge'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { buildSite, describe, type Site } from './world/scene'
-import { buildPhysics, type CorridorPhysics } from './game/world/physics'
+import { buildPhysics, type WorldPhysics } from './game/world/physics'
 import { fetchStuntDoc, makeStuntWorld, type StuntWorld } from './game/stunt/stuntworld'
 import type { StuntDoc } from './game/stunt/stunts'
 import { loadRaceWorld, type RaceWorld } from './game/race/raceworld'
@@ -152,7 +152,7 @@ const { renderer } = createRenderer({
   // #world?depth=log (or reversed, standard) for an A/B; anything else is auto
   depthMode: depthRequestFromURL(url.query()) ?? 'auto',
   fallback: 'log',
-  label: 'corridor',
+  label: 'piedmont',
 })
 /*
  * THREE REVERSES THE WHOLE RENDER LIST under a reversed depth buffer — renderOrder and all — so
@@ -214,7 +214,7 @@ let lastDensityKnob = Number.NaN
  * The physics world, when `PHYS_ENABLED` is on — null otherwise, and null is the honest answer
  * rather than a live-looking object that simulates nothing (see physics.ts).
  */
-let physics: CorridorPhysics | null = null
+let physics: WorldPhysics | null = null
 /** this site's stunt fixtures, read before the physics so it knows whether it is needed */
 let stuntDoc: StuntDoc | null = null
 /** the world's loops and corkscrews, when it has any — for a probe and for a program */
@@ -333,7 +333,7 @@ const tuneUI = new TuneUI({
       if (!slug || !presets) return
       try {
         const r = await savePresets(slug, presets.toDoc(slug))
-        toast(`saved ${r.count} preset${r.count === 1 ? '' : 's'} to tools/corridor/data/sites/${slug}/presets.json (${r.bytes} bytes)`, 'ok', 6000)
+        toast(`saved ${r.count} preset${r.count === 1 ? '' : 's'} to data/sites/${slug}/presets.json (${r.bytes} bytes)`, 'ok', 6000)
       } catch (e) {
         toast(`presets: ${(e as Error).message}`, 'danger')
       }
@@ -341,13 +341,13 @@ const tuneUI = new TuneUI({
     exportDoc: () => {
       const slug = site?.manifest.slug
       if (!slug || !presets) return
-      downloadJSON(`${slug}-presets.corridor.json`, presets.toDoc(slug))
+      downloadJSON(`${slug}-presets.<envelope>.json`, presets.toDoc(slug))
     },
     importDoc: async () => {
       if (!presets) return
       const doc = await readJSONFile()
       if (!doc) return
-      if (doc.kind !== 'corridor-presets') return toast(`that file is a "${String(doc.kind ?? 'unknown')}", not a presets library`, 'warn', 5000)
+      if (doc.kind !== 'piedmont-presets') return toast(`that file is a "${String(doc.kind ?? 'unknown')}", not a presets library`, 'warn', 5000)
       // MERGED, not replaced: importing somebody's dusk into a world that already has a midwinter
       // should give you both. Same id replaces, which is how you take an updated one.
       const r = presets.load(doc as never, { merge: true })
@@ -521,8 +521,8 @@ const menu = new GameMenu({
   },
   recover: {
     options: [{ value: 'level', label: 'the level decides' }, { value: 'on', label: 'always' }, { value: 'off', label: 'never' }],
-    get: () => { let p: string | null = null; try { p = localStorage.getItem('corridor.recoverRepairs') } catch { /* no storage */ } return p === 'on' || p === 'off' ? p : 'level' },
-    set: (v) => { try { localStorage.setItem('corridor.recoverRepairs', v) } catch { /* no storage */ } },
+    get: () => { let p: string | null = null; try { p = localStorage.getItem('piedmont.recoverRepairs') } catch { /* no storage */ } return p === 'on' || p === 'off' ? p : 'level' },
+    set: (v) => { try { localStorage.setItem('piedmont.recoverRepairs', v) } catch { /* no storage */ } },
   },
   applyAudio: () => applyAudio(),
   applyBindings: () => applyBindings(),
@@ -642,14 +642,14 @@ function chooseAA(v: AAMode) {
   buildPostAA(postAAFor(slug))
 }
 let dragging = false, lastX = 0, lastY = 0, downAt = 0
-// drive mode: a real car (stuntin dynamics) on the corridor strip, chase camera behind it
+// drive mode: a real car (stuntin dynamics) on the road-band strip, chase camera behind it
 const drive = { on: false, cockpit: false, yaw: 0, pitch: 0, stickYaw: 0, stickPitch: 0, snapCam: false, car: null as DrivableCar | null, input: { throttle: 0, brake: 0, steer: 0, handbrake: false } as CarInput, steerKey: 0 }
 
 /*
  * THE ENGINE YOU CAN HEAR.
  *
  * `enginesound.ts` runs Ange Yaghi's combustion simulator in an audio worklet and reads the two
- * numbers that decide what an engine sounds like off an `Engine` component. Corridor's car has a
+ * numbers that decide what an engine sounds like off an `Engine` component. The game's car has a
  * speed and no crankshaft, so a gearbox in the package turns one into the other.
  *
  * The world here is a real bitECS world with exactly one entity in it. That is not ceremony for its
@@ -1040,12 +1040,12 @@ addEventListener('visibilitychange', () => { if (document.visibilityState === 'h
 
 /*
  * GO QUIET WHEN NOBODY IS LOOKING OR THE GAME IS HELD (Rich, 2026-09-27: "it would be great if we
- * muted the corridor UI when the tab isn't active. We do that for the other games here").
+ * muted the game UI when the tab isn't active. We do that for the other games here").
  *
  * BOTH SIGNALS, because they mean different things and the other games only listen for one.
  * stuntin and coast use window blur/focus, which catches switching tabs and switching apps but
  * NOT a minimised window on every browser; `visibilitychange` catches the tab going to the
- * background but not another application taking the foreground. Corridor wants both: hidden OR
+ * background but not another application taking the foreground. The game wants both: hidden OR
  * unfocused is "nobody is listening".
  *
  * AND THE PAUSE MENU, which is a third reason the same bus should be down: the world is held still
@@ -1266,7 +1266,7 @@ async function loadSite(slug: string) {
       ui.setSearch((q) => searchIndex.find(q), `${searchIndex.counts.address} addresses`)
     })
     .catch((e) => console.warn('address index:', e))
-  ;(window as unknown as { corridor: unknown }).corridor = {
+  ;(window as unknown as { piedmont: unknown }).piedmont = {
     site,
     /**
      * The physics world, or null when `PHYS_ENABLED` is off.
@@ -1440,7 +1440,7 @@ async function loadSite(slug: string) {
      * post-process anti-aliasing arrived that is the WRONG CALL: with a composer the final pass
      * owns the default framebuffer, a bare `renderer.render` draws somewhere else, and
      * `gl.readPixels` then reads a buffer nobody just wrote. It does not throw and it does not
-     * come back black — corridor-splatseam.mjs reported the capture seam "leaking" 17.6% of a
+     * come back black — splatseam.mjs reported the capture seam "leaking" 17.6% of a
      * frame at a point whose mask reads zero, with every changed pixel BRIGHTER, which is a very
      * convincing bug report about nothing.
      *
@@ -1477,7 +1477,7 @@ async function loadSite(slug: string) {
       sun: () => sunNow(),
     },
 
-    /** the test rig, from the console as well as the bridge: `corridor.rig.start()` */
+    /** the test rig, from the console as well as the bridge: `piedmont.rig.start()` */
     rig,
     tune: {
       tabs: TUNE_TABS,
@@ -1500,7 +1500,7 @@ async function loadSite(slug: string) {
   transport ??= new TransportControls(camera, orbit, canvas, (x, z) => site?.groundAt(x, z) ?? null)
 
   // the captured world, if this site has one attached (or ?splats=<world> named one). It is a
-  // skin over the bake, never the ground: see docs/corridor/PLAN-SPLAT-CORRIDORS.md.
+  // skin over the bake, never the ground: see docs/PLAN-SPLAT-ROUTES.md.
   for (const f of splats) f.dispose()
   splats = []
   {
@@ -1594,7 +1594,7 @@ async function loadSite(slug: string) {
    * knob, then the world's tuning.json — and not read off the live knobs, because by the time
    * this runs the panel has already restored whatever this browser was last playing with, and a
    * ground state that includes somebody's scratch values is not a ground state. See
-   * docs/corridor/PLAN-GAME-PIPELINE.md.
+   * docs/PLAN-GAME-PIPELINE.md.
    */
   {
     const doc = await loadSiteTuning(slug)
@@ -1635,7 +1635,7 @@ async function loadSite(slug: string) {
  * wall clock. Setting a date or dragging the slider stores that instant instead, and the level's
  * time only applies when nothing has been chosen yet.
  */
-const CLOCK_KEY = 'apex-corridor-clock'
+const CLOCK_KEY = 'piedmont-clock'
 type ClockPin = { follow: 'now' } | { follow: 'set'; date: string; time: string }
 function saveClockPin(pin: ClockPin) {
   try { localStorage.setItem(CLOCK_KEY, JSON.stringify(pin)) } catch { /* private window */ }
@@ -2443,7 +2443,7 @@ function showGame() {
  * the world under an id the program moves it by; the model arrives when it has loaded, the holder
  * is there at once. Site metres in, three's frame here — (x, up, -y), once, in `poseModel`.
  *
- * Rich, 2026-09-30: the pizza level had to reach `window.corridor.site.layers.placements` to hide a
+ * Rich, 2026-09-30: the pizza level had to reach `window.piedmont.site.layers.placements` to hide a
  * stack and clone a wad of cash, because the API could name a placed thing and not make one.
  */
 const zoneMarks = new ZoneMarks()
@@ -2925,7 +2925,7 @@ let playerModel: CarModel | null = null
 /** does R straighten the car's dents: the settings say, else the level, else yes */
 function recoverRepairs(): boolean {
   let pref: string | null = null
-  try { pref = localStorage.getItem('corridor.recoverRepairs') } catch { /* no storage */ }
+  try { pref = localStorage.getItem('piedmont.recoverRepairs') } catch { /* no storage */ }
   if (pref === 'on') return true
   if (pref === 'off') return false
   return level?.recoverRepairs ?? true
@@ -3737,7 +3737,7 @@ function applySeasonKnob() {
   if (want !== season) setSeason(want)
 }
 /**
- * A knob moved. The F6 panel and `window.corridor.tune.set` both come through here, so a probe
+ * A knob moved. The F6 panel and `window.piedmont.tune.set` both come through here, so a probe
  * sweeping a knob gets exactly what Rich gets from the slider — the first version of the probe
  * hook called `retune()` alone and the season knob silently did nothing under it.
  */
@@ -3836,7 +3836,7 @@ function applyPhysicsCarTune() {
 
 // A STANCE is everything needed to reproduce what is on screen: site, season, mode, camera (or
 // car), layer toggles, lite. C copies the current one as a URL; a URL with ?stance= restores it
-// on load, and probes/corridor-stance.mjs renders it headlessly. Rich pastes the URL, I see his
+// on load, and probes/stance.mjs renders it headlessly. Rich pastes the URL, I see his
 // exact frame — no more guessing at a screenshot.
 interface Stance {
   v: 1
@@ -3874,7 +3874,7 @@ function captureStance(): Stance | null {
  * Order of authority on load: `?stance=` in the URL (a shared link must mean what it says), then
  * the saved stance, then the photo point. `?fresh` skips the saved one.
  */
-const RESUME_KEY = 'apex-corridor-resume'
+const RESUME_KEY = 'piedmont-resume'
 const RESUME_MS = 400
 let resumeAt = 0
 function saveResume() {
@@ -3993,7 +3993,7 @@ async function doSaveSiteTuning() {
   if (!site) return
   try {
     const r = await saveSiteTuning(site.manifest.slug, siteTuneAccess, TUNE_BASELINE)
-    toast(`saved ${r.count} knobs to tools/corridor/data/sites/${site.manifest.slug}/tuning.json (${r.bytes} bytes)`, 'ok', 6000)
+    toast(`saved ${r.count} knobs to data/sites/${site.manifest.slug}/tuning.json (${r.bytes} bytes)`, 'ok', 6000)
   } catch (e) {
     toast(`site tuning: ${(e as Error).message}`, 'danger')
   }
@@ -4076,7 +4076,7 @@ function hotkey(action: Action, shift = false): boolean {
       return true
     }
     // R backs you out the way you came (stuntin's recover); Shift+R is the old teleport to the
-    // photo station, kept for getting back to the start of the corridor
+    // photo station, kept for getting back to the start of the road band
     case 'recover':
       if (!(drive.on && site && drive.car)) return false
       if (shift) { const p = startPose(); drive.car.place(p.x, p.z, p.yaw) }
@@ -4628,7 +4628,7 @@ function frame() {
     // Elevation and heading (Rich, 2026-09-27: "the ground elevation (e.g. 121 feet) and heading
     // (e.g. e/ne) at the current position of the car").
     //
-    // The number is real rather than decorative: the corridor DEM is NAVD88 metres and the bake
+    // The number is real rather than decorative: the road-band DEM is NAVD88 metres and the bake
     // anchors the frame at h = 0, so world Y IS height above the vertical datum. Feet, because
     // the line already reads in mph. It follows the GROUND under the car, not the car body, so
     // it does not jump when you land.
@@ -4707,7 +4707,7 @@ function frame() {
    *
    * Site metres, x east, y north, z up. Three's world is (east, up, −north), so y = −z and z = y
    * — the same conversion Transform gets, applied to a direction as well as a point. The up
-   * vector comes off the quaternion rather than being assumed to be world up: corridor does not
+   * vector comes off the quaternion rather than being assumed to be world up: the game does not
    * roll today, and a camera that does is then right for free.
    */
   camera.getWorldDirection(earDir)
@@ -4784,7 +4784,7 @@ function frame() {
     // retro cone and the visible beam cannot drift apart (retro.ts, car.lamps)
     // how hard the built world yields to a capture: 0 leaves it alone, 1 hands the ground over
     // ONLY where a seam was actually drawn. `splats.length` is not the test: a capture with no
-    // usable corridor.json attaches fine and rasterises to nothing, and dissolving the built world
+    // usable <envelope>.json attaches fine and rasterises to nothing, and dissolving the built world
     // against an empty seam is how the site went dark (Rich, 2026-09-27).
     splatMask.uSplatFade.value = splatFadeOverride ?? (splatCover && splatCover.covered > 0 ? T.SPLAT_WORLD_FADE : 0)
     const lamps = drive.car?.lamps()
@@ -4929,14 +4929,14 @@ function frame() {
 // the stack matters: `status()` shows only the message, and a load failure here is usually a
 // shader or a missing layer several files down
 loadIndex().then(frame).catch((e) => {
-  console.error('corridor: load failed', e)
+  console.error('piedmont: load failed', e)
   status(`failed: ${e.message}`)
 })
 
 // --- dev operator shell ---------------------------------------------------------------------
 // Inert unless the dev server was started with APEX_BRIDGE set, and it cannot reach a build at
 // all — the virtual module resolves to empty no-ops otherwise, so not a byte of it, and no handle
-// onto the scene, exists at runtime. `just bridge-dev corridor`, then `just bridge '<js>' corridor`.
+// onto the scene, exists at runtime. `just bridge-dev`, then `just bridge '<js>'`.
 //
 // This exists because the agent box has no GPU. Every frame-time number in this app's commits so
 // far is swiftshader's, which falls off a cliff at a few hundred thousand triangles and says
@@ -5039,7 +5039,7 @@ registerBridgeContext({
    * `groundUnder` is the interesting one: it ray-casts the heightfield the wheels will stand on, so
    * a probe can hold it against `site.groundAt` — the surface everything else is built from — and
    * find out whether the two agree. They must, to a centimetre, or the car floats and sinks in ways
-   * nothing else explains. probes/corridor-physground.mjs is that comparison.
+   * nothing else explains. probes/physground.mjs is that comparison.
    */
   get physics() {
     return physics
@@ -5053,7 +5053,7 @@ registerBridgeContext({
   THREE,
   tune: TUNE_TABS,
   /**
-   * The presets library, over the bridge as well as on `window.corridor`.
+   * The presets library, over the bridge as well as on `window.piedmont`.
    *
    * Because this is the surface that reaches Rich's GPU browser, and "make it night over eight
    * seconds and tell me what snapped" is a thing to ask of a real card rather than of swiftshader.

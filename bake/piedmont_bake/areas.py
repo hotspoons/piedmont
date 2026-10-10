@@ -1,4 +1,4 @@
-"""corridor areas — a first pass at `adjustments.json`, proposed from what the bake measured.
+"""road band areas — a first pass at `adjustments.json`, proposed from what the bake measured.
 
 An adjustment area is a polygon in the SITE FRAME (metres, x east, y north) plus a small bag of
 multipliers the viewer applies to whatever it infers inside it. The data is right most of the
@@ -19,7 +19,7 @@ Ids encode WHERE, not the order they were found (`canopy-l-0420`, `struct-0500`)
 after a re-bake lands on the same ids and merges instead of duplicating. Areas already in the
 file are never touched: this only ever appends ids that are missing, unless --overwrite.
 
-    python -m corridor areas <slug|all> [--overwrite] [--dry-run]
+    python -m piedmont_bake areas <slug|all> [--overwrite] [--dry-run]
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from pathlib import Path
 
 import numpy as np
 
-# The key set the editor authors and the viewer consumes. Keep in step with apps/corridor/src/editor.
+# The key set the editor authors and the viewer consumes. Keep in step with apps/game/src/editor.
 NEUTRAL: dict = {
     "canopy_scale": 1.0,
     "canopy_offset_m": 0.0,
@@ -181,7 +181,7 @@ def canopy_areas(spine: Spine, profile: dict) -> list[dict]:
     out: list[dict] = []
 
     # --- one side dead against the other, over the whole site ---------------------------------
-    # The MEAN, not the median: half of a corridor is mown verge, so a side with a solid wood
+    # The MEAN, not the median: half of a road band is mown verge, so a side with a solid wood
     # over a third of its length still has a median of zero. The mean is "how much forest is on
     # this side", which is the quantity the two sides should roughly agree on.
     med = {k: float(np.mean(v)) for k, v in sides.items()}

@@ -1,18 +1,18 @@
 // What grows here, read off the bake.
 //
-// `tools/corridor/corridor/flora.py` writes three things into the manifest and one image beside it:
+// `bake/piedmont_bake/flora.py` writes three things into the manifest and one image beside it:
 //
 //   evt       LANDFIRE Existing Vegetation Type, 30 m — the site's vegetation classes with their
-//             AREA SHARE inside the corridor, each carrying its lifeform, physiognomy, the
+//             AREA SHARE inside the road band, each carrying its lifeform, physiognomy, the
 //             evergreen/deciduous subclass, a derived ground-cover class, and a species mix
 //   canopy    the site-wide species mix, and `ref`, the botany of every species named: genus,
 //             scientific name, and FIA's softwood/hardwood flag
 //   climate   Daymet monthly rain and temperature at 1 km
-//   flora_30m.png   the EVT class INDEX per 30 m pixel (255 = outside the corridor), so a tree on
+//   flora_30m.png   the EVT class INDEX per 30 m pixel (255 = outside the road band), so a tree on
 //             a canyon floor and a tree on the ridge above it can be different species
 //
 // Everything in here is a read of that. No region, state or species is named in this file: a
-// corridor anywhere in the United States comes out of the same code, and the only thing that
+// road band anywhere in the United States comes out of the same code, and the only thing that
 // changes is the numbers LANDFIRE and FIA return for it.
 import { Anchor } from '@apex/engine/geo/wgs84'
 import { RasterFrame } from '@apex/engine/geo/raster'
@@ -25,7 +25,7 @@ export interface FloraSpecies {
   softwood: boolean
   spcd: number | null
   /** mean lidar canopy height over the pixels where this species carries basal area, metres.
-   *  Measured in THIS corridor; null where the species came from the EVT class name instead. */
+   *  Measured in THIS road band; null where the species came from the EVT class name instead. */
   canopy_h_m: number | null
 }
 
@@ -100,7 +100,7 @@ export interface SpeciesWeight {
  * `at(x, y)` takes SITE metres (x east, y north — the same frame the CHM and the spine are in, NOT
  * world z) and returns the EVT class of that 30 m pixel. Everything spatial hangs off that: a
  * redwood is a redwood because the pixel it stands on is "California Coastal Redwood Forest", and
- * the chaparral fifty metres up the slope is a different class in the same corridor.
+ * the chaparral fifty metres up the slope is a different class in the same road band.
  */
 export class Flora {
   readonly block: FloraBlock
@@ -128,7 +128,7 @@ export class Flora {
   }
 
   /**
-   * The EVT class at a point in site metres (x east, y north), or null outside the corridor.
+   * The EVT class at a point in site metres (x east, y north), or null outside the road band.
    *
    * A RASTER CANNOT BE SAMPLED FROM ITS BOUNDING BOX, and this used to try.
    *
@@ -144,11 +144,11 @@ export class Flora {
    * the SOUTH, while the PNG is written unflipped from a north-up GeoTIFF, so its row 0 should be
    * the NORTH — which argued for `1 - v`. That argument is WRONG, and the grid itself says so.
    *
-   * `probes/corridor-flora-registration.mjs` scores all four conventions against a fact neither
-   * end of the argument can bend: the bake writes 255 for every pixel outside the corridor
-   * polygon, and the corridor polygon is the road network. Measured on crofton-triangle:
+   * `probes/flora-registration.mjs` scores all four conventions against a fact neither
+   * end of the argument can bend: the bake writes 255 for every pixel outside the road band
+   * polygon, and the road-band polygon is the road network. Measured on crofton-triangle:
    *
-   *     v, no flip   100% of spine points inside the corridor, 20% of points 1.5 km away
+   *     v, no flip   100% of spine points inside the road band, 20% of points 1.5 km away
    *     1 - v         91%                                       38%
    *     1 - v, 1 - u  92%                                       33%
    *     v, 1 - u      72%                                       42%
@@ -241,7 +241,7 @@ export class Flora {
     return this.at(x, y)?.ground ?? null
   }
 
-  /** The commonest ground-cover class over the corridor, ignoring water and pavement. */
+  /** The commonest ground-cover class over the road band, ignoring water and pavement. */
   get dominantGround(): GroundClass | null {
     const g = this.block.ground.classes.filter((c) => c.key !== 'water')
     return g.length ? g[0].key : null

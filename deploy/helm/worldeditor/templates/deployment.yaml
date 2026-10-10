@@ -36,38 +36,38 @@ spec:
               containerPort: 8780
               protocol: TCP
           env:
-            - name: WORLDEDITOR_DATA
+            - name: PIEDMONT_EDITOR_DATA
               value: /data
-            - name: WORLDEDITOR_PORT
+            - name: PIEDMONT_EDITOR_PORT
               value: "8780"
-            - name: WORLDEDITOR_CORS
+            - name: PIEDMONT_EDITOR_CORS
               value: {{ .Values.corsOrigin | quote }}
-            - name: WORLDEDITOR_OVERPASS_URL
+            - name: PIEDMONT_EDITOR_OVERPASS_URL
               value: {{ .Values.overpassUrl | quote }}
             # what each instance holds, by Geofabrik region (coverage.mjs); routing reads the
             # extracts' real outlines from this, not boxes on the URLs
-            - name: WORLDEDITOR_OVERPASS_REGIONS
+            - name: PIEDMONT_EDITOR_OVERPASS_REGIONS
               value: {{ .Values.overpassRegions | default "" | quote }}
             {{- with .Values.osmImportImage }}
-            - name: WORLDEDITOR_OSM_IMPORT_IMAGE
+            - name: PIEDMONT_EDITOR_OSM_IMPORT_IMAGE
               value: {{ . | quote }}
             {{- end }}
-            - name: WORLDEDITOR_ASSETSVC
+            - name: PIEDMONT_EDITOR_ASSETSVC
               value: {{ .Values.assetsvcUrl | quote }}
-            - name: WORLDEDITOR_NAMESPACE
+            - name: PIEDMONT_EDITOR_NAMESPACE
               value: {{ .Release.Namespace | quote }}
-            - name: WORLDEDITOR_BAKE_IMAGE
+            - name: PIEDMONT_EDITOR_BAKE_IMAGE
               value: {{ .Values.bake.image | quote }}
-            - name: WORLDEDITOR_CLAIM
+            - name: PIEDMONT_EDITOR_CLAIM
               value: {{ include "worldeditor.claimName" . | quote }}
-            - name: WORLDEDITOR_BAKE_RESOURCES
+            - name: PIEDMONT_EDITOR_BAKE_RESOURCES
               value: {{ toJson .Values.bake.resources | quote }}
-            - name: WORLDEDITOR_HORIZON_M
+            - name: PIEDMONT_EDITOR_HORIZON_M
               value: {{ .Values.bake.horizonRadiusM | quote }}
             # Always set, EMPTY BY DEFAULT. Set explicitly rather than only when non-empty, so
             # that turning the seed off is a value change and not a redeploy of a different
             # template — the image carries the list and an unset variable is what disables it.
-            - name: WORLDEDITOR_SEED_SITES
+            - name: PIEDMONT_EDITOR_SEED_SITES
               value: {{ .Values.seedSites | quote }}
             {{- /*
               GUARDED, because `helm upgrade --reuse-values` keeps the values the PREVIOUS release
@@ -77,14 +77,14 @@ spec:
               adding it. A chart has to survive being upgraded from its own past.
             */}}
             {{- with .Values.splat }}
-            - name: WORLDEDITOR_SPLAT_IMAGE
+            - name: PIEDMONT_EDITOR_SPLAT_IMAGE
               value: {{ .image | default "ghcr.io/hotspoons/gaussworks:latest" | quote }}
-            - name: WORLDEDITOR_SPLAT_CONFIG
+            - name: PIEDMONT_EDITOR_SPLAT_CONFIG
               value: {{ .config | default "" | quote }}
-            - name: WORLDEDITOR_SPLAT_SEAM_MAX
+            - name: PIEDMONT_EDITOR_SPLAT_SEAM_MAX
               value: {{ .seamFailOver | default 3.0 | quote }}
             {{- if .codeSha }}
-            - name: WORLDEDITOR_SPLAT_CODE_SHA
+            - name: PIEDMONT_EDITOR_SPLAT_CODE_SHA
               value: {{ .codeSha | quote }}
             {{- end }}
             {{- /*
@@ -92,44 +92,44 @@ spec:
               editor (Settings → Services), where a saved value wins over these and clearing it falls
               back to them — so these are the deployment's answer, not the only one.
             */}}
-            - name: WORLDEDITOR_SPLAT_RUNNER
+            - name: PIEDMONT_EDITOR_SPLAT_RUNNER
               value: {{ .runner | default "auto" | quote }}
             {{- with .command }}
-            - name: WORLDEDITOR_SPLAT_COMMAND
+            - name: PIEDMONT_EDITOR_SPLAT_COMMAND
               value: {{ toJson . | quote }}
             {{- end }}
             {{- with .args }}
-            - name: WORLDEDITOR_SPLAT_ARGS
+            - name: PIEDMONT_EDITOR_SPLAT_ARGS
               value: {{ toJson . | quote }}
             {{- end }}
             {{- with .storageClass }}
-            - name: WORLDEDITOR_SPLAT_STORAGE_CLASS
+            - name: PIEDMONT_EDITOR_SPLAT_STORAGE_CLASS
               value: {{ . | quote }}
             {{- end }}
             {{- with .gpuResource }}
-            - name: WORLDEDITOR_GPU_RESOURCE
+            - name: PIEDMONT_EDITOR_GPU_RESOURCE
               value: {{ . | quote }}
             {{- end }}
             {{- end }}
             {{- with .Values.nominatimUrl }}
-            - name: WORLDEDITOR_NOMINATIM
+            - name: PIEDMONT_EDITOR_NOMINATIM
               value: {{ . | quote }}
             {{- end }}
             {{- /* the live headless Blender the rigging pipeline and MCP clients drive */}}
-            - name: WORLDEDITOR_BLENDER_AUTOSTART
+            - name: PIEDMONT_EDITOR_BLENDER_AUTOSTART
               value: {{ (dig "autostart" false (.Values.blender | default dict)) | toString | quote }}
             {{- if .Values.publish.bucket }}
-            - name: WORLDEDITOR_S3_BUCKET
+            - name: PIEDMONT_EDITOR_S3_BUCKET
               value: {{ .Values.publish.bucket | quote }}
-            - name: WORLDEDITOR_S3_ENDPOINT
+            - name: PIEDMONT_EDITOR_S3_ENDPOINT
               value: {{ .Values.publish.endpoint | quote }}
-            - name: WORLDEDITOR_S3_REGION
+            - name: PIEDMONT_EDITOR_S3_REGION
               value: {{ .Values.publish.region | quote }}
-            - name: WORLDEDITOR_S3_PREFIX
+            - name: PIEDMONT_EDITOR_S3_PREFIX
               value: {{ .Values.publish.prefix | quote }}
             # The credentials go to the bake JOB, not to this process — this one never signs a
             # request to the bucket, it only starts the Job that does.
-            - name: WORLDEDITOR_S3_SECRET
+            - name: PIEDMONT_EDITOR_S3_SECRET
               value: {{ .Values.publish.secretName | quote }}
             {{- end }}
             {{- /*

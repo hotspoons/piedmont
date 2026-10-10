@@ -1,5 +1,5 @@
 {
- "_doc": "The built-in building classes and their facade pools (src/world/facades.ts). The shared default (assetsvc /facades) and a world's surfaces.json lay their choices over these. Read by the app AND by tools/worldeditor (mcptools.mjs, vocab.mjs), so there is one copy. Materials are library ids (assetsvc /materials).",
+ "_doc": "The built-in building classes and their facade pools (src/world/facades.ts). The shared default (assetsvc /facades) and a world's surfaces.json lay their choices over these. Read by the app AND by services/worldeditor (mcptools.mjs, vocab.mjs), so there is one copy. Materials are library ids (assetsvc /materials).",
  "classes": [
   {
    "id": "house",

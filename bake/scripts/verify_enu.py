@@ -22,9 +22,9 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from corridor.geo import Anchor, Frame  # noqa: E402
+from piedmont_bake.geo import Anchor, Frame  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent / "data" / "sites"
+ROOT = Path(__file__).resolve().parents[2] / "data" / "sites"
 TOL_MM = 30.0  # 2 dp rounding on both sides, with headroom
 EP2 = (Anchor.A**2 - Anchor.B**2) / Anchor.B**2
 

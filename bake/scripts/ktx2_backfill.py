@@ -13,16 +13,16 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from corridor import ktx2  # noqa: E402
+from piedmont_bake import ktx2  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent / "data" / "sites"
+ROOT = Path(__file__).resolve().parents[2] / "data" / "sites"
 
 
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     sub = "web.staging" if "--staging" in sys.argv else "web"
     if ktx2.encoder() is None:
-        print("no ktx encoder — tools/corridor/scripts/fetch_ktx.sh")
+        print("no ktx encoder — bake/scripts/fetch_ktx.sh")
         return 1
     slugs = args or sorted(p.parent.name for p in ROOT.glob(f"*/{sub}") if p.is_dir())
     tj = tk = 0

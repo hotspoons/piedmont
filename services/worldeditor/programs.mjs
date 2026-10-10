@@ -5,7 +5,7 @@
 // with no tab open and for the viewer, which needs the JavaScript of a program a level names and
 // should not have to carry a TypeScript compiler to get it. So the same two questions — does it
 // compile, does it typecheck — are answered here, against the SAME bundle
-// (apps/corridor/src/generated/program-types.json), so the squiggles and this agree.
+// (apps/game/src/generated/program-types.json), so the squiggles and this agree.
 //
 // The bundle is a virtual filesystem: `file:///node_modules/@apex/program/index.d.ts` and the
 // bitecs declarations beside it. Rooted at `/` with node resolution, `import ... from
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const BUNDLE = path.resolve(HERE, '../../apps/corridor/src/generated/program-types.json')
+const BUNDLE = path.resolve(HERE, '../../apps/game/src/generated/program-types.json')
 
 let tsMod = null
 function ts() {
@@ -55,7 +55,7 @@ export async function modules() {
 export async function declarations(mod = 'program') {
   const name = String(mod).replace(/^@apex\//, '').replace(/\.d\.ts$/, '')
   const libs = await bundle()
-  const key = [...libs.keys()].find((k) => k.startsWith('/corridor/') && k.endsWith(`/${name}.d.ts`))
+  const key = [...libs.keys()].find((k) => k.startsWith('/piedmont/') && k.endsWith(`/${name}.d.ts`))
   const text = key ? libs.get(key) : undefined
   if (text === undefined) throw Object.assign(new Error(`no module "${mod}" — one of ${(await modules()).join(', ')}`), { status: 404 })
   return { module: name, import: `@apex/${name}`, text }

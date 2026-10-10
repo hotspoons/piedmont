@@ -4,7 +4,7 @@ Rich drove Crofton and found ONE traffic signal, reading from one direction only
 at all. None of that is an OSM problem — it is that the bake only ever transcribed what OSM had
 mapped as a point, and an American suburb records almost none of it:
 
-    inside crofton-triangle's corridor, from the OSM extract
+    inside crofton-triangle's road band, from the OSM extract
       drivable ways                854
       traffic_signals nodes         35      (and they are single nodes, not one per approach)
       stop nodes                     3
@@ -313,19 +313,19 @@ def _roads(site_dir: Path, frame) -> list[dict]:
         r["profile"] = prof.get(r["id"])
         r["rank"] = RANK.get(r["highway"], 3)
         r["lanes"] = _lanes(r["tags"], r["highway"])
-        # The CORRIDOR a road is, not the OSM way it is cut into. A divided highway is two one-way
+        # The ROUTE a road is, not the OSM way it is cut into. A divided highway is two one-way
         # ways, and OSM splits a road at every junction, so one road arrives as several ids. Grouping
         # by name (then ident/ref) lets `main` see ONE Columbia Pike where the ways see two, which is
         # what stops a divided arterial being mistaken for a crossroads of equals and going all-way.
         # «unnamed» and blank are NOT identities: two unnamed streets are not the same street, so
         # they fall back to the way id — otherwise every unnamed road in the county would share a
-        # corridor and their junctions would read as a single road forking.
+        # route and their junctions would read as a single road forking.
         key = r["id"]
         for cand in (r.get("name"), r.get("ident"), r.get("ref")):
             if cand and cand.strip() and cand != "«unnamed»":
                 key = cand
                 break
-        r["corridor"] = key
+        r["route"] = key
         r["length_m"] = sum(math.dist(r["line"][i], r["line"][i - 1]) for i in range(1, len(r["line"])))
         # cumulative station of every vertex, so a junction's `s` can be turned into a tangent
         cum = [0.0]
@@ -480,7 +480,7 @@ def build(site_dir: Path, frame, max_chars: int = 17) -> dict:
                     dx, dy = cx - bx, cy - by
                     d = math.hypot(dx, dy) or 1.0
                     approaches.append({
-                        "road": r["id"], "corridor": r["corridor"],
+                        "road": r["id"], "route": r["route"],
                         "name": r["ident"] or r["name"] or r["ref"],
                         "highway": r["highway"], "rank": r["rank"], "lanes": r["lanes"],
                         "length_m": round(r["length_m"], 1),
@@ -514,7 +514,7 @@ def build(site_dir: Path, frame, max_chars: int = 17) -> dict:
         # Getting this wrong is not subtle. Ranking on class alone made 298 of Crofton's 408
         # junctions all-way stops and put 1062 stop signs on a suburb that has almost no four-way
         # stops in it — every court meeting its street would have stopped the street too.
-        main = sorted({a["corridor"] for a in approaches if a["rank"] == top and a["through"]})
+        main = sorted({a["route"] for a in approaches if a["rank"] == top and a["through"]})
         # A junction whose every arm is a freeway or a freeway ramp is an interchange MERGE or split,
         # not a stop-controlled crossing. A ramp joining a freeway yields; it does not stop, and a
         # stop sign set at the merge lands on the freeway shoulder — exactly the "random stop sign on
@@ -543,7 +543,7 @@ def build(site_dir: Path, frame, max_chars: int = 17) -> dict:
             return (a["rank"], a["lanes"], a["length_m"], a["road"] or "")
         # the superior arm is drawn from the through roads where there are any, so a long court
         # cannot outrank the street it ends on just by being long
-        pool = [a for a in approaches if a["corridor"] in main] or approaches
+        pool = [a for a in approaches if a["route"] in main] or approaches
         best = max(pool, key=superiority)
         for a in approaches:
             a["superior"] = a["road"] == best["road"]
@@ -553,7 +553,7 @@ def build(site_dir: Path, frame, max_chars: int = 17) -> dict:
                 a["stop"] = True
         elif control == "two_way_stop":
             for a in approaches:
-                a["stop"] = a["corridor"] not in main
+                a["stop"] = a["route"] not in main
         # an OSM stop/give_way node overrules the inference on the arm it sits on
         for sn in stop_nodes:
             if math.dist((sn["x"], sn["y"]), (cx, cy)) > STOP_SNAP:
@@ -572,7 +572,7 @@ def build(site_dir: Path, frame, max_chars: int = 17) -> dict:
             if a["highway"] == "motorway" and a["stop"]:
                 a["stop"] = False
                 a.pop("stop_source", None)
-        # NO STOPPER LEFT IS NOT A STOP. `main` can hold the only corridor at the node — a road that
+        # NO STOPPER LEFT IS NOT A STOP. `main` can hold the only route at the node — a road that
         # forks, or a divided road whose carriageways were grouped — so a "two-way" stop with no
         # inferior arm has nobody to stop, and the guard above can empty an all-way stop. Either way
         # the junction is uncontrolled and the label and the counts must say so together.

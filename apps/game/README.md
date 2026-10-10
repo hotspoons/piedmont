@@ -1,10 +1,10 @@
-# corridor viewer
+# apps/game — the game, the site editor and the world editor page
 
-Looks at what `tools/corridor` baked, from above and from the driver's seat.
+Looks at what `bake` baked, from above and from the driver's seat.
 
 ```bash
-just corridor-view      # :5185 — reads tools/corridor/data/sites straight off disk
-just corridor-tunnel    # phone: devproxy :5190 + cloudflared quick tunnel
+just dev      # :5185 — reads data/sites straight off disk
+just tunnel    # phone: devproxy :5190 + cloudflared quick tunnel
 ```
 
 **The address** is all in the hash: the world, then its options as a query string *inside* the
@@ -36,14 +36,14 @@ quarter of the terrain vertices, 4k imagery, fewer near trees); touch devices ge
 | `src/grass.ts` | instanced grass/weed blades in a ring around the eye, on open ground off the pavement, mown near the shoulder |
 | `src/hextile.ts` | stochastic hex tiling over a texture-array library, for the pavement |
 | `src/season.ts` | the four-season palette: leaf tints and densities, grass ramp, ground tint, sky and fog |
-| `src/strip.ts` | the fine corridor terrain: 1 m across, 2 m along, road height under every carriageway, DEM beyond; one ground material blending mown turf, rough grass and the air photo |
+| `src/strip.ts` | the fine road-band terrain: 1 m across, 2 m along, road height under every carriageway, DEM beyond; one ground material blending mown turf, rough grass and the air photo |
 | `src/rocks.ts` | rock on the measured cut faces (`manifest.cuts`) and outcrops (`manifest.rock`): the rock kit (`catalog.json` `category: "rock"` by `rock_type`) instanced between toe and top, procedural boulders until a GLB lands, never within `ROCK_PAVEMENT_CLEAR` of the pavement |
 | `src/water.ts` | streams and ponds where the lidar says the channel is (`manifest.water`): ribbons at the snapped low line + `WATER_DEPTH` with a scrolling-noise normal, foam over falls and rapids, culverts skipped |
 | `src/fly.ts` | trailworks-style fly camera |
 | `src/car.ts` | the car: stuntin's ground regime + lateral grip model, tree collision |
 | `src/main.ts` | UI, orbit/drive cameras, phone layout, picking |
 | `src/url.ts` | the address: `#world?k=v&flag`, nothing else read, `replaceState` writes |
-| `public/surfaces/` | texture sets from `tools/surfaces/gen.py` |
+| `public/surfaces/` | texture sets from `pipelines/surfaces/gen.py` |
 
 **Game mode.** A production build opens as a GAME: no bar, a dashboard and the objective in the
 lower-left widget, and an Escape menu with the settings as screens (display, layers, audio,
@@ -52,18 +52,18 @@ the bar back. `#<world>?ui=game` / `?ui=dev` force either; the dev server opens 
 The gamepad works in both (triggers pedals, left stick steers, Start pauses; the sticks fly the
 free camera), with rumble. Double-clicking the inset map drops the car there. A program may take
 the developer view, the teleport, the transport switch, and any settings tab or control away:
-`api.ui.*`. See `docs/corridor/GAME-MODE.md`; probe: `PORT=5185 node probes/corridor-gamemode.mjs`.
+`api.ui.*`. See `docs/GAME-MODE.md`; probe: `PORT=5185 node probes/gamemode.mjs`.
 
 Controls (the driving keys are rebindable in the Escape menu → Settings → Controls; these are the
 defaults). **Fly** (trailworks scheme, `src/fly.ts`): WASD/arrows move along the view heading (speed
 scales with distance to the orbit target, Shift sprints), Q/E turn the view about the camera, R/F
 dolly, T/G raise/lower, left-drag orbits, right-drag looks, wheel dollies; the target rides the
 ground. **Drive** (Tab; stuntin dynamics ported in `src/car.ts`): W/S throttle/brake, A/D steer,
-Space handbrake, R resets to the photo; drag looks around the chase camera. **C copies a stance**: a URL that reproduces exactly this view (site, season, mode, camera or car, layers) — paste it in a bug report and `node probes/corridor-stance.mjs '<url>' out.png` renders it headlessly. **M** hides the panel. The car collides with
+Space handbrake, R resets to the photo; drag looks around the chase camera. **C copies a stance**: a URL that reproduces exactly this view (site, season, mode, camera or car, layers) — paste it in a bug report and `node probes/stance.mjs '<url>' out.png` renders it headlessly. **M** hides the panel. The car collides with
 tree trunks (radius from canopy height) and gets grass drag and grip off the pavement. P = photo,
 H = top.
 `#<world>?season=winter|spring|summer|autumn` or the picker in the header. **rock** and **water** layer
-toggles; F6 → terrain tab for their knobs. `probes/corridor-terrain.mjs <slug> rock|water` flies to
+toggles; F6 → terrain tab for their knobs. `probes/terrain.mjs <slug> rock|water` flies to
 the tallest measured face or the longest stream, counts what was placed, checks clearance and
 grounding, and shoots it with and without the layer. Phones get a move pad (hold to glide) and drive buttons.
 

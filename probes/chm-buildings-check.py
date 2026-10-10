@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Is the canopy actually zeroed under building footprints?
 
-    tools/corridor/.venv/bin/python3 probes/chm-buildings-check.py [slug ...]
+    bake/.venv/bin/python3 probes/chm-buildings-check.py [slug ...]
 
 This lidar has no vegetation classes — canopy is "unassigned above ground" — so every roof is
 also a tree. `export.py` masks the road out of the CHM for the same reason (a truck is a 4 m
@@ -24,7 +24,7 @@ from rasterio.features import rasterize
 from rasterio.transform import from_origin
 from shapely.geometry import Polygon
 
-ROOT = Path(__file__).resolve().parent.parent / "tools/corridor/data/sites"
+ROOT = Path(__file__).resolve().parent.parent / "data/sites"
 
 
 def check(slug: str) -> None:

@@ -19,21 +19,21 @@ const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsaf
 const p = await b.newPage({ viewport: { width: 1000, height: 700 } })
 p.on('pageerror', (e) => console.log('PAGEERROR', e.message.slice(0, 250)))
 await p.goto('http://127.0.0.1:5185/editor.html#frederick-i70', { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 240000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 240000 })
 await p.waitForTimeout(9000)
 await p.keyboard.press('2')
 await p.waitForTimeout(1200)
 
 // select one and fly the camera close so the gizmo is big on screen
 const info = await p.evaluate(() => {
-  const place = window.corridor.place
+  const place = window.piedmont.place
   const id = place.doc.items[0].id
   place.select(id)
   const o = place.objects.get(id)
-  const cam = window.corridor.camera
+  const cam = window.piedmont.camera
   cam.position.set(o.position.x + 25, o.position.y + 18, o.position.z + 25)
   cam.lookAt(o.position)
-  window.corridor.orbitTarget.copy(o.position)
+  window.piedmont.orbitTarget.copy(o.position)
   cam.updateMatrixWorld(true)
   const v = o.position.clone().project(cam)
   return {
@@ -50,12 +50,12 @@ await p.waitForTimeout(1500)
 for (const [dx, dy] of [[0, 0], [30, 0], [-30, 0], [0, -30], [0, 30], [22, 22], [50, 0]]) {
   await p.mouse.move(info.screen.x + dx, info.screen.y + dy)
   await p.waitForTimeout(120)
-  const axis = await p.evaluate(() => window.corridor.place.gizmo?.axis ?? null)
+  const axis = await p.evaluate(() => window.piedmont.place.gizmo?.axis ?? null)
   if (axis) { console.log('axis at offset', dx, dy, '->', axis); break }
 }
 
 console.log('gizmo state', JSON.stringify(await p.evaluate(() => {
-  const g = window.corridor.place.gizmo
+  const g = window.piedmont.place.gizmo
   return {
     axis: g?.axis ?? null,
     enabled: g?.enabled,
@@ -70,7 +70,7 @@ console.log('gizmo state', JSON.stringify(await p.evaluate(() => {
 
 // INSTRUMENT: which handlers actually run, and what they decide
 await p.evaluate(() => {
-  const g = window.corridor.place.gizmo
+  const g = window.piedmont.place.gizmo
   const log = (window.__log = [])
   const wrap = (name) => {
     const fn = g[name]
@@ -100,26 +100,26 @@ await p.waitForTimeout(600)
 
 console.log('LOG', JSON.stringify(await p.evaluate(() => window.__log)))
 // AND THE ROTATOR. `G` swaps the handles; the ring must then turn the placement rather than move it.
-await p.evaluate(() => { window.corridor.place.setGizmoMode('rotate'); window.__log.length = 0 })
+await p.evaluate(() => { window.piedmont.place.setGizmoMode('rotate'); window.__log.length = 0 })
 await p.waitForTimeout(400)
-const yawBefore = await p.evaluate(() => window.corridor.place.doc.items[0].yaw_deg)
+const yawBefore = await p.evaluate(() => window.piedmont.place.doc.items[0].yaw_deg)
 for (const [dx, dy] of [[0, 0], [26, 0], [-26, 0], [0, 26], [0, -26], [18, 18], [40, 0], [-40, 0]]) {
   await p.mouse.move(info.screen.x + dx, info.screen.y + dy)
   await p.waitForTimeout(100)
-  if (await p.evaluate(() => window.corridor.place.gizmo?.axis)) break
+  if (await p.evaluate(() => window.piedmont.place.gizmo?.axis)) break
 }
 await p.mouse.down()
 for (let i = 1; i <= 10; i++) { await p.mouse.move(info.screen.x + 40 + i * 5, info.screen.y + i * 4); await p.waitForTimeout(40) }
 await p.mouse.up()
 await p.waitForTimeout(500)
 console.log('ROTATE', JSON.stringify(await p.evaluate(() => ({
-  axis: window.corridor.place.gizmo?.axis,
+  axis: window.piedmont.place.gizmo?.axis,
   log: window.__log.filter((l) => !l.includes('capture') && !l.includes('mousedown')),
-  yawNow: window.corridor.place.doc.items[0].yaw_deg,
+  yawNow: window.piedmont.place.doc.items[0].yaw_deg,
 }))), 'was', yawBefore)
 
 const after = await p.evaluate(() => {
-  const place = window.corridor.place
+  const place = window.piedmont.place
   const it = place.doc.items[0]
   return { x: it.x, y: it.y, yaw: it.yaw_deg, dragging: place.dragging, dirty: place.dirty }
 })

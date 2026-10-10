@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Are the authored files still in the frame the bake now uses?
 
-    tools/corridor/.venv/bin/python3 probes/frame-staleness.py [slug ...]
+    bake/.venv/bin/python3 probes/frame-staleness.py [slug ...]
 
 A `struct-NNNN` area is a band the seeder drew around a structure at a known along-track metre,
 so it must straddle the spine there. If the frame has moved under it, the band is displaced —
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent.parent / "tools/corridor/data/sites"
+ROOT = Path(__file__).resolve().parent.parent / "data/sites"
 
 
 def check(slug: str) -> None:

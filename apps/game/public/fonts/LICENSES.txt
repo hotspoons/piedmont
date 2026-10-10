@@ -1,4 +1,4 @@
-Fonts bundled with corridor
+Fonts bundled with the game
 =========================
 
 ----- IBM Plex Sans (SIL Open Font License 1.1) -----

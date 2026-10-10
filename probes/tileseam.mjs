@@ -1,6 +1,6 @@
 // Do two neighbouring terrain tiles meet? Reads the live meshes: the rim vertices of one tile's
 // east edge against the next tile's west edge, and flags any vertex thrown somewhere absurd.
-//   PORT=5185 node probes/corridor-tileseam.mjs <site url>
+//   PORT=5185 node probes/tileseam.mjs <site url>
 import { chromium } from 'playwright'
 const [, , url] = process.argv
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
@@ -8,9 +8,9 @@ const page = await browser.newPage({ viewport: { width: 800, height: 500 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 300000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 300000 })
 console.log(await page.evaluate(() => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const tiles = new Map()
   site.group.traverse((o) => { if (o.isMesh && /^terrain:\d+_\d+$/.test(o.name)) tiles.set(o.name, o) })
   const grid = (m) => { const p = m.geometry.getAttribute('position'); const n = p.count; const side = Math.round(Math.sqrt(n)); return { p, n, side } }

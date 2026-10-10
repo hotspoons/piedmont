@@ -6,8 +6,8 @@ Both halves now run here:
 
 | | state |
 |---|---|
-| character rig (`tools/sf2-probe/rigging/rig_character.py`) | **runs green on Kestrel**: 706 bones, 160 deform, verify ok, pose volume ratios 0.981–0.997 |
-| vehicle rig (`tools/rigging/rig_vehicle.py`) | **new, works**: four wheels cut out of a fused reconstruction and given bones, FL/FR/RL/RR |
+| character rig (`pipelines/rigging/rig_character.py`) | **runs green on Kestrel**: 706 bones, 160 deform, verify ok, pose volume ratios 0.981–0.997 |
+| vehicle rig (`pipelines/rigging/rig_vehicle.py`) | **new, works**: four wheels cut out of a fused reconstruction and given bones, FL/FR/RL/RR |
 | the editor's four wheel slots | still never opened on a real asset — now unblocked, since the vehicle rigger produces one |
 | lips and eyes | **measured: zero weight on every lip and eye bone.** The defect is real and named below |
 
@@ -85,17 +85,17 @@ allowed to make an unrigged car less usable than it is now.
 
 | thing | where | state |
 |---|---|---|
-| wheel-slot editor (FL/FR/RL/RR, preview highlight) | `apps/corridor/src/ui/assets.ts`, `rigEditor` | built, unexercised |
-| slot inference from bone positions | `apps/corridor/src/rigslots.ts` + `test/rigslots.test.ts` | built, 11 tests |
+| wheel-slot editor (FL/FR/RL/RR, preview highlight) | `apps/game/src/ui/assets.ts`, `rigEditor` | built, unexercised |
+| slot inference from bone positions | `apps/game/src/rigslots.ts` + `test/rigslots.test.ts` | built, 11 tests |
 | bone positions in the model's own frame | `MeshView.bonePlaces()` | built |
 | rig detection and role guessing from names | `MeshView.rig()`, `matchRoles` | built |
-| `rig` on the catalog record, survives unrelated edits | `tools/assetsvc/catalog.mjs`, probed | built |
-| character rigger (Rigify, cage, weight transfer) | `tools/sf2-probe/rigging/rig_character.py` | works, amd64 only |
-| its written-up traps | the README beside it, and `git show 7f2ad65:tools/rigging/README.md` | read this first |
+| `rig` on the catalog record, survives unrelated edits | `services/assetsvc/catalog.mjs`, probed | built |
+| character rigger (Rigify, cage, weight transfer) | `pipelines/rigging/rig_character.py` | works, amd64 only |
+| its written-up traps | the README beside it, and `git show 7f2ad65:pipelines/rigging/README.md` | read this first |
 | joint-correction viewer | `apps/arcade/public/models.html` (arcade repo) | works on the wrong skeleton — see below |
 
-**`tools/rigging/` was moved, not deleted.** It is at `tools/sf2-probe/rigging/` in the working
-tree, uncommitted. Put it back somewhere sensible before building on it; `tools/rigging/` was the
+**`pipelines/rigging/` was moved, not deleted.** It is at `pipelines/rigging/` in the working
+tree, uncommitted. Put it back somewhere sensible before building on it; `pipelines/rigging/` was the
 right place.
 
 ---
@@ -127,7 +127,7 @@ Rich's rule from 2026-09-21 applies with full force here: measure, do not type. 
 of wheel positions per car that will not be wrong.
 
 ### Where it runs
-Inside `tools/assetsvc` as a step after `finish.mjs`, so it happens once per asset and every
+Inside `services/assetsvc` as a step after `finish.mjs`, so it happens once per asset and every
 consumer gets it. A browser-side version would re-do it per page load and per clone.
 
 ### What to do when it fails
@@ -148,7 +148,7 @@ It exists and has never run. Once stage 1 produces one rigged asset:
   in one of them;
 - confirm the swap buttons do what they say by driving the car afterwards, not by reading labels.
 
-Then write `probes/corridor-rig.mjs` against that asset. Until stage 1 lands, that probe has
+Then write `probes/rig.mjs` against that asset. Until stage 1 lands, that probe has
 nothing to open, which is why it does not exist yet.
 
 ---

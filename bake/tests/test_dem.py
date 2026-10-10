@@ -7,7 +7,7 @@ re-downloading everything (dc-metro-take-2, 2026-10-05). The second: the shared 
 ReadWriteMany and every concurrent bake holds it, so `download` must publish without a lock and
 without a shared `.part`.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import dem  # noqa: E402
+from piedmont_bake import dem  # noqa: E402
 
 
 class FakeResp:

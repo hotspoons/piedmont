@@ -3,11 +3,11 @@
 #
 # THE ONLY QUESTION THAT MATTERS IS COVERAGE, and a status code cannot answer it. A regional
 # extract answers an out-of-area bbox with HTTP 200 and zero ways — not an error, not a 404, a
-# success with nothing in it (docs/corridor/OVERPASS-PLANET.md, "the silent empty"). So this
+# success with nothing in it (docs/OVERPASS-PLANET.md, "the silent empty"). So this
 # asserts NON-ZERO WAYS for boxes on three continents, and "no exception" is not a pass.
 #
-#   tools/overpass/verify.sh http://host/api/interpreter
-#   tools/overpass/verify.sh --pod overpass-eu        # exec into the pod, no route needed
+#   services/overpass/verify.sh http://host/api/interpreter
+#   services/overpass/verify.sh --pod overpass-eu        # exec into the pod, no route needed
 #
 # THREE OUTCOMES, NOT TWO, and keeping them apart is the point of the whole file:
 #
@@ -41,7 +41,7 @@ ask() {
     [ -z "$p" ] && return 1
     kubectl exec -n default "$p" -- sh -c "wget -qO- --post-data=\"data=$1\" http://localhost/api/interpreter" 2>/dev/null
   else
-    curl -sf --max-time 240 -A "apex-conduit corridor (github.com/hotspoons)" \
+    curl -sf --max-time 240 -A "piedmont (github.com/hotspoons/piedmont)" \
          --data-urlencode "data=$1" "$TARGET" 2>/dev/null
   fi
 }

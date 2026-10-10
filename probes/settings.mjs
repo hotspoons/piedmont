@@ -8,11 +8,11 @@
 // the old one would pass any check of "the value was stored". So after saving through the UI this
 // asks /assetsvc/models where the mesh model now points — which is what a job would dial.
 //
-//   node probes/corridor-settings.mjs
+//   node probes/settings.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'
-const SVC = process.env.WORLDEDITOR ?? 'http://localhost:8780'
+const SVC = process.env.PIEDMONT_EDITOR ?? 'http://localhost:8780'
 const fail = []
 const say = (k, v) => console.log(`${k.padEnd(30)} ${typeof v === 'object' ? JSON.stringify(v) : v}`)
 const TRY = 'http://recon-probe.example.svc'

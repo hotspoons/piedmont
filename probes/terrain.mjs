@@ -1,16 +1,16 @@
 // Terrain features, headless: fly to a measured cut face (or a measured stream), count what
 // rocks.ts / water.ts put there, check the rules held, shoot it — with and without the layer.
 //
-//   node probes/corridor-terrain.mjs sideling-i68 rock out.png        # the tallest cut face
-//   node probes/corridor-terrain.mjs south-mountain-i70 water out.png  # the longest waterway
-//   PORT=5203 node probes/corridor-terrain.mjs bonnie-branch-rd water out.png
+//   node probes/terrain.mjs sideling-i68 rock out.png        # the tallest cut face
+//   node probes/terrain.mjs south-mountain-i70 water out.png  # the longest waterway
+//   PORT=5203 node probes/terrain.mjs bonnie-branch-rd water out.png
 //
 // Checks (printed as JSON): rock instances placed per type; none nearer a pavement edge than
 // ROCK_PAVEMENT_CLEAR; every instance within 0.6 m of groundAt (they stand on the face, they do
 // not float); water lines/areas/falls drawn; frame time over 3 s with the layer on. The camera is
 // built from the manifest itself (spine + cuts/water) so the probe needs no hand-typed stance.
 import { chromium } from 'playwright'
-const [,, slug = 'sideling-i68', what = 'rock', out = `/tmp/corridor-terrain-${slug}-${what}.png`] = process.argv
+const [,, slug = 'sideling-i68', what = 'rock', out = `/tmp/piedmont-terrain-${slug}-${what}.png`] = process.argv
 const PORT = process.env.PORT ?? '5203'
 const base = `http://127.0.0.1:${PORT}`
 
@@ -52,14 +52,14 @@ console.log(JSON.stringify({ slug, what, ...note, cam, target }))
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
-// a Vite reload mid-probe empties window.corridor: no HMR client
+// a Vite reload mid-probe empties window.piedmont: no HMR client
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor?.site, null, { timeout: 300000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont?.site, null, { timeout: 300000 })
 await page.waitForTimeout(2500)
 
 const report = await page.evaluate((what) => {
-  const c = window.corridor, site = c.site
+  const c = window.piedmont, site = c.site
   const o = { site: site.manifest.slug, rockCounts: site.rockCounts, waterStats: site.waterStats }
   const T = c.tune ?? null
   // rocks: instances, clearance from pavement, standing on the ground
@@ -96,7 +96,7 @@ const report = await page.evaluate((what) => {
 }, what)
 console.log(JSON.stringify(report))
 
-// frame time with the layer on, 12 s idle (swiftshader draws a corridor frame in seconds; the count is relative, not a fps claim)
+// frame time with the layer on, 12 s idle (swiftshader draws a road-band frame in seconds; the count is relative, not a fps claim)
 await page.evaluate(() => { window.__ft = []; let last = performance.now(); const loop = () => { const n = performance.now(); window.__ft.push(n - last); last = n; requestAnimationFrame(loop) }; requestAnimationFrame(loop) })
 await page.waitForTimeout(12000)
 console.log(await page.evaluate(() => {
@@ -106,7 +106,7 @@ console.log(await page.evaluate(() => {
 }))
 await page.screenshot({ path: out, timeout: 180000 })
 // the isolate shot: the same frame with the layer hidden, so the dressing can be compared against the bare data
-await page.evaluate((what) => { const l = window.corridor.site.layers[what === 'rock' ? 'rocks' : 'water']; if (l) l.visible = false }, what)
+await page.evaluate((what) => { const l = window.piedmont.site.layers[what === 'rock' ? 'rocks' : 'water']; if (l) l.visible = false }, what)
 await page.waitForTimeout(400)
 await page.screenshot({ path: out.replace(/\.png$/, '-off.png'), timeout: 180000 })
 console.log(`shots ${out} and ${out.replace(/\.png$/, '-off.png')}`)

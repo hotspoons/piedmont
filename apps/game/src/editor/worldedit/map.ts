@@ -20,7 +20,7 @@
 //
 // PROJECTION. Web Mercator, because that is what every map gesture people already know assumes,
 // and because pan and zoom are then a translation and a scale with no trigonometry per frame.
-// Nothing here is ever site metres: see tools/worldeditor/geo.mjs for why the whole editor stays
+// Nothing here is ever site metres: see services/worldeditor/geo.mjs for why the whole editor stays
 // in lon/lat. The scale bar is computed from the latitude at the cursor, so it is honest at any
 // zoom rather than quietly being a Mercator metre.
 //

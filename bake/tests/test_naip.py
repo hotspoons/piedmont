@@ -4,7 +4,7 @@ tile never publishes a cache file.
 The service averages ~40 s for a 4000x4000 tile, so a 44-tile shard block spent half an hour mostly
 waiting on one request at a time. These tests pin the concurrency contract without touching USGS.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import naip  # noqa: E402
+from piedmont_bake import naip  # noqa: E402
 
 
 class _Resp:
@@ -119,7 +119,7 @@ class NaipTiledTest(unittest.TestCase):
         self._orig_get = naip._get_with_retry
         self._orig_covered = naip.covered
         # the ImageServer path; the Planetary Computer's has its own tests (test_naip_pc.py)
-        self._env = mock.patch.dict(os.environ, {"CORRIDOR_NAIP_SOURCE": "usgs"})
+        self._env = mock.patch.dict(os.environ, {"PIEDMONT_NAIP_SOURCE": "usgs"})
         self._env.start()
 
     def tearDown(self):
@@ -128,16 +128,16 @@ class NaipTiledTest(unittest.TestCase):
         self._env.stop()
         self.tmp.cleanup()
 
-    def test_every_corridor_tile_is_fetched_and_written(self):
+    def test_every_road_band_tile_is_fetched_and_written(self):
         from shapely.geometry import box
 
-        from corridor import network_tiles
-        from corridor.geo import Frame
+        from piedmont_bake import network_tiles
+        from piedmont_bake.geo import Frame
 
         frame = Frame(32618, (300_000.0, 4_300_000.0))
         # 8000 m at 1 m = 8000 px, which is exactly 2x2 service tiles at TILE_PX=4000.
         bbox = (300_000.0, 4_300_000.0, 308_000.0, 4_308_000.0)
-        corridor = box(*bbox)
+        road_band = box(*bbox)
         naip.covered = lambda frame, bbox: True  # skip the content probe, which is a network call
         calls: list = []
 
@@ -148,7 +148,7 @@ class NaipTiledTest(unittest.TestCase):
         naip._get_with_retry = fake
         out = self.cache / "naip_1m.tif"
 
-        meta = network_tiles.naip_tiled(frame, bbox, corridor, out, self.cache, res=1.0)
+        meta = network_tiles.naip_tiled(frame, bbox, road_band, out, self.cache, res=1.0)
 
         self.assertEqual(meta["tiles_fetched"], 4)
         self.assertEqual(len(calls), 4)
@@ -162,11 +162,11 @@ class NaipTiledTest(unittest.TestCase):
 
     def test_a_service_hole_is_counted_not_silent(self):
         # The 2026-10-07 dc-metro shards 1/2/7 wrote 19 KB of pure black and nothing said so. A
-        # planned corridor tile that comes back all-black is a service gap, and must be reported.
+        # planned road band tile that comes back all-black is a service gap, and must be reported.
         from shapely.geometry import box
 
-        from corridor import network_tiles
-        from corridor.geo import Frame
+        from piedmont_bake import network_tiles
+        from piedmont_bake.geo import Frame
 
         frame = Frame(32618, (300_000.0, 4_300_000.0))
         bbox = (300_000.0, 4_300_000.0, 308_000.0, 4_308_000.0)
@@ -181,7 +181,7 @@ class NaipTiledTest(unittest.TestCase):
         naip._get_with_retry = fake
         out = self.cache / "naip_1m.tif"
 
-        meta = network_tiles.naip_tiled(frame, bbox, corridor=box(*bbox), out=out, cache=self.cache, res=1.0)
+        meta = network_tiles.naip_tiled(frame, bbox, road_band=box(*bbox), out=out, cache=self.cache, res=1.0)
 
         self.assertEqual(meta["tiles_fetched"], 4)
         self.assertEqual(meta["blank_tiles"], 1)
@@ -195,7 +195,7 @@ class NaipBlankFillTest(unittest.TestCase):
     def test_interior_holes_take_the_valid_mean_per_channel(self):
         import numpy as np
 
-        from corridor import network_tiles
+        from piedmont_bake import network_tiles
 
         rgb = np.zeros((3, 4, 4), dtype=np.uint8)  # row 3 is a hole in every channel
         rgb[0, :3] = 10
@@ -209,7 +209,7 @@ class NaipBlankFillTest(unittest.TestCase):
     def test_real_imagery_is_left_exactly_as_it_was(self):
         import numpy as np
 
-        from corridor import network_tiles
+        from piedmont_bake import network_tiles
 
         rng = np.random.default_rng(7)
         rgb = rng.integers(1, 256, size=(3, 8, 8), dtype=np.uint8)  # never exactly zero
@@ -222,14 +222,14 @@ class NaipBlankFillTest(unittest.TestCase):
         # than an edge running past coverage, so this must not divide by zero or invent a tone.
         import numpy as np
 
-        from corridor import network_tiles
+        from piedmont_bake import network_tiles
 
         rgb = np.zeros((3, 5, 5), dtype=np.uint8)
         self.assertEqual(network_tiles._fill_naip_blank(rgb), 0.0)
         self.assertTrue((rgb == 0).all())
 
     def test_the_pyramid_helper_agrees(self):
-        from corridor import network_tiles, pyramid
+        from piedmont_bake import network_tiles, pyramid
 
         import numpy as np
 
@@ -246,7 +246,7 @@ class NaipBlankFillTest(unittest.TestCase):
         # must not test equality. NAIP daylight ground is never this dark on all channels.
         import numpy as np
 
-        from corridor import pyramid
+        from piedmont_bake import pyramid
 
         self.assertTrue(pyramid.naip_blank(np.full((3, 4, 4), 1, dtype=np.uint8)).all())
         self.assertFalse(pyramid.naip_blank(np.full((3, 4, 4), 6, dtype=np.uint8)).any())
@@ -256,7 +256,7 @@ class NaipBlankFillTest(unittest.TestCase):
         # of going black; reported through the returned fraction so the gap is not silent.
         import numpy as np
 
-        from corridor import pyramid
+        from piedmont_bake import pyramid
 
         rgb = np.zeros((3, 4, 4), dtype=np.uint8)
         out, frac = pyramid.fill_blank(rgb, fallback=np.array([90, 110, 70], dtype=np.uint8))
@@ -277,8 +277,8 @@ class OverviewNoDataTest(unittest.TestCase):
         from PIL import Image
         from rasterio.transform import from_origin
 
-        from corridor import export, network_tiles
-        from corridor.geo import Frame
+        from piedmont_bake import export, network_tiles
+        from piedmont_bake.geo import Frame
 
         with tempfile.TemporaryDirectory() as d:
             site = Path(d)

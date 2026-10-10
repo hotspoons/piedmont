@@ -18,13 +18,13 @@ let bad = 0
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++ }
 
 await p.goto(`http://127.0.0.1:5185/editor.html#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 240000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 240000 })
 await p.waitForTimeout(8000)
 await p.keyboard.press('2') // Place
 await p.waitForTimeout(1500)
 
 const out = await p.evaluate(() => {
-  const place = window.corridor.place
+  const place = window.piedmont.place
   const items = place.doc?.items ?? []
   if (!items.length) return { error: 'this site has no placements to select' }
   const missing = place.missingAssets?.() ?? []

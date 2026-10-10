@@ -1,8 +1,8 @@
-// Boot corridor once in SwiftShader Chromium, report the boot profile and what
+// Boot the game once in SwiftShader Chromium, report the boot profile and what
 // is resident, then stay alive so the dev bridge has a client to drive.
 import { chromium } from 'playwright'
 
-const url = process.env.APEX_URL ?? 'http://localhost:5185/?level=crofton-jam#/crofton-triangle'
+const url = process.env.APEX_URL ?? 'http://localhost:5185/#crofton-triangle?level=crofton-jam'
 const browser = await chromium.launch({
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info'],
 })

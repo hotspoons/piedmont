@@ -71,8 +71,8 @@ just above the lower road and follows the ramp's plan, it is B (the strip).
 
 ## Verified
 
-- `tsc -p apps/corridor/tsconfig.json --noEmit` clean.
-- `vitest run --root apps/corridor` — 725 passed.
+- `tsc -p apps/game/tsconfig.json --noEmit` clean.
+- `vitest run --root apps/game` — 725 passed.
 - Overpass fall-through (`probes/.build/bridgefix.mjs raw`) was already `sank: 0` before this change.
 
 ## Not yet verified visually

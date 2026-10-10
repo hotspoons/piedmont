@@ -1,10 +1,10 @@
 """Mid-Atlantic building materials: tileable PBR sets for walls, roofs and commercial façades.
 
-    tools/corridor/.venv/bin/python ext/assetlib/tool/materials.py            # everything
-    tools/corridor/.venv/bin/python ext/assetlib/tool/materials.py brick_colonial_red
-    tools/corridor/.venv/bin/python ext/assetlib/tool/materials.py --list
+    bake/.venv/bin/python ext/assetlib/tool/materials.py            # everything
+    bake/.venv/bin/python ext/assetlib/tool/materials.py brick_colonial_red
+    bake/.venv/bin/python ext/assetlib/tool/materials.py --list
 
-This is the sibling of tools/surfaces/gen.py and it deliberately IMPORTS that module's three hard
+This is the sibling of pipelines/surfaces/gen.py and it deliberately IMPORTS that module's three hard
 parts rather than restating them: `flux_image`, `make_tileable` (roll the tile half a period and
 blend the resulting cross seam, which works because the statistics are stationary) and
 `normal_from_albedo` (wrap-around Sobel on an albedo-derived height field, plus inverted blurred

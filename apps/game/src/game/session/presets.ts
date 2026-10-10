@@ -14,7 +14,7 @@
 // is not a settings file, it is a KEYFRAME. So this is not a loader — it is a library of snapshots
 // plus an animator that moves the live knobs between them.
 //
-// THREE LAYERS, ONE RESOLVE (docs/corridor/PLAN-GAME-PIPELINE.md):
+// THREE LAYERS, ONE RESOLVE (docs/PLAN-GAME-PIPELINE.md):
 //
 //     world defaults   worlds/<slug>.json#look     "this place looks like this"
 //          ↓ overridden by
@@ -63,7 +63,7 @@ export interface Preset {
 
 /** The import/export envelope, in the same shape as the world bundles the service already writes. */
 export interface PresetDoc {
-  kind: 'corridor-presets'
+  kind: 'piedmont-presets'
   version: 1
   exported?: string
   /** the world these were authored against, so importing into the wrong one can be noticed */
@@ -281,7 +281,7 @@ export class Presets {
   }
 
   toDoc(slug?: string): PresetDoc {
-    return { kind: 'corridor-presets', version: 1, exported: new Date().toISOString(), slug, presets: this.list() }
+    return { kind: 'piedmont-presets', version: 1, exported: new Date().toISOString(), slug, presets: this.list() }
   }
 
   /** Snapshot the live knobs as a new preset. */

@@ -1,6 +1,6 @@
 // What a person, an animal or an enemy IS, as a document.
 //
-// docs/corridor/PLAN-VEHICLES-ACTORS.md, from Rich: "For actors we should have rigged models with
+// docs/PLAN-VEHICLES-ACTORS.md, from Rich: "For actors we should have rigged models with
 // their own properties like run and climb speed, fly speed if they are magical, and some basic
 // things like health capacity and damage ability for combat."
 //

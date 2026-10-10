@@ -22,7 +22,7 @@ import * as THREE from 'three'
 import { FAR_PLANE_GLSL } from '@apex/engine/render/depth'
 import { DATA_BASE } from '../world/site'
 
-/** what the ingest wrote — see tools/sky/ingest.mjs */
+/** what the ingest wrote — see pipelines/sky/ingest.mjs */
 const BYTES_PER_STAR = 12
 
 const VERT = /* glsl */ `

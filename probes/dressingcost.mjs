@@ -12,20 +12,20 @@
 // It runs on the MANIFEST, not in a browser: the numbers are a property of the plan, and asking a
 // SwiftShader tab to build 7506 buildings takes two minutes and then crashes.
 //
-//   node probes/corridor-dressingcost.mjs          # the default 3-elevation budget
-//   WALLS=4 node probes/corridor-dressingcost.mjs  # all four, the worst case
+//   node probes/dressingcost.mjs          # the default 3-elevation budget
+//   WALLS=4 node probes/dressingcost.mjs  # all four, the worst case
 import { readFileSync } from 'node:fs'
-const m = JSON.parse(readFileSync('tools/corridor/data/sites/crofton-triangle/web/manifest.json', 'utf8'))
-const { planDressing, RoadIndex } = await import('../apps/corridor/src/world/dressing.ts').catch(async () => {
+const m = JSON.parse(readFileSync('data/sites/crofton-triangle/web/manifest.json', 'utf8'))
+const { planDressing, RoadIndex } = await import('../apps/game/src/world/dressing.ts').catch(async () => {
   // no TS loader: compile on the fly with esbuild, which the repo already has
   const { build } = await import('esbuild')
-  const r = await build({ entryPoints: ['apps/corridor/src/world/dressing.ts'], bundle: true, format: 'esm', write: false, platform: 'node' })
+  const r = await build({ entryPoints: ['apps/game/src/world/dressing.ts'], bundle: true, format: 'esm', write: false, platform: 'node' })
   const { pathToFileURL } = await import('node:url')
   const { writeFileSync } = await import('node:fs')
   writeFileSync('/tmp/_dress.mjs', r.outputFiles[0].text)
   return import(pathToFileURL('/tmp/_dress.mjs').href)
 })
-const KIT = JSON.parse(readFileSync('tools/assetlib/specs/buildings-dressing.json', 'utf8')).assets
+const KIT = JSON.parse(readFileSync('pipelines/assetlib/specs/buildings-dressing.json', 'utf8')).assets
 const lines = []
 if (m.spine?.coords) lines.push(m.spine.coords.map(([x, y]) => [x, y]))
 for (const s of m.siblings ?? []) lines.push(s)

@@ -1,9 +1,9 @@
 // Holes in the world: ground you can see the sky through.
 //
-//   PORT=5201 SLUG=braddock-i70 node probes/corridor-holes.mjs
+//   PORT=5201 SLUG=braddock-i70 node probes/holes.mjs
 //
-// Casts straight down over a grid across the corridor and asks whether ANY ground surface — the
-// corridor strip, the coarse terrain, or the road itself — is hit. A miss is a hole. They appear
+// Casts straight down over a grid across the road band and asks whether ANY ground surface — the
+// road-band strip, the coarse terrain, or the road itself — is hit. A miss is a hole. They appear
 // where two surfaces each assume the other is covering a patch: sinkUnderStrip drops the terrain
 // triangles the strip covers, so anything that makes the strip not actually be there at ground
 // level (a bridge deck ten metres up, a station skipped for a branch, a width limit) punches one.
@@ -17,11 +17,11 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
 
 if (process.env.S_FROM) await page.evaluate(([a, b]) => { window.__sFrom = a; window.__sTo = b }, [Number(process.env.S_FROM), Number(process.env.S_TO)])
 console.log(JSON.stringify(await page.evaluate(({ step, half }) => {
-  const site = window.corridor.site, mod = window.corridor.THREE
+  const site = window.piedmont.site, mod = window.piedmont.THREE
   const ground = []
   site.group.traverse((o) => { if (o.isMesh && (o.name === 'strip' || o.name === 'terrain')) ground.push(o) })
   site.layers.road?.traverse((o) => { if (o.isMesh) ground.push(o) })

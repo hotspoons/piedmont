@@ -154,7 +154,7 @@
   color: var(--ink-1);
   /* Louder than an error row, which is what editor-knobs asked for: a filled field rather than a
      tinted one, a solid bar down the side, and a ring that lifts it off the panel. Nothing else
-     in either corridor UI is allowed this much weight, which is what makes it work. */
+     in either game UI is allowed this much weight, which is what makes it work. */
   background: color-mix(in srgb, var(--danger) 16%, var(--bg-1));
   border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
   border-left: 4px solid var(--danger);

@@ -2,8 +2,8 @@
 //
 //   node probes/worldeditor-deployed.mjs [https://host]
 //
-// Compare the bundle names it prints against apps/corridor/dist/assets after a local
-// `npm run build -w apps/corridor`: vite's hashes are content hashes, so identical names mean
+// Compare the bundle names it prints against apps/game/dist/assets after a local
+// `npm run build -w apps/game`: vite's hashes are content hashes, so identical names mean
 // identical bytes. That is the only check that cannot be satisfied by a stale cache.
 //
 // A green Actions run, a published digest and a Running pod are three things that can all be true

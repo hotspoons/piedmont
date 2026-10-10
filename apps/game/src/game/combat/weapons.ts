@@ -1,6 +1,6 @@
 // What a weapon IS, as a document — and the arithmetic a designer actually balances against.
 //
-// docs/corridor/PLAN-VEHICLES-ACTORS.md §3, from Rich: "We'll need a weapons system too and be able
+// docs/PLAN-VEHICLES-ACTORS.md §3, from Rich: "We'll need a weapons system too and be able
 // to pull in weapons from the asset library."
 //
 // PULL FROM THE LIBRARY, NEVER DUPLICATE. A weapon is an ordinary catalog asset — a model, class

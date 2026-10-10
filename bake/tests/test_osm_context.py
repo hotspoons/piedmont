@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import osm  # noqa: E402
+from piedmont_bake import osm  # noqa: E402
 
 
 def _feat(fid, props, geom):

@@ -1,4 +1,4 @@
-// The car: stuntin's sim (apps/stuntin/src/sim/Car.ts) ported to drive anywhere on the corridor
+// The car: stuntin's sim (apps/stuntin/src/sim/Car.ts) ported to drive anywhere on the road band
 // strip. There are no lanes here — the road is part of the ground — so the track regime's lateral
 // model runs in world space, and the ground and air regimes are kept as they are.
 //
@@ -379,7 +379,7 @@ export class Car {
       // height, (gh - ref)/dt, makes it the height field's derivative DIVIDED BY dt: at 30 m/s a
       // tick is 0.25 m, so a 0.42 m step in the DTM becomes vy = 50 m/s and a 128 m ballistic arc.
       // That is what threw the car 101 m up at Bowie s≈2524, where the baked road profile drops 5 m
-      // into an undetected underpass (probes/corridor-groundstep.mjs).
+      // into an undetected underpass (probes/groundstep.mjs).
       // A car following the ground at speed v rises at v × (slope along the nose), and `pitch` has
       // just measured that slope over a 3 m base — the car's own length, which is the shortest
       // wavelength a car can actually follow. Take vy from that geometry, so a step in the data is a
@@ -825,7 +825,7 @@ export class Car {
     // pitch is a POSITIVE rotation about local Z (X tips toward Y) and ground that is higher on
     // the right is a NEGATIVE rotation about local X (which would otherwise tip up toward the
     // right). Both were negated, so the car leaned into every hill and camber instead of over it
-    // (Rich, 2026-09-26) — probes/corridor-carpose.mjs reads these two lines and checks the body's
+    // (Rich, 2026-09-26) — probes/carpose.mjs reads these two lines and checks the body's
     // up vector against the ground normal.
     this.mesh.rotateZ(Math.atan(this.pitch))
     this.mesh.rotateX(-Math.atan(this.roll))
@@ -841,7 +841,7 @@ export class Car {
    * directly — a real quaternion says things the yaw/pitch/roll Euler above cannot, like being on
    * your roof — and then calls this for the parts that still have to turn.
    *
-   * Deliberately NOT a move of the two `rotate` lines above. `probes/corridor-carpose.mjs` reads
+   * Deliberately NOT a move of the two `rotate` lines above. `probes/carpose.mjs` reads
    * them out of this file by name and evaluates them against a ground normal; moving them to
    * another module would break that probe silently, and they are the thing it exists to check.
    */

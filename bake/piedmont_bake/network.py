@@ -18,13 +18,13 @@ in the region whose `name` or `ref` is in `roads`, chains each identity into car
                                  with other chains; lon/lat is the position, x/y its ENU in the
                                  frame the file is tagged with (see `place_junctions`)
                      junctions = the primary's own, roads = the identities found, network = true
-    site.json        corridor  = the UNION of every chain buffered `half_width_m` (150 m) — the
+    site.json        road band  = the UNION of every chain buffered `half_width_m` (150 m) — the
                                  region is ~12 km across, its bbox is mostly fields nobody drives
     osm.geojson      features inside that union's hull (osm.features)
     crossings.json   for the primary (osm.crossings); a branch meeting it is a `merge`/`grade`
 
 Rasters, lidar, profile and export for a network are in `network_bake` below, called from
-__main__.fetch_site when `site["kind"] == "network"`; every raster is clipped to the corridor and
+__main__.fetch_site when `site["kind"] == "network"`; every raster is clipped to the road band and
 the web layers go out as 1 km tiles (export_tiles). The single-road modules are reused where a
 function takes a line: profile per chain, cuts/rock/water per chain.
 """
@@ -82,7 +82,7 @@ def _chain_lanes(chain: list[dict], frame: Frame) -> int | None:
     fallback is for.
 
     Per-station lane counts, with the taper through the junction, are the real answer and a bigger
-    job; see docs/corridor/LANES-AND-SIGNALS.md. This is the number that is right for most of the
+    job; see docs/LANES-AND-SIGNALS.md. This is the number that is right for most of the
     road rather than the number that is right for none of it.
     """
     metres: dict[int, float] = {}
@@ -384,11 +384,11 @@ def write_vectors(site: dict, frame: Frame, R: dict, out: Path, half_width: floa
     xs, ys = np.array(line.coords)[:, 0], np.array(line.coords)[:, 1]
     lon, lat = frame.to_wgs(xs, ys)
     (out / "spine.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"name": prim["ident"], "photo_s": round(photo_s, 1)}, "geometry": {"type": "LineString", "coordinates": np.column_stack([lon, lat]).round(7).tolist()}}]}))
-    corridor = unary_union([c["line"].buffer(half_width, cap_style="flat") for c in R["chains"]])
+    road_band = unary_union([c["line"].buffer(half_width, cap_style="flat") for c in R["chains"]])
     #
-    # THE CORRIDOR IS NOT THE WORLD.
+    # THE ROAD BAND IS NOT THE WORLD.
     #
-    # `corridor` means "near a road" and keeps meaning it: the lidar profile along each chain, the
+    # `road band` means "near a road" and keeps meaning it: the lidar profile along each chain, the
     # near-road point accounting, structures and clearances all want it. But clipping the IMAGERY,
     # the LIDAR and the VEGETATION to it is what makes trees stop 150 m from the tarmac -- Rich,
     # 2026-09-27: "proximity to a road shouldn't really dictate tree mappings and ground textures
@@ -399,9 +399,9 @@ def write_vectors(site: dict, frame: Frame, R: dict, out: Path, half_width: floa
     # network's convex hull because a hull gives a world ragged diagonal edges for nothing, and
     # measured on crofton-triangle the bbox is only 1.29x the hull.
     #
-    # Opt-in per site. On a dense suburban network the corridor already covers half the bbox and
+    # Opt-in per site. On a dense suburban network the road band already covers half the bbox and
     # this costs about 2x; on one highway through open country it would cost far more, and there
-    # the corridor idea is still right. See docs/corridor/PLAN-OPEN-WORLD.md.
+    # the road band idea is still right. See docs/PLAN-OPEN-WORLD.md.
     #
     world = bool(site.get("world"))
     margin = float(site.get("world_margin_m", 300.0))
@@ -411,17 +411,17 @@ def write_vectors(site: dict, frame: Frame, R: dict, out: Path, half_width: floa
         bbox = snap_bbox(sel.bounds)
         region = sel
     else:
-        bbox = snap_bbox(corridor.buffer(margin).bounds if world else corridor.bounds)
-        region = shp_box(*bbox) if world else corridor
+        bbox = snap_bbox(road_band.buffer(margin).bounds if world else road_band.bounds)
+        region = shp_box(*bbox) if world else road_band
     ident = {"ref": prim["ref"]} if prim["ref"] else {"name": prim["ident"]}
-    site_json = {**site, "frame": {"epsg": frame.epsg, "origin": frame.origin}, "bbox_utm": bbox, "corridor": mapping(corridor), "region": mapping(region), "world": world, "ident": ident}
+    site_json = {**site, "frame": {"epsg": frame.epsg, "origin": frame.origin}, "bbox_utm": bbox, "road_band": mapping(road_band), "region": mapping(region), "world": world, "ident": ident}
     (out / "site.json").write_text(json.dumps(site_json))
-    feats = osm.features(sel if sel is not None else (region.convex_hull if world else corridor.convex_hull), frame, cache)
+    feats = osm.features(sel if sel is not None else (region.convex_hull if world else road_band.convex_hull), frame, cache)
     (out / "osm.geojson").write_text(json.dumps(feats))
     osm.write_context(feats, out)
     cross = osm.crossings(line, feats, ident, frame, segs)
     (out / "crossings.json").write_text(json.dumps(cross, indent=1))
-    return {"corridor": corridor, "region": region, "world": world, "bbox": bbox, "segments": segs, "crossings": cross, "features": len(feats["features"]), "ident": ident, "photo_s": photo_s}
+    return {"road_band": road_band, "region": region, "world": world, "bbox": bbox, "segments": segs, "crossings": cross, "features": len(feats["features"]), "ident": ident, "photo_s": photo_s}
 
 
 def summary(R: dict) -> str:
@@ -541,7 +541,7 @@ def place_junctions(frame: Frame, junctions: list[dict], line_utm, what: str = "
 
 
 def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set[str], data: Path, cache: Path) -> None:
-    """A network site through the single-image pipeline: the union corridor's bbox is the raster
+    """A network site through the single-image pipeline: the union road band's bbox is the raster
     extent (fine for a neighbourhood; the 18 km Crofton region goes through the tiled path). Every
     branch gets its own lidar profile (road grade, structures) into branches.json; export.py turns
     those into the manifest's `branches`."""
@@ -563,7 +563,7 @@ def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set
     print(f"  roads   {summary(R)}", flush=True)
     dead_ends(R["chains"], frame, cache / "overpass", float(site.get("radius_m", 9000)), site["lat"], site["lon"], clip=selection_polygon(site, frame))
     V = write_vectors(site, frame, R, out, half_width, cache / "overpass")
-    corridor = V["corridor"]
+    road_band = V["road_band"]
     region = V["region"]
     world = V["world"]
     bbox = V["bbox"]
@@ -580,9 +580,9 @@ def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set
     # covers the whole planet already: the Meta/WRI global 1 m canopy model in `canopy.py`, which
     # its own docstring calls "a candidate replacement for the US lidar CHM too". Wiring it in for
     # a world bake is the remaining step for trees away from roads; until then a world gets
-    # imagery and vegetation everywhere and its canopy still stops at the corridor.
-    lidar_corridor = unary_union([c["line"].buffer(lidar_half_width, cap_style="flat") for c in R["chains"]])
-    print(f"  osm     {V['features']} features, {len(V['crossings'])} crossings on the primary; bbox {(bbox[2] - bbox[0]) / 1000:.1f} × {(bbox[3] - bbox[1]) / 1000:.1f} km, corridor {corridor.area / 1e6:.1f} km²" + (f", WORLD {region.area / 1e6:.1f} km² ({region.area / max(corridor.area, 1):.2f}x)" if world else ""), flush=True)
+    # imagery and vegetation everywhere and its canopy still stops at the road band.
+    lidar_road_band = unary_union([c["line"].buffer(lidar_half_width, cap_style="flat") for c in R["chains"]])
+    print(f"  osm     {V['features']} features, {len(V['crossings'])} crossings on the primary; bbox {(bbox[2] - bbox[0]) / 1000:.1f} × {(bbox[3] - bbox[1]) / 1000:.1f} km, road band {road_band.area / 1e6:.1f} km²" + (f", WORLD {region.area / 1e6:.1f} km² ({region.area / max(road_band.area, 1):.2f}x)" if world else ""), flush=True)
     prim = R["primary"]
     # `tiled` on the site is the editor's default: every world it bakes is cut into tiles,
     # however small. The 6 km test remains for a site file that never said, so an old
@@ -592,7 +592,7 @@ def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set
     manifest["tiled"] = tiled
     if tiled:
         why = "editor bake" if asked else "bbox over 6 km"
-        print(f"  tiled   {why}: rasters clipped to the corridor and cut into 1 km tiles", flush=True)
+        print(f"  tiled   {why}: rasters clipped to the road band and cut into 1 km tiles", flush=True)
     manifest["spine"] = {"ident": V["ident"], "nearest_way": prim["ways"][0]["id"], "snap_distance_m": round(float(prim["line"].distance(Point(*frame.origin))), 1), "photo_s": round(V["photo_s"], 1), "length_m": prim["length_m"], "trimmed": [False, False], "network": True, "roads": R["found"], "roads_missing": R["missing"], "chains": len(R["chains"])}
     manifest["osm"] = {"features": V["features"], "crossings": len(V["crossings"])}
 
@@ -614,7 +614,7 @@ def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set
     #
     # `network_tiles` has read `canopy_global.tif` for a while and nothing has ever written it, so
     # the fill path it describes has never once run. That is what makes a world's trees stop at the
-    # corridor: the lidar CHM is rasterised only in a band along the roads, and outside that band
+    # road band: the lidar CHM is rasterised only in a band along the roads, and outside that band
     # "no lidar" was written as "0 m canopy", which the tree planter reads as "no trees".
     #
     # The Meta/WRI global model is the same product at the same resolution for the whole planet,
@@ -667,9 +667,9 @@ def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set
         from . import network_tiles
 
         ldir = out / "lidar"
-        lbbox = snap_bbox(lidar_corridor.bounds)
+        lbbox = snap_bbox(lidar_road_band.bounds)
         try:
-            meta = network_tiles.lidar_tiled(frame, lbbox, lidar_corridor, R["chains"], ldir, cache)
+            meta = network_tiles.lidar_tiled(frame, lbbox, lidar_road_band, R["chains"], ldir, cache)
         except network_tiles.NoLidarHere as exc:
             no_lidar = str(exc)
             meta = None
@@ -683,7 +683,7 @@ def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set
             prof = network_tiles.profile_tiled(prim["line"], ldir, pts, idx[prim["id"]], crossings_over_s=over_s)
         (out / "profile.json").write_text(json.dumps(prof))
         cls = meta["classes"]
-        print(f"  lidar   {meta['points_in_corridor']:,} pts in corridor over {len(meta['tiles']['list'])} km tiles; ground {cls.get('ground', 0):,} veg {cls.get('veg_high', 0) + cls.get('veg_med', 0) + cls.get('veg_low', 0):,} building {cls.get('building', 0):,} bridge_deck {cls.get('bridge_deck', 0):,}; {meta['near_road_points']:,} near-road points kept", flush=True)
+        print(f"  lidar   {meta['points_in_road_band']:,} pts in road band over {len(meta['tiles']['list'])} km tiles; ground {cls.get('ground', 0):,} veg {cls.get('veg_high', 0) + cls.get('veg_med', 0) + cls.get('veg_low', 0):,} building {cls.get('building', 0):,} bridge_deck {cls.get('bridge_deck', 0):,}; {meta['near_road_points']:,} near-road points kept", flush=True)
         for st in prof["structures"]:
             print(f"  struct  {st['kind']:8s} s={st['s_start']:.0f}..{st['s_end']:.0f} m ({st['length_m']} m)  clearance={st['clearance_m']}  above_ground={st['height_above_ground_m']}")
         manifest["lidar"] = {**meta, "structures": prof["structures"]}
@@ -721,12 +721,12 @@ def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set
             branches.append(branch_rec(c, bp))
         print(f"  branch  {len(branches)} branches profiled from the DEM, {failed} failed; no structures (a surface model has no bridge decks)", flush=True)
     elif "lidar" not in skip:
-        # the single-image path: the whole corridor's points in memory, as for a single road
+        # the single-image path: the whole road band's points in memory, as for a single road
         ldir = out / "lidar"
         ldir.mkdir(exist_ok=True)
-        lbbox = snap_bbox(lidar_corridor.bounds)
+        lbbox = snap_bbox(lidar_road_band.bounds)
         try:
-            pts, meta = lidar.fetch_points(frame, lbbox, cache, clip=lidar_corridor)
+            pts, meta = lidar.fetch_points(frame, lbbox, cache, clip=lidar_road_band)
         except Exception as exc:
             # the same border, on the path a small site takes. lidar.py raises its own message
             # rather than NoLidarHere, so the test is on what it says.
@@ -760,16 +760,16 @@ def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set
                     pts["z"] = pts["z"] * f
                 meta["z_factor"] = f
             meta["classification"] = lidar.classification_quality(pts)
-            r = lidar.rasters(pts, lbbox, frame, lidar_corridor, ldir)
+            r = lidar.rasters(pts, lbbox, frame, lidar_road_band, ldir)
             over_s = [c["s"] for c in V["crossings"] if c.get("relation") == "over"]
             with progress.heartbeat("profile", f"primary {prim['ident']} {prim['line'].length / 1000:.0f} km"):
                 prof = lidar.profile(prim["line"], r["dtm"], r["chm"], r["transform"], r["pts"], crossings_over_s=over_s)
             (out / "profile.json").write_text(json.dumps(prof))
             cls = r["classes"]
-            print(f"  lidar   {r['points_in_corridor']:,} pts in corridor; ground {cls.get('ground', 0):,} veg {cls.get('veg_high', 0) + cls.get('veg_med', 0) + cls.get('veg_low', 0):,} building {cls.get('building', 0):,} bridge_deck {cls.get('bridge_deck', 0):,}")
+            print(f"  lidar   {r['points_in_road_band']:,} pts in road band; ground {cls.get('ground', 0):,} veg {cls.get('veg_high', 0) + cls.get('veg_med', 0) + cls.get('veg_low', 0):,} building {cls.get('building', 0):,} bridge_deck {cls.get('bridge_deck', 0):,}")
             for st in prof["structures"]:
                 print(f"  struct  {st['kind']:8s} s={st['s_start']:.0f}..{st['s_end']:.0f} m ({st['length_m']} m)  clearance={st['clearance_m']}  above_ground={st['height_above_ground_m']}")
-            manifest["lidar"] = {**meta, "points_in_corridor": r["points_in_corridor"], "classes": cls, "rasters": r["rasters"], "structures": prof["structures"]}
+            manifest["lidar"] = {**meta, "points_in_road_band": r["points_in_road_band"], "classes": cls, "rasters": r["rasters"], "structures": prof["structures"]}
             pbr = progress.Progress("branch", max(0, len(R["chains"]) - 1))
             for c in R["chains"]:
                 if c is prim:
@@ -864,7 +864,7 @@ def fetch_shard(site: dict, index: int, half_width: float, lidar_half_width: flo
     """A sharded bake's step 2: the area stages for ONE block, into `sites/<slug>/shards/<index>/`.
 
     The global Network (`roads`, `dead_ends`, `site.json`, `spine_utm.json`, `osm.geojson`,
-    `crossings.json`) is already on disk from `corridor plan`; this re-derives `R` through the same
+    `crossings.json`) is already on disk from `piedmont_bake plan`; this re-derives `R` through the same
     cached Overpass call so chain identity matches, keeps the primary plus the chains the plan
     assigned to this block, and runs the same tiled pipeline over a block-sized bbox. The primary is
     profiled WHOLE against this block's rasters with `fill=False`, so its out-of-block stations stay
@@ -881,7 +881,7 @@ def fetch_shard(site: dict, index: int, half_width: float, lidar_half_width: flo
     out = data / "sites" / slug
     plan = shardlib.read_plan(out)
     if plan is None:
-        raise RuntimeError(f"no plan for {slug!r}: run `corridor plan {slug}` first")
+        raise RuntimeError(f"no plan for {slug!r}: run `piedmont_bake plan {slug}` first")
     sdir = shardlib.shard_dir(out, index)
     sdir.mkdir(parents=True, exist_ok=True)
     gj = json.loads((out / "site.json").read_text())
@@ -903,9 +903,9 @@ def fetch_shard(site: dict, index: int, half_width: float, lidar_half_width: flo
     margin = max(lidar_half_width, half_width) + shardlib.DEFAULT_MARGIN_M
     bbox = snap_bbox((block[0] - margin, block[1] - margin, block[2] + margin, block[3] + margin))
     region = shp_box(*bbox)
-    corridor = unary_union([c["line"].buffer(half_width, cap_style="flat") for c in shard_chains])
+    road_band = unary_union([c["line"].buffer(half_width, cap_style="flat") for c in shard_chains])
     # the PRIMARY only over this block and its margin; the assigned chains whole (shards.lidar_area)
-    lidar_corridor = shardlib.lidar_area(prim["line"], [c["line"] for c in shard_chains if c is not prim], block, margin, lidar_half_width)
+    lidar_road_band = shardlib.lidar_area(prim["line"], [c["line"] for c in shard_chains if c is not prim], block, margin, lidar_half_width)
 
     if "dem" not in skip:
         dem.fetch_dem(frame, bbox, sdir / "dem_1m.tif", cache)
@@ -936,11 +936,11 @@ def fetch_shard(site: dict, index: int, half_width: float, lidar_half_width: flo
         from . import network_tiles
 
         ldir = sdir / "lidar"
-        lbbox = snap_bbox(lidar_corridor.bounds)
+        lbbox = snap_bbox(lidar_road_band.bounds)
         try:
             # tiles named on the WORLD's grid, so the finalizer's merge by file name is by place
             gx, gy, _ = shardlib.tile_grid(tuple(plan["bbox"]))
-            meta = network_tiles.lidar_tiled(frame, lbbox, lidar_corridor, shard_chains, ldir, cache, origin=(gx, gy))
+            meta = network_tiles.lidar_tiled(frame, lbbox, lidar_road_band, shard_chains, ldir, cache, origin=(gx, gy))
         except network_tiles.NoLidarHere as exc:
             no_lidar = str(exc)
             meta = None
@@ -1036,7 +1036,7 @@ def export_branches(site_dir: Path, frame) -> list[dict] | None:
     for si, sib in enumerate(spine.get("siblings", [])):
         b = by_id.get(sib.get("id")) or (by_pos[si] if not by_id and si < len(by_pos) else None) or {}
         if not b:  # a road with no profile is still a road: emit it and say so, never drop it
-            print(f"  branches no profile for {sib.get('ident')} ({sib.get('id')}) — emitted with profile: null; run `python -m corridor.network_tiles <slug>` to compute it")
+            print(f"  branches no profile for {sib.get('ident')} ({sib.get('id')}) — emitted with profile: null; run `python -m piedmont_bake.network_tiles <slug>` to compute it")
         g = sib["geometry"]
         parts = [g["coordinates"]] if g["type"] == "LineString" else g["coordinates"]
         coords = [c for part in parts for c in part]
@@ -1117,7 +1117,7 @@ def revector(site: dict, data: Path, cache: Path) -> dict:
     must not cost a re-bake: Crofton's was 8.7 hours, and every Overpass answer it used is cached,
     so this is seconds. Rewrites `spine_utm.json` (and the manifest's spine block) and leaves every
     raster, profile and branch profile exactly where it is; `branches.json` keeps its profiles and
-    gains the new per-chain keys. Follow it with `python -m corridor export <slug>`.
+    gains the new per-chain keys. Follow it with `python -m piedmont_bake export <slug>`.
     """
     slug = site["slug"]
     out = data / "sites" / slug
@@ -1154,7 +1154,7 @@ def revector(site: dict, data: Path, cache: Path) -> dict:
                 for i, b in enumerate(branches):
                     b["id"] = others[i]["id"]
             else:
-                print(f"  WARNING branches.json predates chain ids and holds {len(branches)} records for {len(others)} roads — cannot match them safely. Run `python -m corridor.network_tiles {slug}` to recompute the profiles.", flush=True)
+                print(f"  WARNING branches.json predates chain ids and holds {len(branches)} records for {len(others)} roads — cannot match them safely. Run `python -m piedmont_bake.network_tiles {slug}` to recompute the profiles.", flush=True)
         for b in branches:
             c = by_id.get(b["id"])
             if c:

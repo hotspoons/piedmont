@@ -15,7 +15,7 @@
 // rotation. So this probe does NOT measure one offset — it measures the whole field, at the
 // bake's own control points, and reports the worst.
 //
-//   PORT=5185 node probes/corridor-minimap-registration.mjs [slug]
+//   PORT=5185 node probes/minimap-registration.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -24,12 +24,12 @@ const page = await browser.newPage({ viewport: { width: 900, height: 600 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 // the overview image loads separately from the world
-await page.waitForFunction(() => !!window.corridor.minimapRegistration?.(), null, { timeout: 120000 })
+await page.waitForFunction(() => !!window.piedmont.minimapRegistration?.(), null, { timeout: 120000 })
 
 const out = await page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   const reg = c.minimapRegistration()
   const m = c.site.manifest
   const g = m.layers?.naip?.geo

@@ -17,7 +17,7 @@ import {
 } from '../src/world/dressing'
 
 const KIT: DressingPart[] = JSON.parse(
-  readFileSync(fileURLToPath(new URL('../../../tools/assetlib/specs/buildings-dressing.json', import.meta.url)), 'utf8'),
+  readFileSync(fileURLToPath(new URL('../../../pipelines/assetlib/specs/buildings-dressing.json', import.meta.url)), 'utf8'),
 ).assets
 
 /** an axis-aligned rectangle, counter-clockwise, centred on the origin */
@@ -241,7 +241,7 @@ describe('planDressing', () => {
   })
 
   it('gives a bungalow three windows an elevation, not six', () => {
-    // 12 m by 8 m, one storey. Two or three an elevation is a house; six is a corridor of rooms.
+    // 12 m by 8 m, one storey. Two or three an elevation is a house; six is a road band of rooms.
     const b = house({ height_m: 3.2, area_m2: 96 })
     const win = planDressing(b, KIT, { street }).filter((s) => s.part.startsWith('window-'))
     for (let i = 0; i < 4; i += 1) {

@@ -27,7 +27,7 @@ let bad = 0
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++ }
 
 await p.goto(`${URL}#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 240000 }).catch(() => {})
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 240000 }).catch(() => {})
 await p.waitForTimeout(8000)
 
 // make the canvas a pane: a bar above it and an inspector beside it, as the world editor does
@@ -42,7 +42,7 @@ await p.evaluate(() => {
 })
 await p.waitForTimeout(1500)
 
-const ready = await p.evaluate(() => !!window.corridor?.site)
+const ready = await p.evaluate(() => !!window.piedmont?.site)
 check(ready, 'the embedded site editor loaded')
 if (!ready) { console.log('FAILED (could not reach the editor)'); await b.close(); process.exit(1) }
 
@@ -59,7 +59,7 @@ console.log('frames', JSON.stringify(framed))
 check(framed.canvas.x > 1 || framed.canvas.y > 1 || framed.canvas.w < framed.window.w - 1,
   'the canvas is a PANE, not the window — so this test can see the bug')
 
-await p.evaluate(() => window.corridor.preview.show(window.corridor.site, 'summer'))
+await p.evaluate(() => window.piedmont.preview.show(window.piedmont.site, 'summer'))
 await p.waitForTimeout(3000)
 
 const geom = await p.evaluate(() => {
@@ -86,7 +86,7 @@ const geom = await p.evaluate(() => {
     inset, raw,
     // where the clip puts the visible window, back in page coordinates
     clipped: inset ? { x: cr.x + inset.left, y: cr.y + inset.top, w: cr.width - inset.left - inset.right, h: cr.height - inset.top - inset.bottom } : null,
-    open: window.corridor.preview.open,
+    open: window.piedmont.preview.open,
   }
 })
 console.log('preview', JSON.stringify(geom, null, 1))

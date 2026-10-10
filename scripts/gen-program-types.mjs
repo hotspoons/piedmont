@@ -8,7 +8,7 @@
 // declarations it is handed — it cannot read the repo. So this emits them.
 //
 // GENERATED AND CHECKED IN, with a test that regenerates and compares
-// (apps/corridor/test/programtypes.test.ts). The alternative is a hand-written `.d.ts` describing
+// (apps/game/test/programtypes.test.ts). The alternative is a hand-written `.d.ts` describing
 // the program API, which is the same class of mistake as a hand-typed width table: it is correct
 // the day it is written, and after that the editor tells an author about an API that no longer
 // exists. Running tsc in the browser over the real sources is the other option and it means
@@ -23,7 +23,7 @@ import { dirname, join, relative, resolve } from 'node:path'
 
 const ROOT = resolve(import.meta.dirname, '..')
 mkdirSync(join(ROOT, 'node_modules/.tmp'), { recursive: true })
-const OUT = join(ROOT, 'apps/corridor/src/generated/program-types.json')
+const OUT = join(ROOT, 'apps/game/src/generated/program-types.json')
 
 /**
  * The modules a program may import, and therefore the roots of the declaration closure.
@@ -60,7 +60,7 @@ function emitDeclarations() {
   // INSIDE the repo, not in /tmp: `types: ["vite/client", "webxr"]` in the base config resolves
   // by node module resolution FROM THE CONFIG FILE, so a config in the system temp directory
   // cannot see node_modules and tsc reports two missing type libraries on every run.
-  const tmp = mkdtempSync(join(ROOT, 'node_modules/.tmp/corridor-dts-'))
+  const tmp = mkdtempSync(join(ROOT, 'node_modules/.tmp/piedmont-dts-'))
   // the app's own tsconfig, with declarations on and nothing else changed: the point is that these
   // are the types the app actually compiles with
   const cfg = {
@@ -70,13 +70,13 @@ function emitDeclarations() {
       emitDeclarationOnly: true,
       noEmit: false,
       outDir: tmp,
-      rootDir: resolve(ROOT, 'apps/corridor/src'),
+      rootDir: resolve(ROOT, 'apps/game/src'),
       tsBuildInfoFile: join(tmp, 'tsbuildinfo'),
       composite: false,
       incremental: false,
       skipLibCheck: true,
     },
-    include: [resolve(ROOT, 'apps/corridor/src')],
+    include: [resolve(ROOT, 'apps/game/src')],
   }
   const cfgPath = join(tmp, 'tsconfig.dts.json')
   writeFileSync(cfgPath, JSON.stringify(cfg, null, 1))
@@ -135,7 +135,7 @@ function bitecs() {
 function build() {
   const dir = emitDeclarations()
   const libs = {}
-  for (const [rel, text] of closure(dir)) libs[vpath(`corridor/${rel}`)] = text
+  for (const [rel, text] of closure(dir)) libs[vpath(`piedmont/${rel}`)] = text
   for (const [rel, text] of bitecs()) libs[vpath(rel)] = text
   rmSync(dir, { recursive: true, force: true })
 
@@ -155,10 +155,10 @@ function build() {
   for (const r of ROOTS) {
     const rel = r.replace(/\.ts$/, '')
     const name = modName(r)
-    if (!libs[vpath(`corridor/${rel}.d.ts`)]) continue
+    if (!libs[vpath(`piedmont/${rel}.d.ts`)]) continue
     // from node_modules/@apex/<name>/index.d.ts, `../../..` is the root
-    libs[vpath(`node_modules/@apex/${name}/index.d.ts`)] = `export * from '../../../corridor/${rel}'\n`
-    alias[`@apex/${name}`] = vpath(`corridor/${rel}.d.ts`)
+    libs[vpath(`node_modules/@apex/${name}/index.d.ts`)] = `export * from '../../../piedmont/${rel}'\n`
+    alias[`@apex/${name}`] = vpath(`piedmont/${rel}.d.ts`)
   }
   libs[vpath('node_modules/bitecs/package.json')] = JSON.stringify({ name: 'bitecs', types: 'dist/core/index.d.ts' }, null, 1)
 
@@ -172,10 +172,10 @@ function build() {
    */
   const sources = {}
   for (const uri of Object.keys(libs)) {
-    const m = /^file:\/\/\/corridor\/(.+)\.d\.ts$/.exec(uri)
+    const m = /^file:\/\/\/piedmont\/(.+)\.d\.ts$/.exec(uri)
     if (!m) continue
-    const src = join(ROOT, 'apps/corridor/src', `${m[1]}.ts`)
-    if (existsSync(src)) sources[`apps/corridor/src/${m[1]}.ts`] = createHash('sha1').update(readFileSync(src)).digest('hex').slice(0, 16)
+    const src = join(ROOT, 'apps/game/src', `${m[1]}.ts`)
+    if (existsSync(src)) sources[`apps/game/src/${m[1]}.ts`] = createHash('sha1').update(readFileSync(src)).digest('hex').slice(0, 16)
   }
   return { version: 1, generated: 'scripts/gen-program-types.mjs', sources, libs, alias, roots: ROOTS }
 }

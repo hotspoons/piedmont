@@ -22,7 +22,7 @@ Kubernetes job might run). The fallback is two renames with a sub-millisecond wi
 is missing. `swap_dir` reports which one it used so a caller can log it honestly rather than
 claiming an atomicity it did not get.
 
-**No symlinks.** A symlink under /workspaces/apex-conduit is a standing hazard in this repo — one
+**No symlinks.** A symlink in the workspace is a standing hazard in this repo — one
 committed from a worktree lands in main at the path it points at — and the symlink-flip trick is
 the usual way to do this. We do not use it.
 """

@@ -2,7 +2,7 @@
 //
 // The bake hands the viewer a species mix — `Picea rubens 0.51, Betula papyrifera 0.28, Acer
 // rubrum 0.21` — with the genus and FIA's softwood/hardwood flag beside each name, and a canopy
-// height per species measured out of THIS corridor's lidar. What it cannot hand over is a shape:
+// height per species measured out of THIS road-band's lidar. What it cannot hand over is a shape:
 // nothing in LANDFIRE or FIA says what a red spruce looks like. So this file is the one place in
 // the flora path where a judgement is written down, and it is written down at the level of the
 // GENUS, whose silhouette is the thing a driver actually reads:
@@ -340,7 +340,7 @@ const BY_GENUS: Record<string, Archetype> = {
  *   - the stand's LEAF CYCLE, from LANDFIRE's EVT_SBCLS, via the bake — this is what tells a coast
  *     live oak from a white oak, because they are the same genus and the difference is that one
  *     stand is filed as "Evergreen sparse tree canopy" and the other as "Deciduous closed";
- *   - the measured canopy HEIGHT, from this corridor's own lidar, which only chooses between the
+ *   - the measured canopy HEIGHT, from this site's own lidar, which only chooses between the
  *     large and small variants of the same silhouette.
  */
 export function archetypeFor(sp: FloraSpecies, evergreenBroadleaf: boolean, h: number): Archetype {
@@ -350,7 +350,7 @@ export function archetypeFor(sp: FloraSpecies, evergreenBroadleaf: boolean, h: n
     // is an evergreen broadleaf — a coast live oak, a madrone — and must not go bare in November.
     // Both halves matter: "Acadian Low-Elevation Spruce-Fir Forest" is an evergreen stand too, and
     // the paper birch in it is emphatically deciduous. That version of this test turned 10 % of
-    // Mount Desert Island into live oaks (probes/corridor-flora.mjs, first run).
+    // Mount Desert Island into live oaks (probes/flora.mjs, first run).
     if (!sp.softwood && evergreenBroadleaf && !a.evergreen) return LIVE_OAK
     if (a === OAK && h > 22) return OAK_BIG
     return a
@@ -377,7 +377,7 @@ export function optionsFor(a: Archetype, h: number): any {
 
 /**
  * The F6 panel's shape knobs, applied over whatever the archetype asked for — so they are a
- * multiplier on this corridor's own species, not a replacement for them. Level 0 is the trunk:
+ * multiplier on this site's own species, not a replacement for them. Level 0 is the trunk:
  * its LENGTH is the height reference (`optionsFor`'s callers scale the whole tree by the measured
  * canopy height), so crown spread deliberately leaves it alone and only widens the branches.
  */

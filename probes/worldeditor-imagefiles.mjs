@@ -1,12 +1,12 @@
-// Does everything the corridor app imports actually get into the image?
+// Does everything the game app imports actually get into the image?
 //
 // `npm run build` on a laptop has the whole repo and never notices an import that reaches outside
 // the app. The image's build stage has only what its Dockerfile COPYs, so the same import is a
 // missing file there — and the build goes red after a push, a queue and four minutes of buildx.
 //
 // It has happened twice. The assetsvc image shipped with 136 specs and found none, because it
-// never copied `tools/assetlib/`; then the worldeditor image failed on
-// `../../../tools/assetlib/specs/buildings-dressing.json`, which the building dressing imports at
+// never copied `pipelines/assetlib/`; then the worldeditor image failed on
+// `../../../pipelines/assetlib/specs/buildings-dressing.json`, which the building dressing imports at
 // build time and which lives with the asset library that generates it — deliberately, because a
 // second copy of a spec is a spec that drifts.
 //
@@ -32,8 +32,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const DOCKERFILE = path.join(ROOT, 'tools/worldeditor/Dockerfile')
-const APP = 'apps/corridor'
+const DOCKERFILE = path.join(ROOT, 'services/worldeditor/Dockerfile')
+const APP = 'apps/game'
 
 /**
  * One stage's text: `which` 0 is the build stage, -1 (or any index) the runtime stage.
@@ -205,7 +205,7 @@ for (const b of [...bare].sort()) {
  * invisible to the graph walk and was the third way this image shipped a feature that could not
  * run (program_check: ENOENT on the declaration bundle, 2026-09-30).
  */
-const READ_BY_PATH = ['apps/corridor/src/generated/program-types.json', 'packages/enginesim/wasm/engines.json']
+const READ_BY_PATH = ['apps/game/src/generated/program-types.json', 'vendor/arcade/packages/enginesim/wasm/engines.json']
 for (const f of READ_BY_PATH) {
   const ok = runtime.some((c) => c.src === f || c.dest === f || f.startsWith(`${c.src}/`) || f.startsWith(`${c.dest}/`))
   console.log(`  ${f.padEnd(52)} ${ok ? 'copied in' : 'NOT IN THE IMAGE'}`)

@@ -1,7 +1,7 @@
 # The real-road driving game — design notes, 2026-09-20
 
-*What we are trying to build, what the corridor data makes possible, how the props get made, and
-how this stays portable to a real engine. Written after the first two corridors baked; revise as
+*What we are trying to build, what the road-band data makes possible, how the props get made, and
+how this stays portable to a real engine. Written after the first two road bands baked; revise as
 the numbers come in.*
 
 ## The idea in one paragraph
@@ -17,7 +17,7 @@ is a boulder with a collider.
 ## The pipeline, and where each piece already exists
 
 ```
-photos ─► sites ─► corridor bake (tools/corridor) ─► site directory
+photos ─► sites ─► bake (bake) ─► site directory
                        │                                   │
                        │  OSM spine + tags                 ├─► ROAD SURFACE       lanes, shoulders, median, grade, banking
                        │  1 m DEM + lidar profile          ├─► TERRAIN            cut/fill faces, embankments, ditches
@@ -38,7 +38,7 @@ Everything left of the arrows exists after today. Everything right of them is th
 lines and a lane width (3.66 m US interstate standard, measurable from NAIP where it matters):
 
 - sweep a cross-section along the spine: lanes × 3.66, shoulders (3.0 m outside / 1.2 m inside
-  on I-70, read off NAIP once per corridor rather than assumed), then the median to the sibling;
+  on I-70, read off NAIP once per road band rather than assumed), then the median to the sibling;
 - the **median type** is a classifier on the median width and what OSM has in it: > 12 m of grass
   (South Mountain), a `barrier=jersey_barrier` way (I-70 at Frederick), a `barrier=guard_rail`;
 - **grade** comes from `profile.json` `road_z`, already lifted onto bridge decks; **banking** is
@@ -60,7 +60,7 @@ a long embankment down to a creek. Rules:
 - ground_rel < −3 m → **embankment**: grass slope, guardrail at the shoulder (OSM
   `barrier=guard_rail` confirms), drainage ditch prop at the toe;
 - the 1 m DTM itself is the ground mesh out to ±200 m, decimated with error bounds, and the 30 m
-  horizon DEM beyond, with a skirt blending the two at the corridor edge.
+  horizon DEM beyond, with a skirt blending the two at the road-band edge.
 
 ### Structures
 
@@ -72,7 +72,7 @@ and a *type*. Type is where the photos come in: South Mountain's arch is a steel
 concrete abutments; the Racetrack Road rail bridge is a riveted plate girder; most I-270 overpasses
 are prestressed concrete beam on pier bents. Three or four types, each a kit of TRELLIS-generated
 parts (abutment, pier, girder segment, arch rib segment, parapet panel) stretched along the span,
-covers every crossing in these corridors. Culverts (`tunnel=culvert` waterways) are a headwall
+covers every crossing in these road bands. Culverts (`tunnel=culvert` waterways) are a headwall
 prop at the fill toe.
 
 ### Vegetation
@@ -88,7 +88,7 @@ prop family at different heights with different lower-branch trims.
 
 Macrostrat gives the formation under every 250 m of spine. So far:
 
-| corridor | formation | what the props look like |
+| road band | formation | what the props look like |
 |---|---|---|
 | South Mountain / Braddock, I-70 | Catoctin Formation (metabasalt, greenstone) | dark grey-green, blocky, chloritic sheen, blast-fractured faces |
 | Sideling Hill, US 40 / I-68 | Rockwell Fm, Purslane Ss (syncline) | thin-bedded grey shale + tan sandstone, the famous folded layers |
@@ -98,7 +98,7 @@ Macrostrat gives the formation under every 250 m of spine. So far:
 Prop briefs per formation (each: five to eight variants, 0.5 m to 3 m, plus a 6 m cut-face panel
 that tiles): *shale bedded boulder*, *shale talus fan*, *cut-face panel with drill-hole scars*,
 *greenstone block*, *sandstone ledge*, *riprap pile*. Generated with flux on a chroma key,
-keyed, reconstructed with TRELLIS.2, finished with meshopt (see `tools/assetgen/finish.mjs`).
+keyed, reconstructed with TRELLIS.2, finished with meshopt (see `pipelines/assetgen/finish.mjs`).
 
 ### Far terrain and LOD
 
@@ -120,7 +120,7 @@ continuous surface, not individual trees, and the CHM *is* that surface.
 
 The three.js POC is disposable; the data and the props are not. Rules that keep the exit open:
 
-1. **The corridor bake is the source of truth, not the scene.** Everything derived (road ribbon,
+1. **The bake is the source of truth, not the scene.** Everything derived (road ribbon,
    cut-face placement, tree instances, bridge params) is regenerated from `data/sites/<slug>/` by
    a deterministic step with a seed. Port the generator, not the scene.
 2. **Intermediate format is glTF + JSON, metres, Z-up in the site frame.** glTF is what Godot,
@@ -151,11 +151,11 @@ What the cluster could run, and what each would buy us. In order of payoff:
 2. **SAM 2 / segment-geospatial (`samgeo`) on NAIP.** Prompt-free segmentation of 30 cm imagery
    into pavement, gravel shoulder, mown grass, rough grass, tree crowns, bare rock, water, roof.
    That is the *material* map the terrain shader wants, and it separates "mown verge" from
-   "meadow" — which the CHM cannot. Runs on one GPU in seconds per corridor. Highest value, lowest
+   "meadow" — which the CHM cannot. Runs on one GPU in seconds per road band. Highest value, lowest
    risk.
 3. **A geospatial foundation model for land cover** (IBM/NASA Prithvi-EO 2.0, or Clay) fine-tuned
    on NLCD-style classes over NAIP+NAIP-NIR. Better than SAM at semantic labels (deciduous vs
-   evergreen, crop vs pasture), worth it once we cover more than a few corridors. Alternatively
+   evergreen, crop vs pasture), worth it once we cover more than a few road bands. Alternatively
    just pull **NLCD 2021** (30 m) and **NAIP NIR** for an NDVI-based evergreen/deciduous split —
    free and no training.
 4. **Tree-crown detection: DeepForest** (RGB → individual crown boxes) or `detectree2` (Mask
@@ -163,8 +163,8 @@ What the cluster could run, and what each would buy us. In order of payoff:
    that is a per-tree species-agnostic instance list. Use for the near band only.
 5. **Rock-face classification from the profile plus imagery.** Not a downloadable model; a small
    classifier over (`ground_rel` slope, NAIP texture, Macrostrat unit) → {cut face, natural
-   outcrop, retaining wall, embankment}. A few hundred labelled stations from these corridors would
-   train it. Low priority: the rules above will do for ten corridors.
+   outcrop, retaining wall, embankment}. A few hundred labelled stations from these road bands would
+   train it. Low priority: the rules above will do for ten road bands.
 6. **Vision-language model on the driving photos** (Qwen2.5-VL or Pixtral on the cluster): tag
    each frame with barrier type, median type, lighting masts, sign gantries, bridge type. It
    converts Rich's photos into the labelled ground truth the rules and props are checked against,
@@ -177,13 +177,13 @@ get back a class mask. Then a VLM for photo tagging.
 
 ## What landed on day one (2026-09-20, evening)
 
-- **Viewer** (`apps/corridor`, `just corridor-view`, phone layout, drive mode): imagery-draped
+- **Viewer** (`apps/game`, `just dev`, phone layout, drive mode): imagery-draped
   1 m terrain, 30 m horizon, road surface from OSM lane counts with edge lines and dashes, trees
-  from the canopy, overpasses with piers, structures clickable. Tunnel via `just corridor-tunnel`
+  from the canopy, overpasses with piers, structures clickable. Tunnel via `just tunnel`
   (a devproxy in front so the URL survives Vite restarts).
-- **Surface detection** (`corridor/surface.py`): lidar intensity in the lanes + NAIP brightness →
+- **Surface detection** (`piedmont_bake/surface.py`): lidar intensity in the lanes + NAIP brightness →
   pavement class every 20 m; concrete lands exactly on bridge decks. Textures per class from flux
-  (`tools/surfaces`), with derived normal and roughness maps, tiled at real scale.
+  (`pipelines/surfaces`), with derived normal and roughness maps, tiled at real scale.
 - **Trees in two LODs**: lollipops for all ~35k canopy cells, and `@dgreenheck/ez-tree` procedural
   oaks/ash/aspen (MIT, textured bark, billboard leaves) for the ~1,000 nearest the eye, each scaled
   to its measured canopy height. SeedThree (WebGPU, GLB export with per-LOD meshes) and Blender's
@@ -205,7 +205,7 @@ get back a class mask. Then a VLM for photo tagging.
   there, so lidar delivery tiles still come from rockyweb with retries; the image services get
   back-off on 5xx.
 
-## What the first two corridors say
+## What the first two road bands say
 
 South Mountain (I-70 eastbound, 6.4 km): I-70 is on two bridges (106 m over Harmony Road and Little
 Catoctin Creek, 15 m above the valley; 62 m over Hollow Road, 2.9 m clearance under). No overpasses.

@@ -6,7 +6,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     name: 'checks',
-    include: ['tools/ci/*.test.ts'],
+    include: ['scripts/checks/*.test.ts'],
     root: new URL('../..', import.meta.url).pathname,
     testTimeout: 180_000,
     maxConcurrency: 6,

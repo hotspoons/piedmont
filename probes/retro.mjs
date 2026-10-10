@@ -16,7 +16,7 @@
 // this repo spent four rounds measuring the grass swaying and the sun moving instead of the thing
 // it was pointed at.
 //
-//   PORT=5185 node probes/corridor-retro.mjs [slug]
+//   PORT=5185 node probes/retro.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -26,14 +26,14 @@ page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 300)))
 page.on('console', (m) => { if (m.type() === 'error' && /shader|GLSL|program/i.test(m.text())) console.log('SHADER', m.text().slice(0, 400)) })
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await page.waitForTimeout(4000)
 
 // drive, and park on a road with a centre line: the photo station is chosen for exactly that
 await page.keyboard.press('Tab')
 await page.waitForTimeout(1500)
 const setup = await page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   if (!c.drive?.car) return { error: 'not driving' }
   const m = c.site.manifest
   const p = c.site.spineAt(m.spine.photo_s)
@@ -59,7 +59,7 @@ await page.waitForTimeout(3000)
  * anywhere, then a few steps with a frame between them.
  */
 const times = await page.evaluate(async () => {
-  const c = window.corridor
+  const c = window.piedmont
   const lon = c.site.manifest.frame?.anchor?.lon ?? 0
   const solarNoonUtc = (12 - lon / 15 + 24) % 24
   const fmt = (h) => `${String(((Math.round(h) % 24) + 24) % 24).padStart(2, '0')}:00`
@@ -98,7 +98,7 @@ const frame = async (name, knobs, timeOfDay) =>
   page.evaluate(
     ({ name, knobs, timeOfDay }) =>
       new Promise((resolve) => {
-        const c = window.corridor
+        const c = window.piedmont
         if (timeOfDay) c.time.setLocal('2026-09-26', timeOfDay)
         for (const [k, v] of Object.entries(knobs)) c.tune.set(k, v)
         let n = 0

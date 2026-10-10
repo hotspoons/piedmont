@@ -4,7 +4,7 @@
 // palette lists what the library has (no hand-typed boxes), and Grow is a tab inside Place.
 import { chromium } from 'playwright'
 import { readFileSync, unlinkSync, existsSync } from 'node:fs'
-const FILE = 'tools/corridor/data/sites/crofton-triangle/surfaces.json'
+const FILE = 'data/sites/crofton-triangle/surfaces.json'
 const before = existsSync(FILE) ? readFileSync(FILE, 'utf8') : null
 const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
 const p = await b.newPage({ viewport: { width: 1200, height: 800 } })
@@ -13,7 +13,7 @@ await p.route('**/@vite/client', (r) => r.fulfill({ status: 200, contentType: 'a
 let bad = 0
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++ }
 await p.goto('http://127.0.0.1:5185/editor.html#crofton-triangle:world', { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 240000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 240000 })
 await p.keyboard.press('7')
 await p.waitForFunction(() => document.querySelectorAll('.inspector-body .world-surfaces select').length > 0, null, { timeout: 60000 }).catch(() => {})
 const r = await p.evaluate(async () => {
@@ -28,12 +28,12 @@ const r = await p.evaluate(async () => {
   const chips = [...insp.querySelectorAll('.world-surfaces .palette .chip')]
   chips[0]?.click()
   chips[chips.length - 1]?.click()
-  const roadName = window.corridor.site.group.getObjectByName('road')?.children.map((c) => c.name).filter((n) => n.startsWith('road:'))
+  const roadName = window.piedmont.site.group.getObjectByName('road')?.children.map((c) => c.name).filter((n) => n.startsWith('road:'))
   insp.querySelector('.world-surfaces button.primary').click()
   await new Promise((r) => setTimeout(r, 2500))
-  const surfaces = window.corridor.site.surfaces()
+  const surfaces = window.piedmont.site.surfaces()
   // the palette in Place: chips come from the library merge; none of the old box entries
-  window.corridor.setMode('place')
+  window.piedmont.setMode('place')
   await new Promise((r) => setTimeout(r, 400))
   const palChips = [...document.querySelectorAll('.inspector-body .palette .chip .nm')].map((x) => x.textContent)
   const tabs = [...document.querySelectorAll('.inspector-body .tab')].map((x) => x.textContent.trim())

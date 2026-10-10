@@ -1,9 +1,9 @@
-"""Buildings, land use and points of interest, in corridor coordinates, for autogen.
+"""Buildings, land use and points of interest, in road band coordinates, for autogen.
 
-The editor agent's spec (tools/corridor/AUTOGEN.md §10). Per footprint, three things the browser
+The editor agent's spec (bake/AUTOGEN.md §10). Per footprint, three things the browser
 should never have to derive: the minimum rotated rectangle (a strip mall is long, a house is not,
 and the long axis is the honest yaw on a corner lot), a height from the best source available,
-and the corridor position — along-track metre `s` and SIGNED lateral offset `lat` of the centroid
+and the road band position — along-track metre `s` and SIGNED lateral offset `lat` of the centroid
 (positive = left of travel), because every placement rule is written against the road.
 
 Height chain: OSM `height` → OSM `building:levels` × 3.2 → lidar DSM minus DTM over the footprint
@@ -84,7 +84,7 @@ def derive(site_dir: Path) -> dict:
     line = LineString([(x - ox, y - oy) for x, y in spine["coords"]])
     feats = json.loads((site_dir / "osm.geojson").read_text())["features"]
 
-    def corridor_pos(pt: Point) -> tuple[float, float]:
+    def road_band_pos(pt: Point) -> tuple[float, float]:
         s = line.project(pt)
         on = line.interpolate(s)
         ahead = line.interpolate(min(line.length, s + 1.0))
@@ -127,7 +127,7 @@ def derive(site_dir: Path) -> dict:
             src = "lidar"
         if h is None or h < 2.0:
             h, src = DEFAULT_H, "default"
-        s, lat = corridor_pos(g.centroid)
+        s, lat = road_band_pos(g.centroid)
         ring = [[round(x, 1), round(y, 1)] for x, y in g.simplify(SIMPLIFY).exterior.coords[:-1]]
         buildings.append({
             "ring": ring, "area_m2": round(float(g.area), 1),
@@ -176,7 +176,7 @@ def derive(site_dir: Path) -> dict:
         c = g.centroid if not g.is_empty else None
         if c is None:
             continue
-        s, lat = corridor_pos(c)
+        s, lat = road_band_pos(c)
         bidx = next((int(i) for i in tree.query(c) if buildings[int(i)]["_geom"].contains(c)), None) if tree is not None else None
         pois.append({"x": round(c.x, 1), "y": round(c.y, 1), "s": s, "lat": lat, "kind": kind, "name": p.get("name"), "building": bidx})
         # a POI inside a footprint lends its tags to the building — the 85% tagged only building=yes

@@ -5,7 +5,7 @@ then drew 60 m on the far side of — which, across a divided highway, is the ot
 """
 import unittest
 
-from corridor.export import _stub_span
+from piedmont_bake.export import _stub_span
 
 STUB = 60.0
 

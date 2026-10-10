@@ -41,7 +41,7 @@ On `crofton-triangle`: 397 of 427 branches carry `null`, 10 carry an array, **20
 number. So essentially the whole network was two lanes wide, junction or no junction.
 
 Now in `scene.ts::branchLanes`, which takes the **smallest** member of the set — the through count,
-the width the road holds for most of its length. `probes/corridor-lanes.mjs` asserts it and refuses
+the width the road holds for most of its length. `probes/lanes.mjs` asserts it and refuses
 to pass on a site that does not contain the failing shape.
 
 This is a floor, not a ceiling. The real answer is per-station lane counts for branches, the way

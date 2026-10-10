@@ -4,9 +4,9 @@ const page = await browser.newPage({ viewport: { width: 1200, height: 800 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 page.on('console', (m) => { if (m.type() === 'error') console.log('console.error', m.text().slice(0, 300)) })
 await page.goto('http://127.0.0.1:5185/#frederick-i70?season=summer', { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 180000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 180000 })
 const r = await page.evaluate(() => {
-  const { site, camera } = window.corridor
+  const { site, camera } = window.piedmont
   const g = site.layers.placements
   const first = g.children[0]
   if (first) {

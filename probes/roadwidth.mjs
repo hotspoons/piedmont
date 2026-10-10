@@ -1,11 +1,11 @@
 // The editor's road cross-section panel: does the outline move when a slider does, and does apply
 // push the numbers into tuning and rebuild?
 //
-//   node probes/corridor-roadwidth.mjs [site] [out.png]
+//   node probes/roadwidth.mjs [site] [out.png]
 import { chromium } from 'playwright'
 const site = process.argv[2] ?? 'bowie-racetrack-rd'
 const out = process.argv[3] ?? null
-const PORT = process.env.CORRIDOR_PORT ?? '5202'
+const PORT = process.env.PIEDMONT_PORT ?? '5202'
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))

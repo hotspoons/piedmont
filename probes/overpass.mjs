@@ -1,6 +1,6 @@
 // A grade-separated crossing must not put a wall across the road underneath.
 //
-//   node probes/corridor-overpass.mjs [site]
+//   node probes/overpass.mjs [site]
 //
 // Regression for Paul, 2026-10-06. On dc-metro the Beltway (I 95/I 495) at s≈25124 passes under a
 // `motorway_link` ramp (deck ≈ 42 m, Beltway ≈ 34.5 m). `edgeDistance` chose the laterally NEAREST
@@ -18,17 +18,17 @@
 import { chromium } from 'playwright'
 
 const site = process.argv[2] ?? 'dc-metro-take-2'
-const PORT = process.env.CORRIDOR_PORT ?? '5186'
+const PORT = process.env.PIEDMONT_PORT ?? '5186'
 
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
 const page = await browser.newPage({ viewport: { width: 480, height: 320 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite&phys=1`, { waitUntil: 'load' })
-await page.waitForFunction(() => !!window.corridor?.site && !!window.corridor.physics, null, { timeout: 300000 })
+await page.waitForFunction(() => !!window.piedmont?.site && !!window.piedmont.physics, null, { timeout: 300000 })
 
 const result = await page.evaluate(async () => {
-  const s = window.corridor.site
-  const ph = window.corridor.physics
+  const s = window.piedmont.site
+  const ph = window.piedmont.physics
   // pump the tile the ramp is keyed to
   const p = s.spineAt(0).pos.clone()
   p.set(13500, 0, -3500)

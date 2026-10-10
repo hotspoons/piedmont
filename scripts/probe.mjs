@@ -5,7 +5,7 @@
 //
 //   just probe shots/run.png 5 KeyW KeyD
 //   PROBE_JS='window.__apex.world.vehicle.s = 4700' just probe shots/split.png 2 KeyW
-//   PROBE_URL='http://localhost:5180/?style=retro' just probe shots/retro.png 3
+//   PROBE_URL='http://localhost:5185/#crofton-triangle' just probe shots/retro.png 3
 //   PROBE_W=1280 PROBE_H=900 just probe shots/tall.png   (viewport override)
 import { chromium } from 'playwright'
 const [out = 'shots/probe.png', play = '0', ...keys] = process.argv.slice(2)
@@ -14,7 +14,7 @@ const page = await browser.newPage({ viewport: { width: Number(process.env.PROBE
 const logs = []
 page.on('console', (m) => { if (m.type() !== 'debug' && !/GL Driver|vite\]/.test(m.text())) logs.push(`[${m.type()}] ${m.text()}`) })
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}\n${e.stack}`))
-await page.goto(process.env.PROBE_URL ?? 'http://localhost:5180', { waitUntil: 'networkidle', timeout: 30000 })
+await page.goto(process.env.PROBE_URL ?? 'http://localhost:5185', { waitUntil: 'networkidle', timeout: 30000 })
 await page.waitForTimeout(2500)
 if (process.env.PROBE_JS) console.log('js:', JSON.stringify(await page.evaluate(process.env.PROBE_JS)))
 if (Number(play) > 0) {

@@ -1,16 +1,16 @@
 """Push baked sites to an S3-compatible bucket, so a Cloudflare Worker can serve them.
 
 Why: the arcade Worker ships its assets inside the Worker and is heading for the 64 MB ceiling.
-A corridor is hundreds of MB. Baked once on the cluster (where the storage is), published here,
+A road band is hundreds of MB. Baked once on the cluster (where the storage is), published here,
 and the Worker fetches from R2 by key instead of carrying anything.
 
 Configuration is environment only, so the same image runs in the Helm Job and on a laptop:
 
-    CORRIDOR_S3_BUCKET     required
-    CORRIDOR_S3_ENDPOINT   R2: https://<account-id>.r2.cloudflarestorage.com  (unset for AWS)
-    CORRIDOR_S3_REGION     "auto" for R2 (default)
+    PIEDMONT_S3_BUCKET     required
+    PIEDMONT_S3_ENDPOINT   R2: https://<account-id>.r2.cloudflarestorage.com  (unset for AWS)
+    PIEDMONT_S3_REGION     "auto" for R2 (default)
     AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY   the bucket's token
-    CORRIDOR_S3_PREFIX     key prefix, default "corridor"
+    PIEDMONT_S3_PREFIX     key prefix, default "piedmont"
 
 Idempotent: an object whose size matches is skipped. `index.json` at the prefix root lists every
 published site with its manifest, so a client needs one fetch to know what exists. The LAZ is
@@ -32,16 +32,16 @@ def _client():
 
     return boto3.client(
         "s3",
-        endpoint_url=os.environ.get("CORRIDOR_S3_ENDPOINT") or None,
-        region_name=os.environ.get("CORRIDOR_S3_REGION", "auto"),
+        endpoint_url=os.environ.get("PIEDMONT_S3_ENDPOINT") or None,
+        region_name=os.environ.get("PIEDMONT_S3_REGION", "auto"),
         config=Config(s3={"addressing_style": "path"}, retries={"max_attempts": 5, "mode": "standard"}),
     )
 
 
 def sync(sites_dir: Path, slug: str, prefix: str, dry_run: bool = False) -> None:
-    bucket = os.environ.get("CORRIDOR_S3_BUCKET")
+    bucket = os.environ.get("PIEDMONT_S3_BUCKET")
     if not bucket:
-        raise SystemExit("CORRIDOR_S3_BUCKET is not set")
+        raise SystemExit("PIEDMONT_S3_BUCKET is not set")
     dirs = sorted(d for d in sites_dir.glob("*") if (d / "manifest.json").exists() and (slug == "all" or d.name == slug))
     if not dirs:
         raise SystemExit(f"nothing to publish under {sites_dir}")

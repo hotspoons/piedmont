@@ -2,9 +2,9 @@ import { chromium } from 'playwright'
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 800, height: 500 } })
 await page.goto('http://127.0.0.1:5185/#braddock-i70?lite', { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 180000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 180000 })
 const r = await page.evaluate(() => {
-  const s = window.corridor.site
+  const s = window.piedmont.site
   const s0 = s.manifest.spine.photo_s
   const rows = []
   let maxStep = 0, maxDiff = 0

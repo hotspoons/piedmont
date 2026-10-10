@@ -170,7 +170,7 @@ test('the plain-Job manifest is the same run: same image, args and shared output
   assert.equal(leader.spec.parallelism, 1)
   assert.equal(worker.spec.parallelism, 3, 'workers fan out')
   // the two are tied together by a label, since no object owns both
-  assert.equal(leader.metadata.labels['corridor.run'], worker.metadata.labels['corridor.run'])
+  assert.equal(leader.metadata.labels['piedmont.run'], worker.metadata.labels['piedmont.run'])
   // and they share one output volume, which is the whole reason this is not N independent runs
   const claimOf = (j) => j.spec.template.spec.volumes.find((v) => v.name === 'out').persistentVolumeClaim.claimName
   assert.equal(claimOf(leader), claimOf(worker))
@@ -192,10 +192,10 @@ test('no tier pins a storage class', async () => {
 })
 
 test('a batch run is one row, not two, and one failed pod fails it', () => {
-  // the pair shares `corridor.run`; the editor should show a run, not two jobs
+  // the pair shares `piedmont.run`; the editor should show a run, not two jobs
   const items = [
-    { metadata: { name: 'r-leader', creationTimestamp: '2026-09-28T01:00:00Z', labels: { 'corridor.run': 'r', 'corridor.capture': 'c' } }, status: { succeeded: 1 } },
-    { metadata: { name: 'r-worker', creationTimestamp: '2026-09-28T01:00:05Z', labels: { 'corridor.run': 'r', 'corridor.capture': 'c' } }, status: { active: 2 } },
+    { metadata: { name: 'r-leader', creationTimestamp: '2026-09-28T01:00:00Z', labels: { 'piedmont.run': 'r', 'piedmont.capture': 'c' } }, status: { succeeded: 1 } },
+    { metadata: { name: 'r-worker', creationTimestamp: '2026-09-28T01:00:05Z', labels: { 'piedmont.run': 'r', 'piedmont.capture': 'c' } }, status: { active: 2 } },
   ]
   const k = {
     usable: () => true, namespace: 'default',
@@ -273,8 +273,8 @@ test('and no guard is added when no commit was named, rather than an empty one',
 
 test('what the run was asked to accept is written on the object', () => {
   const m = jobSet(normalise({ capture: 'x', codeSha: 'deadbee', seamFailOver: 1.5, config: 'c.yaml' }))
-  assert.equal(m.metadata.annotations['corridor.seam-fail-over'], '1.5')
-  assert.equal(m.metadata.annotations['corridor.code-sha'], 'deadbee')
+  assert.equal(m.metadata.annotations['piedmont.seam-fail-over'], '1.5')
+  assert.equal(m.metadata.annotations['piedmont.code-sha'], 'deadbee')
 })
 
 test('a refusal to list nodes is not reported as an empty cluster', async () => {
@@ -399,7 +399,7 @@ test('the output claim is RWX, sized, and labelled so it can be found', () => {
   assert.deepEqual(pvc.spec.accessModes, ['ReadWriteMany'])
   assert.equal(pvc.spec.resources.requests.storage, '200Gi')
   assert.equal(pvc.spec.storageClassName, 'cephfs')
-  assert.equal(pvc.metadata.labels['corridor.role'], 'splat-output')
+  assert.equal(pvc.metadata.labels['piedmont.role'], 'splat-output')
   // and no class named means the cluster's default, not an empty string
   assert.equal('storageClassName' in outputClaim({ name: 'y', outputSize: '1Gi' }).spec, false)
 })

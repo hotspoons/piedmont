@@ -8,7 +8,7 @@
 // does put things in the wrong place — but it is no longer the first thing in the panel, and it is
 // not the thing that is there when nothing is wrong.
 //
-//   node probes/corridor-palette.mjs [world-slug]
+//   node probes/palette.mjs [world-slug]
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'
@@ -36,7 +36,7 @@ await Promise.all([
 ])
 const manifest = await page.evaluate(async (w) => (await fetch(`/sites/${w}/web/manifest.json`)).status, WORLD)
 if (manifest === 404) { console.log(`\nSKIP: ${WORLD} has no baked site to place anything in`); await browser.close(); process.exit(0) }
-await page.waitForFunction(() => !!window.corridor?.place, null, { timeout: 120000 })
+await page.waitForFunction(() => !!window.piedmont?.place, null, { timeout: 120000 })
 await page.waitForTimeout(2500)
 await page.evaluate(() => [...document.querySelectorAll('#se-rail button')].find((b) => /^place$/i.test(b.textContent.trim()))?.click())
 await page.waitForTimeout(900)
@@ -55,7 +55,7 @@ if (chips > 12 && !(await page.locator('#se-inspector .palette-find input').coun
 /* ---- clicking one shows it ---- */
 await page.waitForTimeout(400)
 const withModel = await page.evaluate(() => {
-  const a = window.corridor.place.catalog.assets.find((x) => x.glb)
+  const a = window.piedmont.place.catalog.assets.find((x) => x.glb)
   return a ? { id: a.id, name: a.name } : null
 })
 say('an asset with a model', withModel)

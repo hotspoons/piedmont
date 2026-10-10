@@ -1,7 +1,7 @@
 #!/bin/bash
 # osm-import: stage one Geofabrik region on an Overpass instance's volume, for the instance's own
-# `regions` sidecar to apply. Runs as the Job the world editor creates (tools/worldeditor/runs.mjs
-# `osmImportJob`; the reviewed manifest is tools/overpass/osm-import-job.yaml), on the instance's
+# `regions` sidecar to apply. Runs as the Job the world editor creates (services/worldeditor/runs.mjs
+# `osmImportJob`; the reviewed manifest is services/overpass/osm-import-job.yaml), on the instance's
 # node, with the instance's volume at /db.
 #
 # WHY THIS DOES NOT WRITE THE DATABASE. Overpass is written through its dispatcher: the writer asks
@@ -12,7 +12,7 @@
 # change, and the sidecar, which shares /db and /dev/shm with the dispatcher, applies it with the
 # same `update_from_dir` the instance's daily diffs use.
 #
-# Measured on the instance's own image, locally (tools/overpass/README.md, "Adding a region"):
+# Measured on the instance's own image, locally (services/overpass/README.md, "Adding a region"):
 # Maryland (216 MB pbf, 4.9 GB as an osmChange) applied into a live Washington database in 279 s,
 # peak 1.4 GB, with 217 queries answered during it at p95 180 ms; Washington into Maryland, this
 # script and the sidecar end to end, in 42 s.
@@ -28,7 +28,7 @@ DB_ROOT=${DB_ROOT:-/db}
 OSMIUM=${OSMIUM:-osmium}
 INTERPRETER=${INTERPRETER:-http://$UPSTREAM/api/interpreter}
 WAIT_HOURS=${WAIT_HOURS:-46}
-UA="apex-conduit corridor osm-import (github.com/hotspoons)"
+UA="piedmont osm-import (github.com/hotspoons/piedmont)"
 
 SAFE=$(printf '%s' "$REGION_ID" | tr -c 'a-zA-Z0-9-' '_')
 DIR=$DB_ROOT/regions/$SAFE
@@ -47,7 +47,7 @@ log "  pbf      $PBF_URL"
 # ---- 0. the sidecar must be there: it applies; this only stages ----------------------------------
 if [ ! -f "$AGENT" ]; then
   log "FAILED: $UPSTREAM has no regions sidecar ($AGENT does not exist)."
-  log "        helm upgrade the $UPSTREAM release with regions.enabled=true first (tools/overpass/README.md)."
+  log "        helm upgrade the $UPSTREAM release with regions.enabled=true first (services/overpass/README.md)."
   exit 3
 fi
 age=$(( $(date +%s) - $(stat -c %Y "$AGENT") ))
@@ -103,7 +103,7 @@ NEED=$(( PBF_BYTES * 150 ))
 [ "$DBSIZE" -gt "$NEED" ] && NEED=$DBSIZE
 log "  space    $(( FREE / 1073741824 )) GiB free; want $(( NEED / 1073741824 )) GiB (database $(( DBSIZE / 1073741824 )) GiB, pbf x150 $(( PBF_BYTES * 150 / 1073741824 )) GiB)"
 if [ "$FREE" -lt "$NEED" ] && [ "${IGNORE_SPACE:-0}" != 1 ]; then
-  fail "not enough room on $UPSTREAM's volume: $(( FREE / 1073741824 )) GiB free, about $(( NEED / 1073741824 )) GiB wanted. Grow the volume (or rebuild the instance from a merged extract — tools/overpass/README.md)."
+  fail "not enough room on $UPSTREAM's volume: $(( FREE / 1073741824 )) GiB free, about $(( NEED / 1073741824 )) GiB wanted. Grow the volume (or rebuild the instance from a merged extract — services/overpass/README.md)."
 fi
 
 # ---- 4. the change -------------------------------------------------------------------------------

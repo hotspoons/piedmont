@@ -1,4 +1,4 @@
-// The shell: the handful of containers both corridor UIs are built out of.
+// The shell: the handful of containers both game UIs are built out of.
 //
 // No framework. This is a 3D viewer whose UI is a drawer, a dialog, some tabs and about two
 // hundred fields — a framework would be the largest thing in the bundle and would buy a re-render

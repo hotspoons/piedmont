@@ -1,8 +1,8 @@
 // Where does a manifest `s` actually land, and would rescaling it help?
 //
-//   SLUGS=bowie-racetrack-rd,chesterfield-rd,bonnie-branch-rd node probes/corridor-sdrift.mjs
+//   SLUGS=bowie-racetrack-rd,chesterfield-rd,bonnie-branch-rd node probes/sdrift.mjs
 //
-// `corridor.verify` warns on 8 of 20 sites that "the published centreline is -N m against the line
+// `piedmont_bake.verify` warns on 8 of 20 sites that "the published centreline is -N m against the line
 // every `s` is measured on: features near the far end are displaced by up to N m", and the
 // suggested fix was one line in `spineAt` — `s × curveLen / length_m`. THAT FIX IS WRONG, and this
 // probe is why it did not get applied.
@@ -32,9 +32,9 @@ for (const slug of (process.env.SLUGS??'bowie-racetrack-rd,chesterfield-rd,bonni
   const p=await b.newPage({viewport:{width:900,height:600}})
   await p.route('**/@vite/client',r=>r.abort())
   await p.goto(`http://127.0.0.1:5185/#${slug}`,{waitUntil:'domcontentloaded',timeout:120000})
-  try{ await p.waitForFunction((s)=>window.corridor?.site?.manifest?.slug===s,slug,{timeout:240000}) }catch{ console.log(slug,'LOAD FAIL'); await p.close(); continue }
+  try{ await p.waitForFunction((s)=>window.piedmont?.site?.manifest?.slug===s,slug,{timeout:240000}) }catch{ console.log(slug,'LOAD FAIL'); await p.close(); continue }
   console.log(await p.evaluate(()=>{
-    const s=window.corridor.site, m=s.manifest
+    const s=window.piedmont.site, m=s.manifest
     const published=m.spine.length_m
     // the drawn curve's own length: walk spineAt in curve space
     let L=0, prev=null

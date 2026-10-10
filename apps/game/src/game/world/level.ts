@@ -1,6 +1,6 @@
 // A level, loaded: the world dressed as the document says.
 //
-// The level document is defined and validated in `tools/worldeditor/levels.mjs` — it names a
+// The level document is defined and validated in `services/worldeditor/levels.mjs` — it names a
 // baked world, splats to lay over it, assets to place in it, simulations to run in it and a
 // scenario saying what you are meant to do. This is the half that reads one.
 //

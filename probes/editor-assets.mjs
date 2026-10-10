@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 // Real catalog assets, end to end: flux.2-dev -> chroma key -> TRELLIS.2 -> finished .glb
-// into apps/corridor/public/assets/, and the catalog entry pointed at it.
+// into apps/game/public/assets/, and the catalog entry pointed at it.
 //
 //   node probes/editor-assets.mjs                # all three
 //   node probes/editor-assets.mjs watertower-01  # one
 //   node probes/editor-assets.mjs --recon-only   # re-mesh the cut-outs already on disk
 //
-// This is deliberately NOT tools/assetgen/generate.mjs: that pipeline is driven by coast's
+// This is deliberately NOT pipelines/assetgen/generate.mjs: that pipeline is driven by coast's
 // assets.json and owned elsewhere. It does reuse `keyChroma` from it, because the two chroma tests
 // in there are measured and re-deriving them would just be re-learning the same lessons.
 //
-// The prompt rules are assetgen's and they are load-bearing (see tools/assetgen/README.md):
+// The prompt rules are assetgen's and they are load-bearing (see pipelines/assetgen/README.md):
 // name the construction and the era rather than a place or a brand, give real metres, say what
 // colour the thing is — a prompt that names no colour but names a green backdrop comes back green
 // and the key then eats it — and ask for no ground shadow, because the key reads a black contact
@@ -19,14 +19,14 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { keyChroma } from '../tools/assetgen/generate.mjs'
-import { finish } from '../tools/assetgen/finish.mjs'
+import { keyChroma } from '../pipelines/assetgen/generate.mjs'
+import { finish } from '../pipelines/assetgen/finish.mjs'
 
 const FLUX = 'https://high-brine.richard-siomporas.basedweights.com/v1/images/generations'
 const RECON = 'https://recon.richard-siomporas.basedweights.com'
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
-const WORK = process.env.CORRIDOR_ASSET_WORK ?? '/tmp/corridor-assets'
-const DEST = path.join(ROOT, 'apps/corridor/public/assets')
+const WORK = process.env.PIEDMONT_ASSET_WORK ?? '/tmp/piedmont-assets'
+const DEST = path.join(ROOT, 'apps/game/public/assets')
 const CATALOG = path.join(DEST, 'catalog.json')
 
 const BACKDROP =
@@ -38,7 +38,7 @@ const BACKDROP =
   // TRELLIS invented the last few metres of them. This sentence names a margin SIZE and names the
   // bottom of the object explicitly, and the regeneration came back 436x996 of 1024: narrower, and
   // cropped at the bottom by exactly as much. flux.2-dev's framing prior for a tall subject is not
-  // movable by words, which is the same class of failure tools/assetgen/README.md reports for
+  // movable by words, which is the same class of failure pipelines/assetgen/README.md reports for
   // proportion — and the fix there was an ATTACHED REFERENCE, not a better sentence. It costs
   // nothing on wide subjects (the barn and the diner frame themselves correctly), so it stays.
   'The complete object from its very top to the very bottom where it meets the ground is well inside the frame, ' +
@@ -151,7 +151,7 @@ for (const spec of chosen) {
     // backdrop. Either way the reconstruction would be of the wrong thing, so stop and look.
     if (ink < 4 || ink > 92) throw new Error(`cut-out is ${ink.toFixed(1)}% opaque — look at ${cut} before spending a reconstruction`)
     const glb = reconstruct(cut, path.join(dir, 'recon.glb'))
-    // NOT unlit, unlike coast: the corridor renders these in a lit scene with seasonal light, so a
+    // NOT unlit, unlike coast: the road band renders these in a lit scene with seasonal light, so a
     // material that ignores the sun would sit in the world without belonging to it.
     const out = path.join(DEST, `${spec.id}.glb`)
     finish(glb, out, { unlit: false })

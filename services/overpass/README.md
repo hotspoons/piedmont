@@ -1,6 +1,6 @@
 # overpass — our own OSM query service
 
-The corridor bake reads OpenStreetMap through Overpass: the road chains, lane tags, crossings,
+The bake reads OpenStreetMap through Overpass: the road chains, lane tags, crossings,
 building footprints and land use for every site. On 2026-09-21 every public mirror refused
 connections for about an hour and every new bake died at step one. This is the fix Rich asked for.
 
@@ -18,7 +18,7 @@ instances on gh200-1 first and to four public mirrors only when none of ours hol
 **Routing is by the extract's real outline, not a box.** Geofabrik publishes each extract's polygon
 (`index-v1.json`, and a `.poly` beside every `.pbf`; the two are the same polygon). The world editor
 keeps each instance's coverage in `<data>/overpass/coverage.json` on its volume, seeded from
-`overpassRegions` in `deploy/gh200-1/worldeditor.yaml` (`WORLDEDITOR_OVERPASS_REGIONS`, also
+`overpassRegions` in `deploy/gh200-1/worldeditor.yaml` (`PIEDMONT_EDITOR_OVERPASS_REGIONS`, also
 editable in Settings → Services) and grown by imports. A world's bake goes to the instance whose
 coverage holds **all** of the area the bake will ask about (the world's square or ring, padded for
 the UTM rotation), the smallest such first; if none does, to the public mirrors.
@@ -30,8 +30,8 @@ Arlington it answered HTTP 200 with 0 ways (`overpass-na`: 4,346); over downtown
 was routed to `overpass`, and baked with 108,816 roads in Maryland and none across the river —
 35.3% of its square is outside `maryland.poly`. `overpass-na`, which holds all of it, was never asked.
 
-**The bake checks the routing** (`tools/corridor/corridor/osm.py`). The Job is handed the coverage
-file (`CORRIDOR_OVERPASS_COVERAGE`); every query whose area can be read from its text (a bbox, a
+**The bake checks the routing** (`bake/piedmont_bake/osm.py`). The Job is handed the coverage
+file (`PIEDMONT_OVERPASS_COVERAGE`); every query whose area can be read from its text (a bbox, a
 `poly:`, an `around:`) goes only to an instance whose coverage holds all of it, and if none of the
 instances it was given does, the bake stops with a `BakeFault` naming the instance, its regions and
 how much of the query is outside them. A cached answer whose sidecar says it came from an instance
@@ -119,12 +119,12 @@ a new release, which is what the import exists to avoid; it stays the fallback.
 # PREVIEW first (the recipe in project-worldeditor-settings-deploy): only the ConfigMap, the
 # sidecar, its volume and OVERPASS_DIFF_PREPROCESS should differ
 helm get manifest overpass -n default > /tmp/now.yaml
-helm template overpass tools/overpass/chart -n default --set regions.enabled=true > /tmp/next.yaml
+helm template overpass deploy/helm/overpass -n default --set regions.enabled=true > /tmp/next.yaml
 diff /tmp/now.yaml /tmp/next.yaml
-helm upgrade overpass tools/overpass/chart -n default --set regions.enabled=true
+helm upgrade overpass deploy/helm/overpass -n default --set regions.enabled=true
 kubectl -n default logs deploy/overpass -c regions      # "started: /db/regions …"
 # the continents: their values files name their own primary region
-helm upgrade overpass-na tools/overpass/chart -n default -f tools/overpass/values-na.yaml --set regions.enabled=true
+helm upgrade overpass-na deploy/helm/overpass -n default -f deploy/helm/overpass/values-na.yaml --set regions.enabled=true
 ```
 
 `regions.primary` names the region the instance was built from (its outline is what deletes are
@@ -135,7 +135,7 @@ chart adds may not arrive.
 ## Deploy
 
 ```bash
-helm upgrade --install overpass tools/overpass/chart -n default
+helm upgrade --install overpass deploy/helm/overpass -n default
 kubectl logs -l app=overpass -f            # init: download → osmium convert → clone
 ```
 
@@ -148,8 +148,8 @@ Public URL: `https://overpass.richard-siomporas.basedweights.com/api/interpreter
 ## Point the bake at it
 
 ```bash
-export CORRIDOR_OVERPASS_URL=https://overpass.richard-siomporas.basedweights.com/api/interpreter
-python -m corridor fetch <slug>
+export PIEDMONT_OVERPASS_URL=https://overpass.richard-siomporas.basedweights.com/api/interpreter
+python -m piedmont_bake fetch <slug>
 ```
 
 `osm.py` puts that list first and keeps the public mirrors as the fallback, which matters because
@@ -164,7 +164,7 @@ planet. Geofabrik publishes `.osm.pbf` only, so `preprocess` converts it to the 
 image expects with `osmium cat`. Updates then come from `diffUrl`, so pinning the snapshot costs
 nothing.
 
-Maryland (204 MB) covers every corridor in the Gambrills / Crownsville / Davidsonville /
+Maryland (204 MB) covers every road band in the Gambrills / Crownsville / Davidsonville /
 Bowie / Frederick / Sideling sets. To cover the California, Oregon and Maine sites, point
 `planetUrl` and `diffUrl` at `north-america/us-...` and raise `storage.size` to ~400Gi; that
 init runs for hours, so do it deliberately. Re-initialising means deleting the PVC — the container

@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import * as V from './vocab.mjs'
 
-const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../apps/corridor/src')
+const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../apps/game/src')
 const read = (f) => readFileSync(path.join(SRC, f), 'utf8')
 /** the string literals of `export const NAME = [...]` (or `: X[] = [...]`) */
 function list(file, name) {

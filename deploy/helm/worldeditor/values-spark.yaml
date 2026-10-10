@@ -5,8 +5,8 @@
 # sits in 96 GB of HBM and the host has 573 GiB of its own, and on a Spark a resident model and a
 # running bake are spending the same 128.
 #
-#   node tools/worldeditor/preflight.mjs --profile spark      # before installing anything
-#   helm install worldeditor tools/worldeditor/chart -f tools/worldeditor/chart/values-spark.yaml
+#   node services/worldeditor/preflight.mjs --profile spark      # before installing anything
+#   helm install worldeditor deploy/helm/worldeditor -f deploy/helm/worldeditor/values-spark.yaml
 #
 # WHAT HAS TO BE DECIDED LOCALLY, because no default can be right:
 #
@@ -14,7 +14,7 @@
 #     so it must be ReadWriteMany. A Spark cluster does not come with Ceph; the usual answers are
 #     an NFS CSI driver against one node's NVMe, or Longhorn with RWX enabled. `local-path`, which
 #     is what k3s gives you, is ReadWriteOnce and will fail the moment a bake starts.
-#   * the image tags. `latest` with IfNotPresent silently re-runs a cached old image — it has cost
+#   * the image tags. `latest` under any pull policy but Always silently re-runs a cached old image — it has cost
 #     two identical diagnoses already — so pin `sha-`.
 #
 # Everything we publish is already linux/arm64, so nothing needs rebuilding: gh200-1 is Grace Arm
@@ -57,7 +57,7 @@ ingress:
   enabled: true
   annotations:
     # must exceed uploadChunkMiB with room; preflight checks it
-    # 0 = no nginx body check; the service's own WORLDEDITOR_ARCHIVE_MAX_MB is the one limit
+    # 0 = no nginx body check; the service's own PIEDMONT_EDITOR_ARCHIVE_MAX_MB is the one limit
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     # a chapter upload holds a connection for as long as a chunk takes on a home connection
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"

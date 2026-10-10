@@ -14,7 +14,7 @@
 //
 // PURE, so the precedence is a thing a test can state. The DOM lives at the two call sites.
 
-const KEY = 'corridor.worldedit.nav.v1'
+const KEY = 'piedmont.worldedit.nav.v1'
 
 export interface Nav {
   mode: string | null

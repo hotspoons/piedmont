@@ -1,6 +1,6 @@
 // What the grass costs the RENDERER, as an A/B: the same frames with the grass shown and hidden.
 //
-//   PORT=5201 SLUG=bowie-racetrack-rd W=640 H=400 N=6 node probes/corridor-grassrender.mjs
+//   PORT=5201 SLUG=bowie-racetrack-rd W=640 H=400 N=6 node probes/grassrender.mjs
 //
 // This box has no GPU, so absolute frame time is swiftshader's, not Rich's card's. The DIFFERENCE
 // between "grass shown" and "grass hidden" on identical frames is still a real, ordered signal:
@@ -22,12 +22,12 @@ page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
 // the app picks its site from location.hash; a new bake reorders index.json, so assert it
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug && !!window.corridor.site.grass, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug && !!window.piedmont.site.grass, SLUG, { timeout: 300000 })
 
 console.log(JSON.stringify(await page.evaluate(async ({ n }) => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const grass = site.grass
-  const camera = window.corridor.camera
+  const camera = window.piedmont.camera
   // stand on the road looking down it, the driver's view, and let the cache fill before timing
   const p = site.spineAt(site.manifest.spine.photo_s)
   camera.position.set(p.pos.x, p.pos.y + 1.6, p.pos.z)

@@ -14,12 +14,12 @@ const page = await browser.newPage({ viewport: { width: 900, height: 600 } })
 await page.route('**/@vite/client', (r) => r.abort())
 page.on('pageerror', (e) => console.log('pageerror:', e.message))
 await page.goto(`http://localhost:5207/#${slug}`, { waitUntil: 'load' })
-await page.waitForFunction(() => !!window.corridor?.site?.updateNear, null, { timeout: 300000 })
+await page.waitForFunction(() => !!window.piedmont?.site?.updateNear, null, { timeout: 300000 })
 await page.waitForTimeout(1500)
 
 for (const fade of fades.length ? fades : [0, 30]) {
   const r = await page.evaluate(async ({ fade }) => {
-    const { site, tune, THREE } = window.corridor
+    const { site, tune, THREE } = window.piedmont
     tune.set('TREE_FADE_M', fade)
     const imp = site.layers.trees.getObjectByName('impostors')
     if (!imp) return { err: 'no impostor mesh (site built without a renderer?)' }

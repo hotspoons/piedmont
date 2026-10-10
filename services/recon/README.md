@@ -1,8 +1,8 @@
 # recon — image set in, 3D asset out
 
-A service around [TRELLIS.2](https://github.com/microsoft/TRELLIS.2) for the fighter pipeline:
+A service around [TRELLIS.2](https://github.com/microsoft/TRELLIS.2), built for the arcade's fighter pipeline and used here by the asset service:
 POST a character's views, get a mesh back. Step 1 of
-[`tools/photogrammetry/README.md`](../photogrammetry/README.md), packaged so it can be called
+the arcade's [`tools/photogrammetry/README.md`](https://github.com/hotspoons/siomporas-arcade/blob/main/tools/photogrammetry/README.md), packaged so it can be called
 rather than babysat.
 
 ```bash
@@ -98,7 +98,7 @@ helm upgrade --install recon ./chart -n default
 `https://recon.richard-siomporas.basedweights.com`. It moved there from the four-node bradley
 cluster on 2026-09-20; the old deployment there is untouched but no longer the one to use.
 
-**The image is pinned** to `ghcr.io/hotspoons/recon:sha-da4b51b`, the multi-arch build the GitHub
+**The image is pinned** to `ghcr.io/hotspoons/piedmont-recon:sha-da4b51b`, the multi-arch build the GitHub
 workflow made from the last commit that touched this directory. The Harbor `sandbox/recon` build
 from the same day is equivalent but Harbor is a work registry — see `values.yaml`. A new CI build
 lands as a new `sha-` tag; bump `image.tag` to move to it, never `latest`.

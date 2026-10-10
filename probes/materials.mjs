@@ -7,11 +7,11 @@
 // blow away old copies until an explicit save operation happens!)"
 //
 // The draft rules — that a regeneration writes nothing live and that saving keeps what it replaced
-// — are checked in tools/assetsvc/materials.test.mjs, where they can be tested without a GPU. What
+// — are checked in services/assetsvc/materials.test.mjs, where they can be tested without a GPU. What
 // is checked HERE is the part that only exists in a browser: that the mode control actually changes
 // what is on the stage, and that editing a prompt is a draft until it is saved.
 //
-//   node probes/corridor-materials.mjs
+//   node probes/materials.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

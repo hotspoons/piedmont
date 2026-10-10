@@ -1,4 +1,4 @@
-# From a corridor to a world: the scale plan
+# From a road band to a world: the scale plan
 
 **Status:** plan, 2026-10-06. A quick map of what stands between the current bake and a world at
 arbitrary size, and the order to do it. It is a pointer, not a spec: the detail lives in
@@ -42,7 +42,7 @@ Both are in `PLAN-SHARDED-BAKE.md`; neither needs a design, they need doing.
    fixed 8 km.
 2. **Per-shard export**. Shards write their own tiles, pyramid and vectors; the finalizer unions.
    Drop the merged root rasters from the finalizer entirely.
-3. **A world is not a corridor** (`PLAN-OPEN-WORLD.md`). Proximity to a road must stop deciding
+3. **A world is not a road band** (`PLAN-OPEN-WORLD.md`). Proximity to a road must stop deciding
    trees and ground textures: bake the full network's landcover, not a 150 m buffer of it. This is
    what makes the space between roads look like a place rather than a seam.
 4. **Coverage at the source** (`OVERPASS-PLANET.md`). A world needs OSM everywhere; today an

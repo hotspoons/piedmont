@@ -3,7 +3,7 @@
 // WHY NOT A GENERIC PROXY. The browser never sends Overpass QL. This module owns two queries — the
 // drivable network in a box, and a place-name search — and builds them itself. A page that could
 // post arbitrary QL could put our own extract on the floor (which is what happened to the public
-// mirrors on 2026-09-21 and is the reason tools/overpass exists), and the cache key would be
+// mirrors on 2026-09-21 and is the reason services/overpass exists), and the cache key would be
 // whatever a page felt like, so nothing would ever hit.
 //
 // THE CACHE IS THE BAKE'S CACHE. `osm.py` keys on sha1(query)[:16] under <data>/cache/overpass/,
@@ -16,7 +16,7 @@
 // relative to geodetic north by the grid convergence (1.06° at Crofton), so its geodetic bounding
 // box is LARGER than the geodetic square this module draws, by about R·(cosθ + sinθ − 1). So the
 // preview is CONSERVATIVE in every direction — everything it shows is inside what the bake takes,
-// and the bake adds a margin. Measured against the real `corridor.geo.Frame`, by probe.mjs
+// and the bake adds a margin. Measured against the real `piedmont_bake.geo.Frame`, by probe.mjs
 // `--bbox`, which fails if any margin is negative:
 //
 //   crofton-triangle   -76.683, 39.004  R 2600   EPSG 32618   W +47.6  S +51.2  E +45.8  N +50.4 m
@@ -41,7 +41,7 @@ export const PUBLIC_MIRRORS = [
 
 // A public mirror answers 406 to a request with no User-Agent, and the polite thing on a shared
 // free service is to say who is asking. Same string osm.py sends.
-const UA = 'apex-conduit corridor (github.com/hotspoons; road-corridor extraction for a driving game)'
+const UA = 'piedmont (github.com/hotspoons/piedmont; road-band extraction for a driving game)'
 
 /** Every highway kind a car can drive on. Copied from `network.py` DRIVABLE — keep them equal. */
 export const DRIVABLE = [
@@ -119,7 +119,7 @@ export class Overpass {
      * success with nothing in it. The rotation below turns on an exception or a non-2xx and
      * neither fires, so a regional instance placed first silently reports that Italy has no roads
      * and the editor draws an empty map over the Alps. Measured by the overpass lane on
-     * 2026-09-22; see docs/corridor/OVERPASS-PLANET.md.
+     * 2026-09-22; see docs/OVERPASS-PLANET.md.
      *
      * So a regional upstream declares what it holds and is SKIPPED for a box it does not contain.
      * Nothing is inferred: an upstream with no declared coverage is assumed to hold everything,
@@ -282,7 +282,7 @@ export class Overpass {
     }
     if (this.inflight.has(file)) return this.inflight.get(file)
     const p = (async () => {
-      if (!this.configured) throw Object.assign(new Error('no Overpass upstream configured (WORLDEDITOR_OVERPASS_URL)'), { status: 503 })
+      if (!this.configured) throw Object.assign(new Error('no Overpass upstream configured (PIEDMONT_EDITOR_OVERPASS_URL)'), { status: 503 })
       const until = Date.now() + this.deadlineMs
       const tried = []
       let last = null
@@ -442,7 +442,7 @@ export class Overpass {
  * per-upstream configuration in one environment variable without inventing a second one.
  *
  * SLASHES INSIDE THE BOX, NOT COMMAS, and that is not taste. The list of upstreams is itself
- * comma-separated (matching `CORRIDOR_OVERPASS_URL`), so a comma in the box splits it into four
+ * comma-separated (matching `PIEDMONT_OVERPASS_URL`), so a comma in the box splits it into four
  * fragments: the first became a URL with a truncated fragment and the other three became
  * "upstreams" called `-79.5`, `39.8` and `-75.0`. The coverage silently did not exist and the
  * rotation tried to parse a number as a URL. Caught by the probe asking `/api/config` what
@@ -456,7 +456,7 @@ export class Overpass {
  * Which upstreams can answer for this box, in the order to try them, with the fences stripped.
  *
  * FOR HANDING TO SOMETHING THAT DOES NOT UNDERSTAND FENCES. The bake does not: `osm.py` splits
- * `CORRIDOR_OVERPASS_URL` on commas and posts to the first entry, and a fragment is never sent on
+ * `PIEDMONT_OVERPASS_URL` on commas and posts to the first entry, and a fragment is never sent on
  * the wire — so a Maryland world went to the EUROPE extract, which answered 200 with zero
  * elements and the bake raised "no ways for roads [] within 1219 m". A silent empty, from a
  * mirror that was working perfectly and had simply never heard of Maryland.

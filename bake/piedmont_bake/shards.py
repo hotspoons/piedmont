@@ -286,7 +286,7 @@ def merge_lidar(parts: list[tuple[int, Path]], dest: Path, plan: dict, primary_l
     the tile's centre) is the base; a pixel it has no point in (dsm nodata) takes all six layers
     from the next shard that has one there.
 
-    corridor.laz. `surface.measure` reads the merged cloud for the primary's lane intensity along
+    road_band.laz. `surface.measure` reads the merged cloud for the primary's lane intensity along
     its whole length, and `rock` for ground intensity. A first-writer-wins copy kept one shard's
     file — which held the whole primary only because every shard used to read all of it. Now each
     shard contributes the near-road points of the PRIMARY (within BAND_M of it) that lie in its own
@@ -341,7 +341,7 @@ def merge_lidar(parts: list[tuple[int, Path]], dest: Path, plan: dict, primary_l
             with rasterio.open(tdir / f"{name}.{kind}.tif", "w", **prof[kind]) as w:
                 w.write(layers[kind], 1)
     if primary_line is not None:
-        stats["near_points"] = _merge_primary_cloud(parts, ldir / "corridor.laz", plan, primary_line)
+        stats["near_points"] = _merge_primary_cloud(parts, ldir / "road_band.laz", plan, primary_line)
     return stats
 
 
@@ -360,7 +360,7 @@ def _merge_primary_cloud(parts: list[tuple[int, Path]], out: Path, plan: dict, p
     tmp = out.with_name(out.stem + ".part.laz")  # laspy compresses by the extension
     try:
         for idx, part in parts:
-            laz = part / "lidar" / "corridor.laz"
+            laz = part / "lidar" / "road_band.laz"
             if not laz.exists() or laz.stat().st_size == 0:
                 continue
             with laspy.open(laz) as r:

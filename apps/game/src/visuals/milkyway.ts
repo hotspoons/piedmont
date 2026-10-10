@@ -7,7 +7,7 @@
 // So it is the real thing now: NASA's Deep Star Maps 2020, the Milky Way layer, a 4096 x 2048
 // equirectangular image in celestial coordinates -- dust lanes, the bulge over Sagittarius, both
 // Magellanic Clouds. NASA removed the bright Hipparcos/Tycho stars from this layer on purpose, so
-// it layers under this renderer's own catalogue stars instead of doubling them. `tools/sky/
+// it layers under this renderer's own catalogue stars instead of doubling them. `pipelines/sky/
 // ingest.mjs` decodes the OpenEXR, turns it into this file's equatorial convention, black-points
 // it and writes the committed JPEG; see that file for the source and the credit.
 //

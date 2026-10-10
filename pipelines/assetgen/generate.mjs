@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // A spec in `assets.json`, end to end: prompt → flux.2-dev → keyed cut-out → TRELLIS.2 → .glb.
 //
-//   node tools/assetgen/generate.mjs --id hero-prototype
-//   node tools/assetgen/generate.mjs --class vehicle --dry-run     # the prompts, and nothing spent
-//   node tools/assetgen/generate.mjs --id traffic-van --views 3    # profile and back too, by edit
+//   node pipelines/assetgen/generate.mjs --id hero-prototype
+//   node pipelines/assetgen/generate.mjs --class vehicle --dry-run     # the prompts, and nothing spent
+//   node pipelines/assetgen/generate.mjs --id traffic-van --views 3    # profile and back too, by edit
 //
 // Everything lands in `ext/assetgen/<id>/` — gitignored — and nothing here writes into a game.
 // Promoting an asset is a deliberate second step: copy the `.glb` into the owning game's `public/`,
@@ -46,7 +46,7 @@
 // `--flank left`.
 //
 // KEYING. Our chroma key beats anything TRELLIS would infer, and the service keeps an alpha channel
-// when it finds one (`tools/recon-service/app/main.py`), so a keyed cut-out skips its background
+// when it finds one (`services/recon/app/main.py`), so a keyed cut-out skips its background
 // remover entirely. It keys on green DOMINANCE, not on distance from a sampled colour — see
 // `keyChroma` for what that buys and what it cannot fix. The ink coverage is reported after every
 // view, because a key that ate the subject and a key that kept the backdrop both look fine right up
@@ -625,8 +625,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const klass = flag('class')
   if ((!id && !klass && !has('audit') && !has('rekey') && !has('recon') && !has('make-bible')) || has('help')) {
     console.log(`
-  node tools/assetgen/generate.mjs --id hero-prototype [options]
-  node tools/assetgen/generate.mjs --class vehicle --dry-run
+  node pipelines/assetgen/generate.mjs --id hero-prototype [options]
+  node pipelines/assetgen/generate.mjs --class vehicle --dry-run
 
     --id ID          one asset out of assets.json
     --class CLASS    every asset of a class: vehicle, architecture, signage, props, nature

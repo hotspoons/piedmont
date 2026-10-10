@@ -14,7 +14,7 @@
 // canvas IS the viewport and the bug cannot reproduce. It only appears where the canvas is one
 // pane of two.
 //
-//   node probes/corridor-areas.mjs [world-slug]
+//   node probes/areas.mjs [world-slug]
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'
@@ -34,7 +34,7 @@ await Promise.all([
 ])
 const manifest = await page.evaluate(async (w) => (await fetch(`/sites/${w}/web/manifest.json`)).status, WORLD)
 if (manifest === 404) { console.log(`\nSKIP: ${WORLD} has no baked site`); await browser.close(); process.exit(0) }
-await page.waitForFunction(() => !!window.corridor?.areas, null, { timeout: 120000 })
+await page.waitForFunction(() => !!window.piedmont?.areas, null, { timeout: 120000 })
 await page.evaluate(() => [...document.querySelectorAll('#se-rail button')].find((b) => /^areas$/i.test(b.textContent.trim()))?.click())
 await page.waitForTimeout(1200)
 
@@ -50,7 +50,7 @@ if (box.w >= 1500 && box.h >= 950) fail.push('the canvas fills the window here �
 // should drive the control a person can see.
 await page.evaluate(() => [...document.querySelectorAll('#se-inspector button')].find((b) => /draw|new area/i.test(b.textContent))?.click())
 await page.waitForTimeout(700)
-const drawing = await page.evaluate(() => window.corridor?.areas?.drawing)
+const drawing = await page.evaluate(() => window.piedmont?.areas?.drawing)
 say('drawing?', drawing)
 if (!drawing) fail.push('the panel offers no way to start drawing an area')
 
@@ -62,7 +62,7 @@ const after = await page.evaluate(() => window.__we?.mode?.())
 say('n kept us in Place', { before, after })
 if (before === 'place' && after !== 'place') fail.push('pressing n while drawing left the Place mode')
 const orbit = await page.evaluate(() => {
-  const o = window.corridor.orbit ?? window.__ed?.orbit
+  const o = window.piedmont.orbit ?? window.__ed?.orbit
   return o ? { rotate: o.enableRotate, pan: o.enablePan, zoom: o.enableZoom } : null
 })
 say('orbit while drawing', orbit ?? '(no handle)')
@@ -86,7 +86,7 @@ for (const [px, py] of spots) await click(px, py)
 // project each stored vertex back to the screen with the page's own camera: if the ray was right,
 // the pixel comes back where the mouse was
 const landed = await page.evaluate(({ box }) => {
-  const c = window.corridor
+  const c = window.piedmont
   const draw = c.areas.drawPoints?.() ?? null
   if (!draw) return null
   // a Vector3 without the THREE namespace: clone one the page already has. `window.THREE` is not
@@ -115,7 +115,7 @@ if (landed && landed.length !== spots.length) {
 if (!landed) {
   // fall back to the raw document coordinates and a coarse sanity check: three clicks spread
   // across the canvas must not produce three points within a few metres of each other
-  const pts = await page.evaluate(() => window.corridor.areas.drawPoints?.() ?? null)
+  const pts = await page.evaluate(() => window.piedmont_bake.areas.drawPoints?.() ?? null)
   say('fallback — raw points', pts)
   if (!pts || pts.length !== 3) fail.push(`three clicks produced ${pts ? pts.length : 'no'} vertices`)
 } else {
@@ -137,7 +137,7 @@ if (!landed) {
 await page.keyboard.press('Enter')
 await page.waitForTimeout(900)
 const area = await page.evaluate(() => {
-  const a = window.corridor.areas.doc.areas.at(-1)
+  const a = window.piedmont_bake.areas.doc.areas.at(-1)
   return a ? { id: a.id, polygon: a.polygon.map(([x, y]) => [x, y]) } : null
 })
 say('closed the ring', area ? `${area.id}, ${area.polygon.length} vertices` : 'no area')
@@ -146,9 +146,9 @@ else {
   // the camera is free again now the draw is over, so a drag has to be the handle's, not the
   // camera's — which is exactly what a wrong ray could not tell apart
   const target = [box.x + box.w * 0.45, box.y + box.h * 0.62]
-  const wantAt = await page.evaluate(({ x, y }) => window.corridor.groundAtPixel(x, y), { x: target[0], y: target[1] })
+  const wantAt = await page.evaluate(({ x, y }) => window.piedmont.groundAtPixel(x, y), { x: target[0], y: target[1] })
   const from = await page.evaluate(({ box }) => {
-    const c = window.corridor
+    const c = window.piedmont
     const [x, y] = c.areas.doc.areas.at(-1).polygon[0]
     const v = c.camera.position.clone()
     v.set(x, c.site.groundAt(x, -y) ?? 0, -y)
@@ -161,8 +161,8 @@ else {
   await page.mouse.up()
   await page.waitForTimeout(700)
 
-  const moved = await page.evaluate(() => window.corridor.areas.doc.areas.at(-1).polygon[0])
-  const cameraMoved = await page.evaluate(() => window.corridor.camera.position.toArray())
+  const moved = await page.evaluate(() => window.piedmont_bake.areas.doc.areas.at(-1).polygon[0])
+  const cameraMoved = await page.evaluate(() => window.piedmont.camera.position.toArray())
   say('pin dragged to', { want: wantAt && [Math.round(wantAt.x), Math.round(wantAt.y)], got: moved.map(Math.round) })
   if (!wantAt) fail.push('the drag target is not over the ground')
   else {

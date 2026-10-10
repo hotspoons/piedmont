@@ -1,7 +1,7 @@
 // What a vehicle IS, as a document — and the arithmetic that turns it into something the engine can
 // drive.
 //
-// docs/corridor/PLAN-VEHICLES-ACTORS.md, from Rich: "Vehicles should be a combination of a vehicle
+// docs/PLAN-VEHICLES-ACTORS.md, from Rich: "Vehicles should be a combination of a vehicle
 // model, a rig (if we defined it), and vehicle physics dynamics that will impact each game type
 // differently, but roll stiffness, grip front/rear/side to side, other things like this - plus we
 // want to be able to assign an engine simulator setup and local config for the audio, as well as
@@ -286,7 +286,7 @@ const HERO_HANDLING: Record<string, number> = {
  * `mass` and `cgHeight` left at zero fail invisibly and late. The UI's job is to say these are
  * defaults; this table's job is to make them defensible ones.
  *
- * The `hero-car` row is the Kestrel-ish body the corridor already draws (4.4 × 1.9 m) with the
+ * The `hero-car` row is the Kestrel-ish body the road band already draws (4.4 × 1.9 m) with the
  * mass and CG of an ordinary saloon.
  */
 export const VEHICLE_TEMPLATES: Record<string, VehicleDoc> = {
@@ -708,7 +708,7 @@ function blend(a: DriveProfile, b: DriveProfile, t: number): DriveProfile {
 }
 
 /**
- * What the drivetrain means for the corridor's engine-sound knobs.
+ * What the drivetrain means for the game's engine-sound knobs.
  *
  * `enginesound.ts` drives a voice from `rpm` and `pedal` alone, and works out rpm from road speed
  * through ENGINE_GEAR_* and ENGINE_FINAL_DRIVE. This is the same numbers, per vehicle, so a bus

@@ -69,7 +69,7 @@ above the treeline — and the way to know the difference is the Chamonix window
 pyramid reading 13.6 m mean with 82.5% of pixels above 2 m. A single point sample could not have
 told those apart.
 
-Built as `corridor/canopy.py`, with `python -m corridor.canopy <slug>` to add a canopy layer to a
+Built as `piedmont_bake/canopy.py`, with `python -m piedmont_bake.canopy <slug>` to add a canopy layer to a
 site baked without lidar. Verified with the control this file already warned about: the Stelvio
 reads 0.0 m over a 600 m window (correct — the pass is above the treeline) while Trafoi, in the
 same tile, reads 4.6 m mean and 29.0 m max with 45% of pixels above 2 m.
@@ -95,7 +95,7 @@ heights are closer (mean −1.71 m) but still only 38% within 3 m.
 **Which one is right is NOT established here.** Meta/WRI is a global model predicted from imagery
 and calibrated against GEDI and ALS, so smearing canopy across suburban gaps is a plausible
 failure; equally, `lidar.py`'s vegetation-minus-ground thresholds could be under-reporting, and
-south-mountain-i70 at 3.5% tree cover for a wooded Maryland highway corridor does look low. That
+south-mountain-i70 at 3.5% tree cover for a wooded Maryland highway the canopy does look low. That
 needs ground truth to settle and did not get it.
 
 The actionable part does not depend on settling it: **swapping the US CHM for this would visibly

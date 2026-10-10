@@ -10,7 +10,7 @@
 //    opacity or alpha input."
 //
 // THERE IS NO CLASSIFIER HERE, AND THAT IS THE POINT. Two earlier attempts tried to work out which
-// texels were glass — the first from colour with a height guard (`tools/assetlib/glass.mjs`: it
+// texels were glass — the first from colour with a height guard (`pipelines/assetlib/glass.mjs`: it
 // called 29.65% of one car's triangles glass, the roof included), the second from a threshold on
 // the alpha plus a blob filter. Both were wrong the same way: that alpha is the reconstruction's
 // OPACITY, not a window mask. It is low wherever the model is see-through AND wherever the field

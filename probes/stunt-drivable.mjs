@@ -1,7 +1,7 @@
 // Can you DRIVE the loop — in the game, with no flags, the way Rich opens it?
 //
 // Rich, 2026-09-29: *"stunts still not drivable"* — after a probe had already shown the trimesh
-// collider existing and a ray hitting it. Both were true. `probes/corridor-stunt-drive.mjs` loads
+// collider existing and a ray hitting it. Both were true. `probes/stunt-drive.mjs` loads
 // the viewer with `?phys=1`; the game does not. `PHYS_ENABLED` is 0, so there was no physics world
 // for a fixture's trimesh to go into, and the default car follows `groundAt` — one height per
 // column, which cannot describe a surface that is above itself.
@@ -12,7 +12,7 @@ import { chromium } from 'playwright'
 import { writeFileSync, unlinkSync, existsSync } from 'node:fs'
 
 const SLUG = process.env.SLUG ?? 'bowie-racetrack-rd'
-const FILE = `/workspaces/apex-conduit/tools/corridor/data/sites/${SLUG}/stunts.json`
+const FILE = `/workspaces/piedmont/data/sites/${SLUG}/stunts.json`
 const VIEWER = process.env.VIEWER ?? 'http://127.0.0.1:5185/index.html'
 /*
  * THE PIECE THIS DRIVES BY DEFAULT.
@@ -22,7 +22,7 @@ const VIEWER = process.env.VIEWER ?? 'http://127.0.0.1:5185/index.html'
  * stunt assist holds the car over the top). This probe is about the fixture being a road: driven
  * into, driven over, driven off; `MPS=30` holds an entry speed.
  *
- * `PIECE=loop node probes/corridor-stunt-drivable.mjs` runs the other one.
+ * `PIECE=loop node probes/stunt-drivable.mjs` runs the other one.
  */
 const PIECE = process.env.PIECE ?? 'hump'
 
@@ -132,7 +132,7 @@ check(car.model === 'RapierCar', `and the car is the one that can hit a trimesh 
 const SUSP = process.env.SUSP === '1'
 if (SUSP) {
   const applied = await p.evaluate(async () => {
-    const { profile } = await import('/@fs/workspaces/apex-conduit/packages/engine/src/physics/profiles.ts')
+    const { profile } = await import('/@id/@apex/engine/physics/profiles')
     const p2 = profile('stunts', { suspensionTravel: 0.6, suspensionRest: 0.55, maxSuspensionForce: 120000, compression: 0.6, relaxation: 0.85 })
     window.__apex.car.setProfile(p2)
     return { travel: window.__apex.car.profile.suspensionTravel, force: window.__apex.car.profile.maxSuspensionForce }
@@ -146,14 +146,14 @@ if (SUSP) {
  */
 for (const [k, v] of [['STUNT_ALIGN', process.env.ALIGN], ['STUNT_PULL', process.env.PULL], ['STUNT_AHEAD_S', process.env.AHEAD]]) {
   if (v === undefined) continue
-  const ok = await p.evaluate(([name, value]) => window.corridor?.tune?.set?.(name, Number(value)) ?? false, [k, v])
+  const ok = await p.evaluate(([name, value]) => window.piedmont?.tune?.set?.(name, Number(value)) ?? false, [k, v])
   console.log(`knob ${k} = ${v} ${ok ? '' : '(REFUSED)'}`)
 }
 const assistKnobs = await p.evaluate(() => ({
-  assist: window.corridor?.tune?.get?.('STUNT_ASSIST'),
-  align: window.corridor?.tune?.get?.('STUNT_ALIGN'),
-  pull: window.corridor?.tune?.get?.('STUNT_PULL'),
-  ahead: window.corridor?.tune?.get?.('STUNT_AHEAD_S'),
+  assist: window.piedmont?.tune?.get?.('STUNT_ASSIST'),
+  align: window.piedmont?.tune?.get?.('STUNT_ALIGN'),
+  pull: window.piedmont?.tune?.get?.('STUNT_PULL'),
+  ahead: window.piedmont?.tune?.get?.('STUNT_AHEAD_S'),
 }))
 console.log('assist', JSON.stringify(assistKnobs))
 
@@ -351,7 +351,7 @@ const run = await p.evaluate(async ({ from, TARGET }) => {
         ...contacts(car),
         assists,
         /*
-         * WHAT ELSE IS STANDING HERE. A stunt fixture is dropped into a wooded corridor and does
+         * WHAT ELSE IS STANDING HERE. A stunt fixture is dropped into a wooded road band and does
          * NOT clear the trees under it — and a trunk has a vertical face, which is the one shape
          * that stops a car dead at any speed, from any tessellation, whatever the friction. That
          * would explain a stop in the same place through six different fixes.
@@ -359,13 +359,13 @@ const run = await p.evaluate(async ({ from, TARGET }) => {
         trees: (ap.site.treesNear?.(car.pos.x, car.pos.z, 6) ?? []).length,
         treesWide: (ap.site.treesNear?.(car.pos.x, car.pos.z, 15) ?? []).length,
         /*
-         * EVERYTHING SOLID WITHIN REACH, not just the trees. A corridor is also full of fence
+         * EVERYTHING SOLID WITHIN REACH, not just the trees. A road band is also full of fence
          * posts, power poles, mailboxes and signs, all of which get colliders and none of which a
          * tree-density area touches. Enumerated rather than guessed at: the world is asked what is
          * actually there, by shape, so the answer cannot be another theory.
          */
         /*
-         * EVERYTHING SOLID WITHIN REACH, not just the trees. A corridor is also full of fence
+         * EVERYTHING SOLID WITHIN REACH, not just the trees. A road band is also full of fence
          * posts, power poles, mailboxes and signs: all get colliders, and a tree-density area
          * touches none of them. The world is asked what is actually there rather than offered
          * another theory.

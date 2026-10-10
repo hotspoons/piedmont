@@ -1,25 +1,25 @@
 # assetsvc — the backend that orchestrates asset generation.
 #
-#   helm upgrade --install assetsvc tools/assetsvc/chart -n default --set enabled=true
+#   helm upgrade --install assetsvc deploy/helm/assetsvc -n "$NAMESPACE" --set enabled=true
 #
-# IT IS OFF BY DEFAULT, deliberately. Nothing in corridor requires it: the viewer and the editor
+# IT IS OFF BY DEFAULT, deliberately. Nothing in the game requires it: the viewer and the editor
 # work completely without one, and the editor's asset panel says "no service" rather than failing.
 # Generation costs GPU time on a shared cluster, so it is something you turn on when you want it.
 enabled: false
 
 image:
-  # Built from tools/assetsvc/Dockerfile. No CUDA, no weights — the GPUs are in `recon` and the
+  # Built from services/assetsvc/Dockerfile. No CUDA, no weights — the GPUs are in `recon` and the
   # flux deployment and this only calls them, so it is a small node image that builds for both
   # architectures in a minute.
-  repository: ghcr.io/hotspoons/assetsvc
-  # `latest` MOVES, and with IfNotPresent a node that has ever pulled it keeps serving its cache —
+  repository: ghcr.io/hotspoons/piedmont-assetsvc
+  # `latest` MOVES, and under any pull policy but Always a node that has ever pulled it keeps serving its cache —
   # so a rollout restarts the OLD image and the fix you just published never lands. That cost the
   # recon chart two identical diagnoses. Pin to a sha- tag for a reproducible deploy.
   tag: "latest"
   pullPolicy: Always
 
 # The Service and Deployment are called `assetsvc`, full stop — not `assetsvc-assetsvc`. Anything
-# in the cluster addresses it as http://assetsvc.default.svc, and the README and the editor's
+# in the release's namespace addresses it as http://assetsvc, and the README and the editor's
 # default URL both say so. (The recon chart learned this one first.)
 fullnameOverride: assetsvc
 
@@ -39,14 +39,16 @@ models:
     flux2-dev:
       kind: image
       model: flux.2-dev
-      # high-brine's flux.2-dev on gh200-1. `kubectl get svc -n default | grep flux2` if it moves.
+      # high-brine's flux.2-dev on gh200-1. `kubectl get svc -n "$NAMESPACE" | grep flux2` if it moves.
+      # The AI endpoints are NOT part of a piedmont release: they are reached by URL, so they can be
+      # outsourced. On gh200-1 they live in the `default` namespace, hence the fully-qualified names.
       url: http://high-brine-high-brine-flux2-dev-lws-api.default.svc
       # dev takes edit attachments under `image`; klein wants `image[]`. Configuration, not a branch.
       field: image
       timeoutMs: 300000
     trellis2:
       kind: mesh
-      # tools/recon-service. Anything IN the cluster should use the Service and skip the ingress.
+      # services/recon. Anything IN the cluster should use the Service and skip the ingress.
       url: http://recon.default.svc
       pollMs: 3000
       timeoutMs: 1800000

@@ -13,7 +13,7 @@ traffic … My goal is 60fps solid, most of what is left is CPU, some GPU."*
 ## How to repeat a run
 
 ```sh
-APEX_BRIDGE=apex-dev just corridor-remote          # the app on :5186 against the deployed editor
+APEX_BRIDGE=apex-dev just remote          # the app on :5186 against the deployed editor
 APEX_ORIGIN=http://localhost:5186 node scripts/bridge.mjs --timeout 80000 --file rigrun.js
 ```
 
@@ -22,10 +22,10 @@ Turn `SCREEN_WAKE_LOCK` on first (see `AGENTS.md`). What to read:
 
 - `apex.framePerf` — the last frame's CPU by section of `frame()`: weapons, traffic, game,
   waypoint, physics, dents, sky, world, map, shading, render.
-- `corridor.site.nearPerf` — `world` split by layer: trees (plant / near / far / shadow), grass,
+- `piedmont.site.nearPerf` — `world` split by layer: trees (plant / near / far / shadow), grass,
   water, stream, pyramid, the LOD pass, grading.
-- `corridor.physics.stats()` — `stepMs`, `buildMs`, steps, bodies.
-- `corridor.site.grass.perf` — `genMs`, `asmMs`, tiles made.
+- `piedmont.physics.stats()` — `stepMs`, `buildMs`, steps, bodies.
+- `piedmont.site.grass.perf` — `genMs`, `asmMs`, tiles made.
 - `apex.governor` — the frame governor's scale and the last frame's CPU.
 - `apex.perfMeter.read()` — the panel's percentiles.
 
@@ -189,7 +189,7 @@ branch unit's 150 ms of wall time per 25 ms of work is awaits inside the unit, n
 
 ### What landed: the graded ground raster (2026-10-09, branch `agent/graded-dem`)
 
-The first item is done. `tools/corridor/corridor/grade.py` is `scene.ts`'s `gradedHeight` read out
+The first item is done. `bake/piedmont_bake/grade.py` is `scene.ts`'s `gradedHeight` read out
 line by line into numpy — the station field every 5 m with the 7 × 7 cell walk, `edgeDistance`
 (lateral inside the ±3.5 m band, radial outside, so a lone station is a disc), three's centripetal
 Catmull-Rom with its arc-length table (checked against three.js to 1e-9 m in `test_grade.py`),
@@ -230,7 +230,7 @@ Two things the measurement forced, both by design rather than by moving the targ
   *read* between them does not. So a sample whose four pixels span more than `RASTER_CLIFF_M`
   (0.5 m) is computed, not read (`PyramidSet.cellSpanAt`). The cost returns only at cliffs.
 
-**Measured** (`probes/corridor-gradedraster.mjs crofton-triangle-graded --compare`: the same
+**Measured** (`probes/gradedraster.mjs crofton-triangle-graded --compare`: the same
 graded bake loaded twice, `?grade=runtime` against the raster, 69,940 points on and beside every
 road, each sampled only once its leaf tile was resident, with a 12 m shifted control that must
 disagree):
@@ -275,7 +275,7 @@ off their ground; a re-export fixes it and the car stops riding deck colliders t
 **Bake cost** on crofton-triangle (427 branches in the on-disk intermediates): the export went
 from 1:21 to 1:29 wall; the pyramid stage from 40 s to 54 s, of which ~9 s builds the station
 field once and ~130 s of worker CPU grades 241 tiles (4.5 M pixels touched) across the pool.
-`CORRIDOR_GRADE=0` turns it off.
+`PIEDMONT_GRADE=0` turns it off.
 
 **Not carried by the raster:** the editor's `ground_offset_m` adjustments (the viewer keeps
 run-time grading on a site whose adjustments are active) and the `GRASS_LIFT_M` lip (default 0).
@@ -312,7 +312,7 @@ error. The new probe does not abort it.
   vertical. Stale, and the next bake would not have repeated it — but nothing would have said so
   either, so the bake now measures its carriageways against the DEM before deciding the decks:
   `RoadModel.assert_grades_on_the_dem` (median over the non-deck stations within `GRADE_OFF_MAX_M`,
-  0.5 m) is a `GradeFault`, which export.py and `corridor fetch` re-raise instead of printing
+  0.5 m) is a `GradeFault`, which export.py and `piedmont_bake fetch` re-raise instead of printing
   "pyramid SKIPPED". On the served manifest it reads +1.28 m over 71,896 non-deck stations (23.4 %
   deck) and stops; the scratch re-export reads −0.013 m (|p90| 0.19 m, 0.1 % deck, 3 deck runs).
   `GradeOffsetTest` in `tests/test_grade.py`.
@@ -341,7 +341,7 @@ now walk nothing. And `plant()` itself still walked the array once more, `record
 looking for a record without a cell, 0.5–1 ms over 42k that the block index had just saved;
 a flag now.
 
-Measured (`probes/corridor-bakephases.mjs crofton-triangle --phase cpu`, 78 m/s, 40 s, the
+Measured (`probes/bakephases.mjs crofton-triangle --phase cpu`, 78 m/s, 40 s, the
 renderer stubbed so the loop runs at ~58 Hz on this box, 960 px wide so the site is the full
 120k-tree budget):
 
@@ -387,10 +387,10 @@ which path a tab is on.
 
 Cost on crofton-triangle: 271 tiles in 24 s wall (88 s of encoder CPU over eight processes),
 17.0 MiB of jpg → 11.7 MiB of ktx2 on the wire, added beside the jpg: +13 MB on a `web/pyr` of
-88 MB (the graded bake's `bare.png` twins are the rest of the scratch bake's growth, to 151 MB). Re-bake: `python -m corridor export <slug>` with
-`ktx` on the path (`scripts/fetch_ktx.sh`, or `CORRIDOR_KTX`).
+88 MB (the graded bake's `bare.png` twins are the rest of the scratch bake's growth, to 151 MB). Re-bake: `python -m piedmont_bake export <slug>` with
+`ktx` on the path (`scripts/fetch_ktx.sh`, or `PIEDMONT_KTX`).
 
-**Measured headlessly** (`probes/corridor-bakephases.mjs crofton-triangle-bp --phase ktx2`, a
+**Measured headlessly** (`probes/bakephases.mjs crofton-triangle-bp --phase ktx2`, a
 scratch bake of crofton-triangle with the twins; the jpg-only copy of the same bake as the
 control, on which the probe's "resident photos are ktx2" check must fail, and does): the one
 operation the format changes, `renderer.initTexture` (decode done, upload + mipmaps) on twelve

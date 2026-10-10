@@ -1,6 +1,6 @@
-"""docs/corridor/SITES.md, generated from the bakes — never typed.
+"""docs/SITES.md, generated from the bakes — never typed.
 
-    .venv/bin/python -m corridor.sitesdoc [--log <newbakes.log>] [--out docs/corridor/SITES.md]
+    .venv/bin/python -m piedmont_bake.sitesdoc [--log <newbakes.log>] [--out docs/SITES.md]
 
 Per site directory under data/sites: the road OSM identified, the lidar project (name, year,
 which ASPRS classes the vendor actually populated, whether class 17 was trusted), the DEM source
@@ -22,9 +22,9 @@ from . import write_atomic
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
-DATA = Path(os.environ.get("CORRIDOR_DATA", HERE / "data"))
-SITES = Path(os.environ.get("CORRIDOR_SITES", HERE / "sites.json"))
-ROOT = HERE.parent.parent
+DATA = Path(os.environ.get("PIEDMONT_DATA", HERE.parent / "data"))
+SITES = Path(os.environ.get("PIEDMONT_SITES", HERE / "sites.json"))
+ROOT = HERE.parent
 
 EXPECTED = ["site.json", "spine_utm.json", "osm.geojson", "crossings.json", "dem_1m.tif", "naip.tif", "horizon_30m.tif", "geology.json", "lidar/dtm.tif", "lidar/chm.tif", "profile.json", "surface.json", "web/manifest.json", "web/dem_2m.png", "web/chm_2m.png", "web/naip_1m.jpg", "web/horizon_60m.png"]
 PAINT_TAGS = ("highway", "lanes", "lanes:forward", "lanes:backward", "oneway", "maxspeed", "surface", "turn:lanes", "overtaking", "shoulder", "width")
@@ -130,7 +130,7 @@ def site_row(slug: str, d: Path, entry: dict | None, logb: dict | None) -> dict:
         row.update({
             "ident": sp.get("ident"), "length_m": sp.get("length_m"), "snap_m": sp.get("snap_distance_m"), "trimmed": sp.get("trimmed"),
             "fetched": m.get("fetched"), "seconds": m.get("seconds"),
-            "lidar_dataset": li.get("dataset"), "lidar_points": li.get("points_in_corridor"), "lidar_classes": li.get("classes") or {}, "lidar_quality": li.get("classification") or {}, "lidar_zf": li.get("z_factor"),
+            "lidar_dataset": li.get("dataset"), "lidar_points": li.get("points_in_road_band"), "lidar_classes": li.get("classes") or {}, "lidar_quality": li.get("classification") or {}, "lidar_zf": li.get("z_factor"),
             "structures": li.get("structures") or [],
             "dem_sources": [(s.get("title"), s.get("date")) for s in (m.get("dem") or {}).get("sources", [])] if isinstance(m.get("dem"), dict) else [],
             "dem_cached": bool(isinstance(m.get("dem"), dict) and m["dem"].get("cached")),
@@ -159,8 +159,8 @@ def fmt_classes(cls: dict) -> str:
 def render(rows: list[dict], log: Path | None) -> str:
     now = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
     L: list[str] = []
-    L.append("# Corridor sites — what each bake actually holds\n")
-    L.append(f"*Generated {now} by `python -m corridor.sitesdoc` from `tools/corridor/data/sites/*/manifest.json`, `spine_utm.json`, `surface.json` and the bake log{' `' + str(log) + '`' if log else ''}. Do not edit by hand; re-run it. Lidar year is read off the project name (`_D21` = 2021 delivery). The fetch itself does not record the NAIP acquisition date, so it is looked up here from the image service's catalog under the site point (the tile that covers the photo; a long corridor can straddle two flight dates). A DEM listed as \"cached\" was reused from an earlier run and its source tiles were not re-recorded (a `__main__.py` gap reported to main).*\n")
+    L.append("# Sites — what each bake actually holds\n")
+    L.append(f"*Generated {now} by `python -m piedmont_bake.sitesdoc` from `data/sites/*/manifest.json`, `spine_utm.json`, `surface.json` and the bake log{' `' + str(log) + '`' if log else ''}. Do not edit by hand; re-run it. Lidar year is read off the project name (`_D21` = 2021 delivery). The fetch itself does not record the NAIP acquisition date, so it is looked up here from the image service's catalog under the site point (the tile that covers the photo; a long road band can straddle two flight dates). A DEM listed as \"cached\" was reused from an earlier run and its source tiles were not re-recorded (a `__main__.py` gap reported to main).*\n")
     baked = [r for r in rows if r["status"] == "baked"]
     other = [r for r in rows if r["status"] != "baked"]
     L.append(f"**{len(baked)} baked, {len(other)} not yet** ({', '.join(r['slug'] + ' (' + r['status'] + ')' for r in other) or 'none'}).\n")
@@ -218,7 +218,7 @@ def render(rows: list[dict], log: Path | None) -> str:
         snap = r.get("snap_m") or 0
         warn = "  ⚠ **check the road**: the fix snapped this far, which usually means it landed on a different road" if snap > 250 and r.get("kind") != "network" else ""
         L.append(f"- **road**: {r.get('ident')} · {r.get('length_m')} m · snap {r.get('snap_m')} m{warn} · trimmed {r.get('trimmed')} · fetched {r.get('fetched')} ({r.get('seconds')} s)")
-        L.append(f"- **lidar**: `{r['lidar_dataset']}` ({lidar_year(r['lidar_dataset'])}) · {r['lidar_points']:,} pts in corridor · z factor {r.get('lidar_zf')} · classes: {fmt_classes(r['lidar_classes'])} · class 17: {r['lidar_quality'].get('class17_share')} ({'trusted' if r['lidar_quality'].get('class17_trusted') else 'demoted'}){' — ' + r['lidar_quality']['note'] if r['lidar_quality'].get('note') else ''}")
+        L.append(f"- **lidar**: `{r['lidar_dataset']}` ({lidar_year(r['lidar_dataset'])}) · {r['lidar_points']:,} pts in road band · z factor {r.get('lidar_zf')} · classes: {fmt_classes(r['lidar_classes'])} · class 17: {r['lidar_quality'].get('class17_share')} ({'trusted' if r['lidar_quality'].get('class17_trusted') else 'demoted'}){' — ' + r['lidar_quality']['note'] if r['lidar_quality'].get('note') else ''}")
         dem = "reused from cache (sources not re-recorded)" if r["dem_cached"] else ("; ".join(f"{t} — {dt}" for t, dt in r["dem_sources"]) or "—")
         L.append(f"- **DEM**: {dem}")
         n = r.get("naip") or {}
@@ -239,7 +239,7 @@ def render(rows: list[dict], log: Path | None) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--log", type=Path, default=None)
-    ap.add_argument("--out", type=Path, default=ROOT / "docs" / "corridor" / "SITES.md")
+    ap.add_argument("--out", type=Path, default=ROOT / "docs" / "SITES.md")
     a = ap.parse_args()
     entries = {s["slug"]: s for s in json.loads(SITES.read_text())} if SITES.exists() else {}
     slugs = sorted(set(entries) | {d.name for d in (DATA / "sites").glob("*") if d.is_dir()})

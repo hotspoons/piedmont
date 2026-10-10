@@ -404,7 +404,7 @@ export class PyramidStream {
           // frame it first draws pays no decode and no mipmap pass, which on the jpg path was
           // the 10–12 ms `render` frame of PERF-RIG.md. The compressed texture cannot be
           // flipped on upload, so the bake writes it bottom-up (ktx2.py) to match the jpg's
-          // flipY — measured, not assumed: probes/corridor-bakephases.mjs --phase ktx2.
+          // flipY — measured, not assumed: probes/bakephases.mjs --phase ktx2.
           const tex = loadBakedTexture('', choice, this.o.renderer, () => {
             if (this.disposed || this.held.get(k) !== held) {
               tex.dispose()

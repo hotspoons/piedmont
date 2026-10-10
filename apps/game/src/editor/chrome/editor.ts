@@ -167,7 +167,7 @@ export interface EditorMounts {
 
 export class EditorUI {
   bar = el('header', 'topbar')
-  drawer = new Drawer('corridor editor', 'areas, placements, structures')
+  drawer = new Drawer('site editor', 'areas, placements, structures')
   settings: Dialog
   /** where the per-mode panels render — the old `#body`, or the host's when embedded */
   inspector: HTMLElement = el('div', 'inspector-body')
@@ -261,7 +261,7 @@ export class EditorUI {
       look,
       select({
         label: 'Theme',
-        value: (localStorage.getItem('corridor.theme') as 'dark' | 'light') ?? 'dark',
+        value: (localStorage.getItem('piedmont.theme') as 'dark' | 'light') ?? 'dark',
         options: [
           { value: 'dark', label: 'Dark' },
           { value: 'light', label: 'Light' },
@@ -269,7 +269,7 @@ export class EditorUI {
         onChange: (v) => {
           document.documentElement.dataset.theme = v
           try {
-            localStorage.setItem('corridor.theme', v)
+            localStorage.setItem('piedmont.theme', v)
           } catch {
             /* ignore */
           }

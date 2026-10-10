@@ -7,7 +7,7 @@ ground drawn under it (measured on dc-metro-take-2, 2026-10-06). `to_enu3` is th
 the exact ellipsoid UP at each point's own height. These tests pin the three properties that make
 it safe to swap in everywhere `_enu_cols` is used.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -19,8 +19,8 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import export  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import export  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
 # dc-metro-take-2's anchor, the world the bug was measured on.
 ANCHOR_LON, ANCHOR_LAT = -77.005045, 38.911621

@@ -14,7 +14,7 @@
 // `100vw - var(--inspector-w)` -- follows the drag with no second source of truth and no resize
 // event to miss.
 
-const KEY = 'corridor.inspector.w'
+const KEY = 'piedmont.inspector.w'
 const MIN = 260
 /** never more than this share of the window, so the map cannot be dragged away entirely */
 const MAX_SHARE = 0.8

@@ -12,7 +12,7 @@ These pin the three cases `lidar.profile` must tell apart:
     crossings_over_s == [s]   OSM maps a crossing   -> overpass
     crossings_over_s is None  not checked (a branch)-> overpass by length, as before
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -25,8 +25,8 @@ import numpy as np
 from shapely.geometry import LineString
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import lidar  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import lidar  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
 FRAME = Frame.at(-76.685, 39.007)
 OX, OY = FRAME.origin

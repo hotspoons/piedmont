@@ -7,11 +7,11 @@ one box falls through to the public mirrors at 30 to 80 seconds a tile.
 **Now:** the editor and the baker still run on the four public query mirrors. `overpass` holds
 Maryland and is deliberately NOT their first upstream — see "The silent empty" below. `overpass-eu`
 holds Europe and is **not yet in any client's list**; it goes in only when
-`tools/overpass/verify.sh --pod overpass-eu` returns non-zero ways for Stelvio *and* Crofton.
+`services/overpass/verify.sh --pod overpass-eu` returns non-zero ways for Stelvio *and* Crofton.
 
 ## Why
 
-A corridor can be anywhere. Mountain passes in Italy are a first-class target, not an edge case,
+A road band can be anywhere. Mountain passes in Italy are a first-class target, not an edge case,
 and a bake only needs OSM ways in a box — there is nothing region-specific in the pipeline. The
 only thing that is regional is the extract our own Overpass happens to hold.
 
@@ -119,7 +119,7 @@ actually costs" below. Run it once.
 
 ## The storage class was a misattribution, and cephfs works
 
-`tools/overpass/chart/values.yaml` carries a comment saying the database must be on a BLOCK device
+`deploy/helm/overpass/values.yaml` carries a comment saying the database must be on a BLOCK device
 because "on the cephfs class the clone died with File error caught: 22 Invalid argument
 /db/db/nodes.bin". **That is the same errno, the same function and the same phase as the failure
 now attributed to compression** — which means it was never evidence about cephfs. It failed on
@@ -272,7 +272,7 @@ terabyte for Europe**.
 Second import, `useAreas: false`, start 2026-09-24 20:17 → serving 2026-09-26 08:55: **36 h 38 m**
 end to end, 254 GB on disk, `replicate_id` 4924 (caught up to the day's diffs).
 
-`tools/overpass/verify.sh --pod overpass-eu`:
+`services/overpass/verify.sh --pod overpass-eu`:
 
 ```
 Crofton, Maryland        0  EMPTY
@@ -283,7 +283,7 @@ Sydney, Australia        0  EMPTY
 That is the RIGHT answer for a Europe extract and the probe's FAIL is doing its job: a regional
 instance must never be first in the rotation without a coverage box, or it answers Maryland with
 a silent empty. The flip therefore declares coverage on both of ours and lets the public mirrors
-take the rest (see `tools/worldeditor/overpass.mjs`, `#south/west/north/east`).
+take the rest (see `services/worldeditor/overpass.mjs`, `#south/west/north/east`).
 
 **One more thing the watcher got wrong:** after `touch /db/init_done` the container EXITS 0 and
 Kubernetes restarts it; the restart finds the marker, skips init and `exec`s supervisord. A
@@ -357,11 +357,11 @@ mode         init     OVERPASS_PLANET_URL=.../europe-latest.osm.pbf
 compression  no       NOT negotiable — gz and lz4 both fail on this storage
 areas        off      rulesLoad: 0
 diffs        on       OVERPASS_DIFF_URL → planet daily; minute diffs are not worth it for a
-                      pipeline that bakes a corridor once
+                      pipeline that bakes a road band once
 memory       16 Gi    the clone does not import, so the flush buffer does not apply
 ```
 
-`tools/overpass/chart` already carries `flushSize` and `compression` as values; this adds
+`deploy/helm/overpass` already carries `flushSize` and `compression` as values; this adds
 `cloneSource`, and `mode`, and turns `planetUrl`/`preprocess` off in clone mode.
 
 ## Rollout
@@ -371,7 +371,7 @@ memory       16 Gi    the clone does not import, so the flush buffer does not ap
    which keeps working and keeps answering while it runs.
 3. Verify with the boxes that matter — Stelvio, Crofton, somewhere in the southern hemisphere —
    and assert **non-zero** ways for each. The silent empty means "no exception" is not a pass.
-   `tools/overpass/verify.sh --pod overpass-eu` is that probe, and its third outcome matters: it
+   `services/overpass/verify.sh --pod overpass-eu` is that probe, and its third outcome matters: it
    reported `NOASK` while the pod had no listener, which is *inconclusive*, not a coverage
    failure. Without that distinction this would have read as "our extract is missing Italy".
 4. Only then set `overpassUrl` back to ours on the worldeditor release, mirrors still appended.
@@ -380,7 +380,7 @@ memory       16 Gi    the clone does not import, so the flush buffer does not ap
 ## What this does not solve
 
 The bake fetches DEM, NAIP, lidar and geology from US federal sources. **Those are US-only.** An
-Italian corridor gets its roads from OSM and then has no terrain. Whatever the elevation and
+Italian road band gets its roads from OSM and then has no terrain. Whatever the elevation and
 imagery story is outside the US — Copernicus DEM at 30 m, national orthophoto services, no lidar —
 that is a separate design and it is the real blocker for an Italian pass, not Overpass.
 

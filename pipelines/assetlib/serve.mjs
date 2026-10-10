@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // A browser viewer for the library that scans itself.
 //
-//   node tools/assetlib/serve.mjs                 # http://localhost:5199
-//   node tools/assetlib/serve.mjs --tunnel        # ...and a public trycloudflare URL
+//   node pipelines/assetlib/serve.mjs                 # http://localhost:5199
+//   node pipelines/assetlib/serve.mjs --tunnel        # ...and a public trycloudflare URL
 //
 // It lists whatever is on disk RIGHT NOW and re-scans on every poll, so a batch that is still
 // running fills the gallery as it goes — no restart, no rebuild, no manifest to keep in step.
 //
 // Everything is served from node_modules and the repo: three, its addons, and the vendored Draco
-// decoder the corridor viewer already ships. A DRACOLoader is mandatory — finish.mjs emits Draco
+// decoder the viewer already ships. A DRACOLoader is mandatory — finish.mjs emits Draco
 // and GLTFLoader does not warn when it cannot decode, it rejects, so the page reports the failure
 // loudly rather than showing an empty stage that looks like a bad reconstruction.
 
@@ -20,8 +20,8 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const LIB = path.resolve(HERE, '..')
-const ROOT = path.resolve(LIB, '../..')
+const LIB = HERE
+const ROOT = path.resolve(HERE, '../..')
 const OUT = path.join(LIB, 'out')
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i === -1 ? d : process.argv[i + 1] }
@@ -82,7 +82,7 @@ function resolveFile(pathname) {
   if (p.startsWith('/surfaces/')) return path.join(LIB, p)
   if (p.startsWith('/vendor/three/addons/')) return path.join(ROOT, 'node_modules/three/examples/jsm', p.slice('/vendor/three/addons/'.length))
   if (p.startsWith('/vendor/three/build/')) return path.join(ROOT, 'node_modules/three/build', p.slice('/vendor/three/build/'.length))
-  if (p.startsWith('/vendor/draco/')) return path.join(ROOT, 'apps/corridor/public/assets/vendor/draco', p.slice('/vendor/draco/'.length))
+  if (p.startsWith('/vendor/draco/')) return path.join(ROOT, 'apps/game/public/assets/vendor/draco', p.slice('/vendor/draco/'.length))
   return null
 }
 

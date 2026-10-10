@@ -1,11 +1,11 @@
 // In the actual game: does the engine move when the camera does?
 //
-// enginesim-spatial.mjs proves the spatialiser is right. This proves corridor is USING it right,
+// enginesim-spatial.mjs proves the spatialiser is right. This proves the game is USING it right,
 // which is a different question and the one that has historically gone wrong — the frame
 // conversion (three is x east, y up, z south; the site is x east, y north, z up) and the order of
 // operations inside the frame both have to be correct, and neither shows up in a screenshot.
 //
-//   PORT=5185 node probes/corridor-enginepos.mjs [slug]
+//   PORT=5185 node probes/enginepos.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -14,11 +14,11 @@ const page = await browser.newPage({ viewport: { width: 900, height: 620 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 900000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 900000 })
 
 const fails = []
 const ok = (name, cond, detail) => { console.log(`${cond ? 'ok  ' : 'FAIL'}  ${name} — ${detail}`); if (!cond) fails.push(name) }
-const audio = () => page.evaluate(() => window.corridor.audio())
+const audio = () => page.evaluate(() => window.piedmont.audio())
 
 // Drive. The engine only speaks for an entity that has a voice, and only the driving mode gives
 // the player's car one; `start()` needs a real gesture, which is what the keypress is.
@@ -29,13 +29,13 @@ const audio = () => page.evaluate(() => window.corridor.audio())
 // failure. Tab is a gesture; that is all the browser wants.
 await page.keyboard.press('Tab') // Tab is drive; G is Squishy Hunt
 await page.waitForTimeout(1500)
-await page.waitForFunction(() => window.corridor.audio().state === 'running' || window.corridor.audio().error,
+await page.waitForFunction(() => window.piedmont.audio().state === 'running' || window.piedmont.audio().error,
   null, { timeout: 60000 }).catch(() => {})
 const up = await audio()
 ok('the engine is running', up.state === 'running', `state ${up.state}${up.error ? ` (${up.error})` : ''}`)
 // Placement is null until a frame has voiced the engine. Its absence is the shape of the
 // click-then-Tab mistake above, so say so rather than throwing on `undefined.toFixed`.
-await page.waitForFunction(() => window.corridor.audio().distance !== undefined, null, { timeout: 30000 })
+await page.waitForFunction(() => window.piedmont.audio().distance !== undefined, null, { timeout: 30000 })
   .catch(() => {})
 const voiced = await audio()
 ok('and it is voicing the car', voiced.distance !== undefined,
@@ -58,8 +58,8 @@ ok('and the mix is mostly the exterior bus', chase.interior < 0.2, `interior ${c
 // delivered when the page feels like it and two runs of this probe disagreed about whether the
 // first C had landed; this probe is about the audio, and a flaky input layer in the middle of it
 // measures the input layer. The keybinding has its own probe.
-await page.evaluate(() => { const c = window.corridor; c.drive.cockpit = true; c.car.setCockpit(true) })
-await page.waitForFunction(() => window.corridor.audio().interior > 0.9, null, { timeout: 15000 })
+await page.evaluate(() => { const c = window.piedmont; c.drive.cockpit = true; c.car.setCockpit(true) })
+await page.waitForFunction(() => window.piedmont.audio().interior > 0.9, null, { timeout: 15000 })
   .catch(() => {})
 const cockpit = await audio()
 ok('in the cockpit the ears are in the car', cockpit.distance < chase.distance,
@@ -74,14 +74,14 @@ ok('with no attenuation: you are sitting on it', cockpit.attenuation > 0.95,
 // the car every frame and lerps toward it, so a probe that teleports the camera is overwritten
 // before the next audio update and measures the distance it was always going to measure. (It
 // reported 1 m and a gain of 1.0 — the car, not the camera, which is the tell.)
-await page.evaluate(() => { const c = window.corridor; c.drive.cockpit = false; c.car.setCockpit(false) })
-const knob = await page.evaluate(() => window.corridor.tune.set('CHASE_BACK', 30))
+await page.evaluate(() => { const c = window.piedmont; c.drive.cockpit = false; c.car.setCockpit(false) })
+const knob = await page.evaluate(() => window.piedmont.tune.set('CHASE_BACK', 30))
 ok('the chase-distance knob took', knob === true, `tune.set returned ${knob}`)
 // Wait for the camera to SETTLE, not for a deadline. The chase camera lerps, and under
 // swiftshader the frame loop stalls for seconds at a time while tiles stream — a fixed sleep read
 // 24.0 m on a 30 m knob and called it a failure, which is a probe measuring the tile loader.
 await page.waitForFunction(() => {
-  const d = window.corridor.audio().distance
+  const d = window.piedmont.audio().distance
   const prev = window.__lastD
   window.__lastD = d
   return prev !== undefined && Math.abs(d - prev) < 0.05 && d > 20
@@ -103,15 +103,15 @@ ok('on the inverse-distance curve we advertise',
 // off changed nothing at all. The ears belong to whoever is looking, in every mode.
 const parked = await audio()
 await page.keyboard.press('Tab') // out of drive, into the free camera
-await page.waitForFunction(() => window.corridor.drive.on === false, null, { timeout: 15000 }).catch(() => {})
-const leftIt = await page.evaluate(() => window.corridor.drive.on)
+await page.waitForFunction(() => window.piedmont.drive.on === false, null, { timeout: 15000 }).catch(() => {})
+const leftIt = await page.evaluate(() => window.piedmont.drive.on)
 ok('we are out of the car', leftIt === false, `drive.on ${leftIt}`)
 await page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   // straight up, so the fly camera cannot be dragged back by anything that follows the car
   c.camera.position.y += 150
 })
-await page.waitForFunction(() => window.corridor.audio().distance > 100, null, { timeout: 20000 })
+await page.waitForFunction(() => window.piedmont.audio().distance > 100, null, { timeout: 20000 })
   .catch(() => {})
 const flown = await audio()
 ok('flying away makes the engine recede',
@@ -122,12 +122,12 @@ ok('and the attenuation follows it down',
 
 // ── nobody is looking ─────────────────────────────────────────────────────────────────────────
 //
-// A corridor tab behind a video call was a fan that never stopped: the browser throttles a hidden
+// A game tab behind a video call was a fan that never stopped: the browser throttles a hidden
 // tab's timers but keeps its audio thread at full rate, and this engine is a rigid-body solver
 // running inside the audio callback.
 //
 // visibilityState is faked rather than actually backgrounding the window — headless Chromium will
-// not reliably background itself, and the thing under test is corridor's handler, not the
+// not reliably background itself, and the thing under test is the game's handler, not the
 // browser's bookkeeping. The gain and the context state are then read from the REAL audio graph,
 // which is the half that could not be faked.
 const setHidden = (hidden) => page.evaluate((hidden) => {
@@ -142,7 +142,7 @@ ok('while you are looking at it, it is not muted', audible.muted === false && au
   `muted ${audible.muted}, context ${audible.ctx}`)
 
 await setHidden(true)
-await page.waitForFunction(() => window.corridor.audio().ctx === 'suspended', null, { timeout: 15000 })
+await page.waitForFunction(() => window.piedmont.audio().ctx === 'suspended', null, { timeout: 15000 })
   .catch(() => {})
 const hidden = await audio()
 ok('hiding the tab mutes it', hidden.muted === true, `muted ${hidden.muted}`)
@@ -152,7 +152,7 @@ ok('and suspends the context, which is the half that stops burning a core',
   hidden.ctx === 'suspended', `context ${hidden.ctx}`)
 
 await setHidden(false)
-await page.waitForFunction(() => window.corridor.audio().ctx === 'running', null, { timeout: 15000 })
+await page.waitForFunction(() => window.piedmont.audio().ctx === 'running', null, { timeout: 15000 })
   .catch(() => {})
 const backAgain = await audio()
 ok('coming back unmutes and resumes', backAgain.muted === false && backAgain.ctx === 'running',

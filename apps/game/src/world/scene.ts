@@ -241,7 +241,7 @@ export interface Site {
   /** trees within r of world x,z as [x, z, trunkRadius] */
   treesNear: (x: number, z: number, r: number) => [number, number, number][]
   terrain: THREE.Mesh
-  /** imagery streaming counts on a tiled network, null on a corridor site */
+  /** imagery streaming counts on a tiled network, null on a road-band site */
   tiles: (() => ImageryStream['counts']) | null
   /** the stream itself, so its ring and ceiling can be swept from a probe or the console */
   tileStream: ImageryStream | null
@@ -585,7 +585,7 @@ export async function buildSite(manifestIn: Manifest, rawStatus: (s: string) => 
 
   // The site's geodetic anchor: the origin of the ENU tangent frame everything is rendered in.
   // Absent on a manifest baked before the geodetic frame, and then every raster falls back to
-  // flat-plane arithmetic and the site draws as it always did — see `framed`, docs/corridor/FRAME.md.
+  // flat-plane arithmetic and the site draws as it always did — see `framed`, docs/FRAME.md.
   const fa = manifest.frame?.anchor
   const anchor = fa ? new Anchor(fa.lon, fa.lat, fa.h ?? 0) : null
   if (!anchor) console.warn(`${manifest.slug}: no frame.anchor — drawing on a flat plane`)
@@ -644,7 +644,7 @@ export async function buildSite(manifestIn: Manifest, rawStatus: (s: string) => 
   const heightAt = pyrSet ? pyrSet.heightAt : tileSet ? tileSet.heightAt : overviewHeight
   /**
    * THE BARE EARTH. On a graded bake the pyramid's `dem` carries the road folded in
-   * (tools/corridor/corridor/grade.py), so anything asking "how high is the GROUND, not the road"
+   * (bake/piedmont_bake/grade.py), so anything asking "how high is the GROUND, not the road"
    * — the deck tests, a road's own fallback grade, the overpass piers, the strip's blend — reads
    * this. On an older bake it is `heightAt` under another name, and nothing changes.
    */
@@ -656,7 +656,7 @@ export async function buildSite(manifestIn: Manifest, rawStatus: (s: string) => 
    * same formula, so this is a lookup of the answer rather than a different answer.
    *
    * Two things keep the run-time path: `?grade=runtime`, so a probe can hold the raster against
-   * the formula on the same world (probes/corridor-gradedraster.mjs), and active adjustments —
+   * the formula on the same world (probes/gradedraster.mjs), and active adjustments —
    * the editor's `ground_offset_m` is authored outside the bake, and the raster cannot carry it.
    */
   /** the bake graded this pyramid (and wrote its deck runs and driveway heights to match) */
@@ -823,7 +823,7 @@ if (uLodOn > 0.5) {
 }`)
       injectShade(shader)
     }
-    m.customProgramCacheKey = () => 'corridor-terrain-lod'
+    m.customProgramCacheKey = () => 'piedmont-terrain-lod'
     /*
      * THE TERRAIN'S CLIP BAND IS MILLIMETRES, NOT EIGHTY METRES. The road cover exists to hide the
      * sliver of ground that the road mesh is standing on, so the terrain gives up a thin shell at
@@ -1573,7 +1573,7 @@ if (uLodOn > 0.5) {
     cB.arcLengthDivisions = Math.max(100, rawB.length * 8)
     let lenB = cB.getLength()
     // A branch whose points all coincide has no length, and s / 0 is NaN: getPointAt(NaN) reads
-    // an undefined point and the WHOLE site fails to load ("corridor: load failed ... reading
+    // an undefined point and the WHOLE site fails to load ("piedmont: load failed ... reading
     // 'x'"). A re-vector on 2026-09-26 produced one such branch on crofton-triangle and took the
     // viewer down for everyone until this guard. A road shorter than a metre is not a road.
     if (!(lenB > 1)) {
@@ -1639,7 +1639,7 @@ if (uLodOn > 0.5) {
   // --- ROADS MEET AT THE SAME HEIGHT ---------------------------------------------------------
   // Every road carries its own lidar grade, and two profiles measured independently do not agree
   // where the roads meet: Saint Stephens Church Road reached Chesterfield Road 1.3–1.9 m above it
-  // (crownsville, measured in probes/corridor-crosssection.mjs), a cliff across the junction with
+  // (crownsville, measured in probes/crosssection.mjs), a cliff across the junction with
   // the DEM saying the ground was Chesterfield's height. The bake owns the profiles; the viewer
   // owns the promise that a junction is one surface. So at every junction the INFERIOR road is
   // re-graded to meet the superior one — the bake's own `superior` approach flag, else the spine
@@ -1941,12 +1941,12 @@ if (uLodOn > 0.5) {
   let treesNearWorld: (x: number, z: number, r: number) => [number, number, number][] = () => []
   let currentSeason: Season = initialSeason
   let grassRef: Grass | null = null
-  // the near-tree set and the measured tree list, for probes/corridor-flora.mjs: which silhouettes
+  // the near-tree set and the measured tree list, for probes/flora.mjs: which silhouettes
   // this site built and which one every one of its tens of thousands of trees drew
   /**
    * Where scenery must not exist: the footprints of the stunt fixtures standing in this world.
    *
-   * Rich, 2026-09-29: a fixture is dropped into a wooded corridor and clears nothing, so a loop can
+   * Rich, 2026-09-29: a fixture is dropped into a wooded road band and clears nothing, so a loop can
    * have trees growing through it and fence posts inside it — invisible to the eye once you are on
    * the ribbon, entirely solid to the car. The road is already suppressed under a fixture
    * (`setRoadSkip`); this is the rest of that idea.
@@ -2047,7 +2047,7 @@ if (uLodOn > 0.5) {
 
     // --- cul-de-sacs ------------------------------------------------------------------------
     // "if a street dead ends, assume a cul de sac" (Rich, 2026-09-21). An end is a dead end when
-    // it is not a junction with another carriageway AND not simply where we clipped the corridor.
+    // it is not a junction with another carriageway AND not simply where we clipped the road band.
     // One station at the bulb centre IS the bulb: outside the ±2.6 m along-track band
     // `edgeDistance` measures radially and subtracts `half`, so a lone station is a disc — grass,
     // trees and the car all see pavement there for free. The bake will carry `dead_ends` per road
@@ -2350,7 +2350,7 @@ if (uLodOn > 0.5) {
     grassBlockedOut = grassBlocked
     edgeInfoOut = edgeDistance
 
-    // --- the corridor strip: fine terrain across every carriageway and 40 m of verge each side ---
+    // --- the road-band strip: fine terrain across every carriageway and 40 m of verge each side ---
     status('grading…')
     let latMin = 0, latMax = 0
     for (const sib of sibAts) {
@@ -2510,7 +2510,7 @@ if (uLodOn > 0.5) {
      * branch once and give every genuinely elevated run the concrete the spine's bridges get: a
      * slab under the deck, an edge beam beneath each shoulder, and a parapet on top. The deck the
      * car drives is still the road ribbon; this is only what makes it a bridge to the road below
-     * (case 2, docs/corridor/PLAN-GRADE-SEPARATION-RENDER.md). Rich, 2026-10-06.
+     * (case 2, docs/PLAN-GRADE-SEPARATION-RENDER.md). Rich, 2026-10-06.
      */
     const branchBridgeMat = new THREE.MeshStandardMaterial({ color: 0xb9b6ae, roughness: 0.9 })
     const bridgeYaw = (d: THREE.Vector3) => Math.atan2(d.x, d.z)
@@ -2535,7 +2535,7 @@ if (uLodOn > 0.5) {
       }
       /*
        * A deck, not fill. `isDeck` fires along every fill embankment too — the bare-earth DEM sits
-       * below a road graded up to its crown — and drawing concrete there fenced the whole corridor:
+       * below a road graded up to its crown — and drawing concrete there fenced the whole road band:
        * one branch merged 99,840 verts spanning the map, and Rich read the slabs standing beside the
        * roadway as "a second bridge with a different lane of traffic inside the first" (2026-10-06).
        * Concrete is only correct where the deck genuinely spans OPEN AIR, so ask the station grid
@@ -2708,7 +2708,7 @@ if (uLodOn > 0.5) {
       // ask the nearest station of any other `who`, and a driveway (who -2) counted: every station
       // beside a driveway was skipped, nothing covered the hole, the terrain under it was never
       // sunk, and the coarse terrain stood 0.4-0.9 m above the road as a dark blob (Saint
-      // Stephens Church Road, crownsville, measured in probes/corridor-crosssection.mjs).
+      // Stephens Church Road, crownsville, measured in probes/crosssection.mjs).
       const skip = (s: number) => {
         const q = b.at(s).pos
         // ... and a branch on a DECK emits no verge at all: this is the crossing carriageway over
@@ -4778,9 +4778,9 @@ function hash2(x: number, y: number): number {
 function cutHorizon(geo: THREE.BufferGeometry, demBbox: [number, number, number, number], cell: number, heightAt: (x: number, y: number) => number, covered?: (x: number, y: number) => boolean) {
   const pos = geo.getAttribute('position') as THREE.BufferAttribute
   const [x0, y0, x1, y1] = demBbox
-  // A corridor site's near terrain fills its whole bbox, so "inside" is that rectangle. A tiled
+  // A road-band site's near terrain fills its whole bbox, so "inside" is that rectangle. A tiled
   // NETWORK is different twice over: the hull is mostly empty, so cutting it whole would punch
-  // holes in the horizon between the corridors, and the same cut is used again to take the 8 m
+  // holes in the horizon between the road bands, and the same cut is used again to take the 8 m
   // overview out from under the 2 m tiles. Both cases are "wherever this other surface covers".
   const inside = covered ?? ((x: number, y: number) => x >= x0 && x <= x1 && y >= y0 && y <= y1)
   const removed = new Uint8Array(pos.count)

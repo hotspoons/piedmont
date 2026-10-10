@@ -1,13 +1,13 @@
 """Web export: the site, in the shapes a browser can decode without a GIS stack.
 
-GeoTIFFs are the archive. A viewer (apps/corridor) and eventually the game want small, decodable
+GeoTIFFs are the archive. A viewer (apps/game) and eventually the game want small, decodable
 layers, all on the same lattice, with a manifest that says where each one sits in the site frame:
 
     web/dem_2m.png       height, RGB-encoded uint16 (R = high byte, G = low byte) in centimetres
                          above `zmin`. Why RGB and not a 16-bit PNG: browsers decode 16-bit PNGs to
                          8 bits per channel on the canvas, silently. Two 8-bit channels survive.
     web/chm_2m.png       canopy height, 8-bit, 0.25 m per step (0-63 m), on the DEM lattice
-    web/naip_1m.jpg      imagery, 1 m/px (6600×1300 for a corridor; one texture)
+    web/naip_1m.jpg      imagery, 1 m/px (6600×1300 for a road band; one texture)
     web/horizon_60m.png  the far terrain, same encoding as the DEM, 1000² over 60 km
     web/manifest.json    frame, per-layer georeferencing, the spine with z, structures, crossings,
                          profile every 10 m, geology, photos. Coordinates are METRES RELATIVE TO
@@ -40,7 +40,7 @@ from .geo import Frame
 # Everything the bake writes as "site metres" goes through one of these. The stored world is a
 # true ENU tangent plane about the site's geodetic anchor, not the UTM plane it is measured on --
 # UTM north is not true north (1.06 deg at Crofton, and it differs per site), UTM has a scale
-# factor, and a plane has no curvature at all. See docs/corridor/FRAME.md.
+# factor, and a plane has no curvature at all. See docs/FRAME.md.
 #
 # Rasters do NOT come through here: a raster is a regular grid on the UTM plane and in ENU that
 # grid is rotated, scaled and curved. They carry a geodetic control lattice instead
@@ -1109,7 +1109,7 @@ def refresh_flora(site_dir: Path) -> bool:
     """Rewrite ONLY the flora layer and the manifest's flora block.
 
     A full `export` re-encodes the DEM, the canopy and a 30 cm image mosaic, which is minutes a
-    site; re-reading a species mix should not cost that. Same reason `corridor export` exists at all.
+    site; re-reading a species mix should not cost that. Same reason `piedmont_bake export` exists at all.
     """
     web = site_dir / "web"
     man = web / "manifest.json"
@@ -1555,7 +1555,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
         Image.fromarray(rgb, "RGB").save(web / "dem_2m.png", optimize=True)
         layers["dem"] = {"file": "dem_2m.png", "res": 2.0, "size": g["size"], "bbox": rel_bbox(g["bbox"]), "geo": geo_of(g["bbox"]), "zmin": zmin, "zscale": scale}
 
-    # buildings / landuse / POIs in corridor coordinates (AUTOGEN.md §10) — derived here, before the
+    # buildings / landuse / POIs in road band coordinates (AUTOGEN.md §10) — derived here, before the
     # canopy layer, because the canopy mask below needs the footprints. (The first version read them
     # from web/buildings.json, a file nothing ever wrote: the mask was a silent no-op on all nine
     # sites — found by the editor agent with probes/chm-buildings-check.py, 2026-09-21.)
@@ -1589,7 +1589,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
     # so requiring it here is what kept a tiled world from ever getting a canopy overview. The
     # canopy block reads its own raster on its own lattice and does not need the DEM at all.
     if chm_path.exists() and (use_global or ("dem" in layers and not tiled)):
-        c, g = _read_at(chm_path, 2.0, bbox)  # boundless: 0 outside the lidar corridor
+        c, g = _read_at(chm_path, 2.0, bbox)  # boundless: 0 outside the lidar road band
         c = np.nan_to_num(c, nan=0.0)
         # The canopy model is "unclassified points above ground", and on a working interstate that
         # includes every truck the flight caught: a tractor-trailer is a 4 m "tree" on the pavement.
@@ -1629,7 +1629,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
         layers["chm"] = {"file": "chm_2m.png", "res": 2.0, "size": g["size"], "bbox": rel_bbox(g["bbox"]), "geo": geo_of(g["bbox"]), "scale": 0.25}
 
     # --- what grows here -------------------------------------------------------------------------
-    # The EVT class index as an 8-bit PNG on its own 30 m lattice (255 = outside the corridor), and
+    # The EVT class index as an 8-bit PNG on its own 30 m lattice (255 = outside the road band), and
     # the class table beside it. Its own lattice, not the 2 m one: the source IS 30 m, and
     # resampling a class raster up to the DEM grid would be five megabytes of the same integer.
     flora, flora_layer = _flora(site_dir, web, frame)
@@ -1679,7 +1679,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
         with rasterio.open(site_dir / "naip.tif") as src:
             w = int(round((bbox[2] - bbox[0]) / 1.0))
             h = int(round((bbox[3] - bbox[1]) / 1.0))
-            # WINDOW it. `naip.tif` is fetched over the LIDAR corridor (bbox + 150 m each side);
+            # WINDOW it. `naip.tif` is fetched over the LIDAR road band (bbox + 150 m each side);
             # reading the whole file and labelling it with the site bbox squeezed 2570 m of
             # photograph into a 2280 m frame — a 12% stretch, zero error at the centre and ±145 m
             # at the edges. That is the imagery sliding off the roads that Rich kept reporting and
@@ -1826,7 +1826,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
     features: dict = {}
     for name in ("cuts", "rock", "water"):
         mod = importlib.import_module(f".{name}", __package__)
-        # a network samples per road / per raster tile through a windowed reader; a corridor reads
+        # a network samples per road / per raster tile through a windowed reader; a road band reads
         # its one DTM into an array. Same rules either way — see water._Heights for why.
         fn = getattr(mod, "measure_network", None) if tiled else None
         try:
@@ -1846,13 +1846,13 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
     out = {
         "slug": site["slug"],
         "ident": site.get("ident"),
-        # A WORLD, not a corridor: imagery, lidar and vegetation cover the whole rectangle the
+        # A WORLD, not a road band: imagery, lidar and vegetation cover the whole rectangle the
         # network spans rather than a 150 m buffer around each road, so the viewer can stop
         # treating distance-from-a-road as a stand-in for "is there any data here".
-        # See docs/corridor/PLAN-OPEN-WORLD.md.
+        # See docs/PLAN-OPEN-WORLD.md.
         "world": bool(site.get("world")),
         # the geodetic frame, so the viewer can place this site on the ellipsoid without a
-        # projection library — see docs/corridor/FRAME.md
+        # projection library — see docs/FRAME.md
         "frame": frame.manifest_frame(),
         "bbox": rel_bbox(bbox),
         "layers": layers,
@@ -1877,7 +1877,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
         "profile": profile_10,
         "geology": {"named_formations": geology.get("named_formations", []), "units": [{k: u.get(k) for k in ("name", "strat_name", "lith", "descrip", "b_age", "t_age")} for u in geology.get("units", []) if u.get("strat_name")]},
         "photos": [{"file": p["file"], "heading_deg": p.get("heading_deg"), "taken": p.get("taken")} for p in site.get("photos", [])],
-        "lidar": {k: manifest.get("lidar", {}).get(k) for k in ("dataset", "points_in_corridor", "classes")},
+        "lidar": {k: manifest.get("lidar", {}).get(k) for k in ("dataset", "points_in_road_band", "classes")},
         "buildings": enu_derived["buildings"],
         "driveways": _service_ways(site_dir, frame, ox, oy, bbox),
         "stubs": _stub_roads(site_dir, frame, ox, oy, bbox),
@@ -1908,7 +1908,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
     except Exception as exc:
         print(f"  cross   failed: {exc}", flush=True)
     # sidewalks where OSM has none: 93 % of crofton-triangle's drivable ways carry no sidewalk tag
-    # and the whole corridor holds 47 mapped sidewalk ways. Zones are derived from the residential
+    # and the whole road band holds 47 mapped sidewalk ways. Zones are derived from the residential
     # network, not typed; an authored sidewalk_zones.json overrides. See walkways.py.
     try:
         from . import walkways as _walkways
@@ -1938,7 +1938,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
         print(f"  branches failed: {exc}")
     # The LOD pyramid, beside the flat tiles rather than instead of them: a viewer that does not
     # know about `pyramid` keeps working off `tiles`, and one that does ignores `tiles` entirely.
-    # This is the bake. It used to be opt-in (`CORRIDOR_PYRAMID=1`), and a job that forgot the
+    # This is the bake. It used to be opt-in (`PIEDMONT_PYRAMID=1`), and a job that forgot the
     # variable shipped a monolith. Unset means on. `0` / `false` / `no` / `off` is the only opt-out,
     # and the editor never sends one.
     #
@@ -1946,7 +1946,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
     # are written with the road grading folded in (`pyramid.GRADE_MAX_PX_M`, grade.py) and the
     # grading is the viewer's: the same manifest the viewer will read is what it is built from.
     # `layers` is the dict `out["layers"]` already refers to, so the block lands in the manifest.
-    pyr = os.environ.get("CORRIDOR_PYRAMID", "1").strip().lower()
+    pyr = os.environ.get("PIEDMONT_PYRAMID", "1").strip().lower()
     if tiled and pyr not in ("0", "false", "no", "off"):
         try:
             from . import pyramid as _pyr
@@ -1997,7 +1997,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
                     lay["ktx2"] = f[:-4] + ".ktx2"
             print(f"  ktx2    {kk['ok']} textures, {kk['jpg_bytes'] / 2**20:.1f} -> {kk['ktx2_bytes'] / 2**20:.1f} MiB on the wire", flush=True)
         elif kk.get("status") != "ok":
-            print(f"  ktx2    skipped ({kk['status']}) — tools/corridor/scripts/fetch_ktx.sh", flush=True)
+            print(f"  ktx2    skipped ({kk['status']}) — bake/scripts/fetch_ktx.sh", flush=True)
     except Exception as exc:
         print(f"  ktx2    failed: {exc}", flush=True)
 

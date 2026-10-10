@@ -1,10 +1,10 @@
-# Corridor design — the rules the code is built on
+# Design — the rules the code is built on
 
 *Companion to `PIPELINE.md` (what runs, in what order) and `SITES.md` (what each bake holds).
 This is the *why* and the invariants: the frames, the one-height rule, the LOD footprint, the
 grass tile design, every detection rule with its threshold, the sign conventions that have bitten
 people, and a one-page "how to add a road". Read from the code on 2026-09-21; the original
-design notes from the first night are in `tools/corridor/DESIGN.md`.*
+design notes from the first night are in `bake/DESIGN.md`.*
 
 ## 1 · Frames
 
@@ -13,8 +13,8 @@ There are exactly three, and two conversions.
 | frame | axes | who uses it |
 |---|---|---|
 | **geographic** | WGS84 lon/lat; Web Mercator for EPT lidar | only inside the fetchers (`geo.Frame`) |
-| **site** | UTM zone of the photo (`EPSG:326xx`), metres, **x east, y north**, z NAVD88 m; everything the bake writes; `web/` layers and the manifest are *relative to the site origin* (the photo point) | `tools/corridor`, `web/manifest.json`, `adjustments.json`, `placements.json` |
-| **world** (three.js) | X = site x, **Y = up**, **Z = −site y** (south) | `apps/corridor/src/**` |
+| **site** | UTM zone of the photo (`EPSG:326xx`), metres, **x east, y north**, z NAVD88 m; everything the bake writes; `web/` layers and the manifest are *relative to the site origin* (the photo point) | `bake`, `web/manifest.json`, `adjustments.json`, `placements.json` |
+| **world** (three.js) | X = site x, **Y = up**, **Z = −site y** (south) | `apps/game/src/**` |
 
 `toWorld(x, y, z) = (x, z, −y)`. Two families of function, named by frame:
 
@@ -23,11 +23,11 @@ There are exactly three, and two conversions.
   `Site.edgeDistance(x, z)`, `strip.heightAt(x, z)` take **world** x, z. `edgeDistance < 0` is on
   the pavement.
 
-Along the road there is a fourth, derived frame, the **corridor frame**: along-track metre `s`
+Along the road there is a fourth, derived frame, the **road-band frame**: along-track metre `s`
 and signed lateral offset (`lat`, **positive = left of travel**). `profile.json`, `structures`,
 `surface.json`, `buildings[].s/lat` and `structures.json` intervals are all in it, because a
-re-bake that moves the centreline sideways must keep a bridge over the road. `editor/corridor.ts`
-holds the conversions (`nearestStation`, `atCorridor`, `leftOf`).
+re-bake that moves the centreline sideways must keep a bridge over the road. `editor/author/roadband.ts`
+holds the conversions (`nearestStation`, `atRoadBand`, `leftOf`).
 
 ## 2 · One surface, one height function
 
@@ -63,7 +63,7 @@ goes where the driver looks.
 | under the wheels → 40 m | strip, 1 m × 2 m | — | blades, full density inside `GRASS_LOD_NEAR` (12 m) | full GLBs |
 | → `GRASS_RADIUS` (106 m) | strip / near DEM (2 m, stride to ≤ 1.1 M verts) | ez-tree models inside `TREE_NEAR_RADIUS` (240 m), ≤ `TREE_NEAR_CAPACITY` per variant, re-picked when the eye moves 15 m or turns 25° | blades thinned to `GRASS_LOD_MID_DENSITY` / `FAR_DENSITY` | GLBs |
 | → `GRASS_SPRITE_RADIUS` (300 m) | near DEM | impostors: 8-yaw + top atlas of the same models, one quad each, static slots | sprite cards, thinned toward the rim | boxes/GLBs |
-| → edge of the 600 m corridor | near DEM draped in NAIP | impostors | — | — |
+| → edge of the 600 m road band | near DEM draped in NAIP | impostors | — | — |
 | → 30 km | horizon 60 m, NAIP-draped, cut under the near DEM | — | — | — |
 
 The near/impostor switch is a hard boundary today (a `TREE_FADE_M` crossfade is the editor
@@ -112,7 +112,7 @@ end nodes. Siblings: same identity within 120 m.
 the crossing's tags, then the spine's tags at that metre, then power → over, waterway → under,
 motorway/trunk + highway → *inferred* over, two ordinary roads → grade.
 
-**Lidar trust**: class 17 > 3 % of the corridor → classes 17 and 18 are junk bins, demoted.
+**Lidar trust**: class 17 > 3 % of the road band → classes 17 and 18 are junk bins, demoted.
 
 **Canopy**: max of (vegetation 3–5 **or unassigned 1**) − filled DTM, 0–80 m, zeroed under class-17
 cells, and at export zeroed over every carriageway (max lanes × 3.66 + 4.2 m, + 2 m) and under
@@ -128,7 +128,7 @@ lateral 2 m cells occupied, **underside planar**: std of per-cell minima ≤ 0.5
 → overpass, else gantry. Never on a station already on a bridge.
 
 **Pavement class** (`surface.py`, every 20 m, calibrated on one interstate): lidar lane intensity
-relative to the corridor's own median ratio (`new ≤ 0.75×`, `concrete ≥ 1.6×`); NAIP lane
+relative to the road band's own median ratio (`new ≤ 0.75×`, `concrete ≥ 1.6×`); NAIP lane
 brightness absolute (`concrete ≥ 120`, `new ≤ 90`); OSM `surface=` as a vote; chip seal needs
 texture ≥ 22 and a non-motorway class; a ≥ 35 % intensity jump against both neighbours is a patch.
 
@@ -179,7 +179,7 @@ mid-way along the street it comes off, so that street is never in the end-node s
 our roads put a bulb on the joined end of nearly every street). 9 ends on Arrowhead, 12 on Crofton.
 
 **When to distrust the DTM and fall back to the DEM**: not "most of this raster is nodata" — a
-corridor's DTM is a 200 m strip inside a bbox and is *always* mostly nodata (Sideling 38 % valid).
+road band's DTM is a 200 m strip inside a bbox and is *always* mostly nodata (Sideling 38 % valid).
 Sample the spine: under 70 % of road stations covered, the lidar missed the road (Bonnie Branch's
 one-tile bake) and the bare-earth DEM stands in. Getting this wrong tripled Sideling's rock by
 detecting DEM slopes out where the CHM is 0 and every cell reads as bare.
@@ -187,7 +187,7 @@ detecting DEM slopes out where the CHM is 0 and every cell reads as bare.
 **Water** (`water.py`): OSM `waterway` lines every 5 m, each vertex **snapped to the DTM low point
 across ±6 m** (measured: the OSM line is within 3 m of it 86–100 % of the time) unless the channel
 is wider than 12 m (the Monocacy: centreline kept, z read); DEM stands in outside the lidar
-corridor. Heights running-minimum in the flow direction. `tunnel=culvert` segments flagged, not
+the game. Heights running-minimum in the flow direction. `tunnel=culvert` segments flagged, not
 drawn. **Falls/rapids: maximal runs of 20 m windows each dropping > 2 m**; grade > 0.25 is a fall,
 else rapids; none under a culvert (the DTM there is the road fill). Widths: OSM `width`, else
 river 12, canal 6, stream 2.5, ditch 1.2, drain 1 m. Polygons (`natural=water`, `water=*`,
@@ -198,7 +198,7 @@ to the lower face, size `ROCK_SIZE` × (0.4–2.0) larger at the toe; outcrop po
 `ROCK_OUTCROP_PER_M2`; none within `ROCK_PAVEMENT_CLEAR` (1.5 m) of a pavement edge; positions
 hashed from face id and station. Kit: `catalog.json` `category: "rock"` + `rock_type`; procedural
 displaced icosahedra in the lithology's colour until a GLB exists. Probe:
-`probes/corridor-terrain.mjs <slug> rock|water` — Sideling: 5 481 shale instances, nearest 1.52 m
+`probes/terrain.mjs <slug> rock|water` — Sideling: 5 481 shale instances, nearest 1.52 m
 from pavement, all on `groundAt`; South Mountain: 910 greenstone, nearest 4.16 m.
 
 ### 5.x Intersection control — derived, not transcribed (`intersections.py`)
@@ -206,7 +206,7 @@ from pavement, all on `groundAt`; South Mountain: 910 greenstone, nearest 4.16 m
 Rich drove Crofton and found one signal, reading one way, and no stop signs. The cause is not an
 OSM gap in the way it looks — it is that a US suburb does not record what is assumed:
 
-| inside crofton-triangle's corridor | |
+| inside crofton-triangle's road band | |
 |---|---|
 | drivable ways | 854 |
 | `highway=traffic_signals` nodes | 35 (one per junction, not one per arm) |
@@ -252,7 +252,7 @@ shoulder of the Capital Beltway. Three defects, all in the *inference*, not the 
    freeway **yields**; it does not stop, and the model's "the inferior arm stops" turned a yield into
    a sign.
 
-The fixes: rank the spine from its `segments`; group arms by **corridor** (name, then `ident`/`ref`,
+The fixes: rank the spine from its `segments`; group arms by **route** (name, then `ident`/`ref`,
 never the `«unnamed»` placeholder) so one road is one road; a **`motorway` carriageway is never a
 stopping arm** — whatever the inference or a stray OSM node said; and a junction whose **every** arm
 is a freeway or a freeway ramp (`motorway`/`motorway_link`) is an interchange **merge or split**, not
@@ -326,8 +326,8 @@ within 7 m of a real mapped sidewalk is skipped (61 of 809 on Crofton). 748 side
   **EPSG:2992, NAD83 / Oregon GIC Lambert, in FEET**, and the Z is in feet too (`check_units`
   catches that part already). Enumerate the projected CRSs whose area of use contains the site
   (pyproj, 80 candidates here), transform a sample under each, and keep the one that lands the
-  points inside the corridor: a wrong guess puts them in another state, so the test is
-  self-validating. 2.2 s; 4.9 M of the tile's 14.6 M points land in Ecola's corridor and the
+  points inside the road band: a wrong guess puts them in another state, so the test is
+  self-validating. 2.2 s; 4.9 M of the tile's 14.6 M points land in Ecola's road band and the
   ground agrees with the 3DEP DEM to **4 cm**. Datum realisations of one projection tie exactly —
   take the lowest EPSG code. Proposed to main 2026-09-21. **But reach for it last**: Ecola also has
   `CA_West_Coast_LiDAR_2016_B16` at 85 % coverage, eight years newer, in metres, with a compound
@@ -349,7 +349,7 @@ within 7 m of a real mapped sidewalk is skipped (61 of 809 on Crofton). 748 side
   point is already known (the line was resampled at those stations), so pulling toward the line
   *at its own station* is monotonic by construction: worst deviation 1.60 m, none over 2 m.
   A coast road of hairpins is the worst possible input for a nearest-point clamp: **ecola-or's
-  centreline leaves its road by 10.2 m**, against ≤ 2 m everywhere else. `corridor.verify` warns
+  centreline leaves its road by 10.2 m**, against ≤ 2 m everywhere else. `piedmont_bake.verify` warns
   over 3 m. Patch proposed to main 2026-09-21; whoever applies it must re-export, since it moves
   published geometry — and it shrinks the drift above too, because a line that stops cutting
   corners stops being short.
@@ -362,7 +362,7 @@ within 7 m of a real mapped sidewalk is skipped (61 of 809 on Crofton). 748 side
   Measured on real structures it is 0–4.1 m, the worst being Bowie's horse bridge at s = 2350.
   **The drift scales with how twisty the road is** — the interstates are 0.01–0.03 % and invisible,
   the backroads and the coast road 0.4–1.8 % — which is why it appeared only once Ecola, Bonnie
-  Branch and Rich's neighbourhood were baked. `corridor.verify` warns over 0.2 %; 11 of 20 sites
+  Branch and Rich's neighbourhood were baked. `piedmont_bake.verify` warns over 0.2 %; 11 of 20 sites
   warn today. Fix either by scaling `s` by `curveLen / length_m` in `spineAt`, or by publishing the
   smoothed length as well. Reported to main 2026-09-21.
 - **A key that indexes data must be intrinsic, never positional.** Network chain ids were `r00`,
@@ -374,7 +374,7 @@ within 7 m of a real mapped sidewalk is skipped (61 of 809 on Crofton). 748 side
   only when that chain's own ways change — and then it simply fails to match and is recomputed,
   which is a failure you can see. Caught by diffing `branches.json` against `spine_utm.json` before
   calling the data good; it would have rendered perfectly and been wrong everywhere.
-- **One writer per site directory.** `tools/corridor/data` is a symlink shared by every worktree,
+- **One writer per site directory.** `data` is a symlink shared by every worktree,
   so `export all` from main and a targeted export from an agent are the same files — written
   non-atomically, image by image. Announce an export in mail before running it.
 - **A pattern that matches your own command line kills your own shell.** `pkill -f 'foo'`,
@@ -404,44 +404,44 @@ within 7 m of a real mapped sidewalk is skipped (61 of 809 on Crofton). 748 side
   printed as a `pyramid WARNING`. The world bakes without satellite imagery, it just stops being a
   black hole.
 - **A silent service gap is the same bug at the fetch end.** The 19 KB all-black shards (below) were
-  invisible because nothing checked the content. `naip_tiled` now flags every planned corridor tile
+  invisible because nothing checked the content. `naip_tiled` now flags every planned road-band tile
   that comes back all-black and reports the count and location before the shard is written, so a
   missing area is loud whether it entered through the service or through a stale shard.
-- **A sharded bake fetches NAIP only along each shard's OWN chains' corridor (`buffer(300 m)`).** If
+- **A sharded bake fetches NAIP only along each shard's OWN chains' road band (`buffer(300 m)`).** If
   a shard's naip stage came out empty or partial, the merged VRT has a ~1 km black patch with a dead
   straight edge — dc-metro-take-2 had shards 1,2,7 empty (19 KB) and 8,10 partial (10–13 MB) against
   a full ~150 MB, leaving black ground beside the road (2026-10-07). The service had data, so the fix
-  is to re-run those shard naip stages (`corridor shard <slug> <i> --skip dem,lidar,geology,horizon`),
+  is to re-run those shard naip stages (`piedmont_bake shard <slug> <i> --skip dem,lidar,geology,horizon`),
   then **rebuild the merged overviews** (`shards.add_overviews_all`) before the export. `pyramid._sample`
   reads the merged `naip_1m.tif` through GDAL, which uses `naip_1m.tif.ovr` when it decimates — a
   stale overview serves the OLD holes even after the shards are replaced.
 
 ## 7 · How to add a road (one page)
 
-1. **Where.** Either drop the phone photos into `ext/ref-driving/` and run `just corridor-sites`
+1. **Where.** Either drop the phone photos into `ext/ref-driving/` and run `just bake-sites`
    (EXIF fixes → clustered 400 m → `sites.json`; add a `NAMES` entry in `sites.py` for the slug),
-   or append to `tools/corridor/sites.json` by hand:
+   or append to `bake/sites.json` by hand:
    ```json
    { "slug": "bonnie-branch-rd", "lat": 39.2322538, "lon": -76.785061, "photos": [], "heading_deg": null, "note": "why" }
    ```
    The fix does not have to be on the road; `nearest_road` snaps it (the snap distance is in the
    manifest). It does have to be nearer the road you mean than a bigger one (class penalties
    prefer the interstate).
-2. **Bake.** `just corridor-fetch bonnie-branch-rd` (add `--skip lidar` for a two-minute pass
+2. **Bake.** `just bake-fetch bonnie-branch-rd` (add `--skip lidar` for a two-minute pass
    without the point cloud). Watch the `spine` line: the `ident`, the length, the snap distance
    and the sibling count tell you whether it found the road you meant. Eastern-Maryland sites
    fall back to TNM LAZ tiles (≈ 6 GB, cached under `data/cache/laz/`); the first one takes a
    while. The bake ends with `web/manifest.json` and refreshes `sites/index.json`.
-3. **Look.** `just corridor-view` (or your agent's port) → the site appears in the picker.
+3. **Look.** `just dev` (or your agent's port) → the site appears in the picker.
    Check `preview.png` beside the bake for the spine/crossings/structures over the imagery.
-4. **Proposals.** `python -m corridor areas bonnie-branch-rd` seeds `adjustments.json`; open
+4. **Proposals.** `python -m piedmont_bake areas bonnie-branch-rd` seeds `adjustments.json`; open
    `/editor.html` to slide, place, flatten or bridge.
-5. **Publish** when the bucket exists: `python -m corridor publish bonnie-branch-rd`.
+5. **Publish** when the bucket exists: `python -m piedmont_bake publish bonnie-branch-rd`.
 
 If it went wrong: no manifest → read the exception in the log (`SITES.md` records these);
 `no drivable way within 800 m` → the fix is off; a spine with the wrong `ident` → the fix is
 nearer a bigger road (move the point or add a class penalty); `no EPT dataset covers this
-corridor` with no TNM LPC → no lidar, the bake continues with `--skip lidar` semantics and the
+road band` with no TNM LPC → no lidar, the bake continues with `--skip lidar` semantics and the
 viewer has no trees, structures or cut/fill.
 
 ## 8 · Portability

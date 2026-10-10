@@ -1,5 +1,5 @@
 {{- if .Values.regions.enabled }}
-# The scripts that add a region to this instance and keep it current (tools/overpass/README.md,
+# The scripts that add a region to this instance and keep it current (services/overpass/README.md,
 # "Adding a region"). Read by the `regions` sidecar, by the instance's own updater for its delete
 # filter, and by the world editor's osm-import Job, which mounts this ConfigMap by name
 # (`<release>-regions`) — so what runs is what is reviewed here, not a string in the editor.

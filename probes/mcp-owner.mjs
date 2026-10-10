@@ -12,11 +12,11 @@
 // SO IT OPENS TWO. One window cannot show the bug or the fix: every assertion here is about which
 // of two windows answered, and a probe with one window would pass on the old code too.
 //
-//   node probes/corridor-mcp-owner.mjs
+//   node probes/mcp-owner.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'
-const SVC = process.env.WORLDEDITOR ?? 'http://localhost:8780'
+const SVC = process.env.PIEDMONT_EDITOR ?? 'http://localhost:8780'
 const fail = []
 const say = (k, v) => console.log(`${k.padEnd(28)} ${typeof v === 'object' ? JSON.stringify(v) : v}`)
 

@@ -1,4 +1,4 @@
-// Drive the corridor editor headlessly: load a site, optionally run a script of actions, shoot it.
+// Drive the site editor headlessly: load a site, optionally run a script of actions, shoot it.
 //   node probes/editor-shot.mjs <slug> <out.png> [action...]
 // actions: draw       draw a 4-vertex area by clicking the canvas and closing it
 //          select:ID  select an area by id
@@ -23,7 +23,7 @@ page.on('pageerror', (e) => logs.push(`pageerror: ${e.message}`))
 page.on('dialog', (d) => d.accept())
 
 await page.goto(`http://localhost:5207/editor.html#${slug}`, { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && !!window.corridor?.site, null, { timeout: 240000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && !!window.piedmont?.site, null, { timeout: 240000 })
 await page.waitForTimeout(1500)
 
 let placed = 0
@@ -35,11 +35,11 @@ for (const a of actions) {
     for (const [x, y] of [[760, 380], [1060, 400], [1080, 660], [720, 640]]) { await click(x, y); await page.waitForTimeout(250) }
     await page.keyboard.press('Enter')
   } else if (verb === 'select') {
-    await page.evaluate((id) => window.corridor.areas.select(id), arg)
+    await page.evaluate((id) => window.piedmont_bake.areas.select(id), arg)
   } else if (verb === 'place') {
     // each `place:` lands on its own spot, so a run of them does not stack in one pile
     const [x, y] = [[820, 430], [960, 520], [740, 600], [1020, 640], [880, 340]][placed++ % 5]
-    await page.evaluate((id) => window.corridor.place.arm(id), arg)
+    await page.evaluate((id) => window.piedmont.place.arm(id), arg)
     await click(x, y)
   } else if (verb === 'save') {
     await page.keyboard.down('Control'); await page.keyboard.press('s'); await page.keyboard.up('Control')
@@ -51,7 +51,7 @@ for (const a of actions) {
     // two clicks on the road at exact stations: `span:2340:2362`
     const [, s0, s1] = a.split(':')
     await page.evaluate(([a0, a1]) => {
-      const { structs, site } = window.corridor
+      const { structs, site } = window.piedmont
       const at = (s) => { const p = site.spineAt(s).pos; return { x: p.x, y: -p.z } }
       structs.startPick()
       structs.click(at(a0))
@@ -59,12 +59,12 @@ for (const a of actions) {
     }, [Number(s0), Number(s1)])
     await page.waitForTimeout(1500)
   } else if (verb === 'struct') {
-    await page.evaluate((id) => window.corridor.structs.select(id), arg)
+    await page.evaluate((id) => window.piedmont.structs.select(id), arg)
   } else if (verb === 'set') {
     const [, key, ...rest] = a.split(':')
     const raw = rest.join(':')
     await page.evaluate(([k, v]) => {
-      const { structs } = window.corridor
+      const { structs } = window.piedmont
       if (k === 'kind') return structs.setKind(v)
       const it = structs.doc.items.find((i) => i.id === structs.selected)
       if (!it) return
@@ -80,7 +80,7 @@ for (const a of actions) {
     // The stored car height is the road AS IT WAS when Rich copied the stance; a flatten or a
     // re-profile since then moves the road, so stand on today's ground instead of yesterday's.
     await page.evaluate((st) => {
-      const { camera, orbitTarget, site } = window.corridor
+      const { camera, orbitTarget, site } = window.piedmont
       const [x, , z] = st.car.p
       const y = site.groundAt(x, z) ?? st.car.p[1]
       const f = [Math.cos(st.car.yaw), 0, Math.sin(st.car.yaw)]
@@ -91,7 +91,7 @@ for (const a of actions) {
   } else if (verb === 'look') {
     const [, s, dist = 40, h = 3] = a.split(':')
     await page.evaluate(([s, dist, h]) => {
-      const { camera, orbitTarget, site } = window.corridor
+      const { camera, orbitTarget, site } = window.piedmont
       const at = site.spineAt(s)
       const from = site.spineAt(Math.max(0, s - dist)).pos
       camera.position.set(from.x, from.y + h, from.z)
@@ -110,18 +110,18 @@ for (const a of actions) {
     // place at exact site coordinates: `put:barn-01:120:-40`
     const [, id, x, y] = a.split(':')
     await page.evaluate(([i, px, py]) => {
-      window.corridor.place.arm(i)
-      window.corridor.place.click({ x: px, y: py })
+      window.piedmont.place.arm(i)
+      window.piedmont.place.click({ x: px, y: py })
     }, [id, Number(x), Number(y)])
     await page.waitForTimeout(900)
   } else if (verb === 'obl') {
     // low oblique on a placement, to see a model rather than its roof
     await page.evaluate(([id, dist]) => {
-      const { place, camera, site } = window.corridor
+      const { place, camera, site } = window.piedmont
       const p = place.doc.items.find((i) => i.id === id)
       if (!p) return
       const z = site.groundAt(p.x, -p.y) ?? site.heightAt(p.x, p.y)
-      window.corridor.orbitTarget?.set?.(p.x, z + 8, -p.y)
+      window.piedmont.orbitTarget?.set?.(p.x, z + 8, -p.y)
       camera.position.set(p.x + dist * 0.8, z + dist * 0.45, -p.y + dist * 0.8)
       camera.lookAt(p.x, z + 8, -p.y)
     }, [arg, Number(a.split(':')[2] ?? 70)])
@@ -135,7 +135,7 @@ await page.waitForTimeout(1200)
 await page.screenshot({ path: out, timeout: 180000 })
 console.log(logs.filter((l) => !l.startsWith('log:')).slice(0, 12).join('\n') || 'no console errors')
 console.log('status:', await page.textContent('#status'))
-console.log('areas:', await page.evaluate(() => window.corridor.areas.doc.areas.length), 'selected:', await page.evaluate(() => window.corridor.areas.selected))
-console.log('placements:', await page.evaluate(() => window.corridor.place.doc.items.length))
-console.log('structures:', await page.evaluate(() => JSON.stringify(window.corridor.structs?.doc.items ?? null)))
+console.log('areas:', await page.evaluate(() => window.piedmont_bake.areas.doc.areas.length), 'selected:', await page.evaluate(() => window.piedmont_bake.areas.selected))
+console.log('placements:', await page.evaluate(() => window.piedmont.place.doc.items.length))
+console.log('structures:', await page.evaluate(() => JSON.stringify(window.piedmont.structs?.doc.items ?? null)))
 await browser.close()

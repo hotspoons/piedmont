@@ -3,7 +3,7 @@
 // Rich, 2026-09-27: "If there was a public dataset for the sky it would be awesome to use it to
 // draw stars and the Milky Way."
 //
-// `tools/sky/ingest.mjs --verify` proves the MAP: that the band lies on the galactic plane, that
+// `pipelines/sky/ingest.mjs --verify` proves the MAP: that the band lies on the galactic plane, that
 // the bulge is brightest, that the galactic poles are black and that the band closes all the way
 // round. It cannot prove that the map reached the GPU, or that it was put on the sky the right way
 // up, or at all. A map sampled through a wrong rotation still passes every test the map has.
@@ -18,7 +18,7 @@
 // rather than about the sky's own gradient, which changes with altitude and azimuth whatever is
 // drawn on it.
 //
-//   PORT=5185 node probes/corridor-milkyway.mjs [slug]
+//   PORT=5185 node probes/milkyway.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -27,7 +27,7 @@ const page = await browser.newPage({ viewport: { width: 420, height: 300 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 900000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 900000 })
 await page.waitForTimeout(3000)
 
 /*
@@ -38,7 +38,7 @@ await page.waitForTimeout(3000)
  * hours until the sun is measured below the horizon instead.
  */
 const night = await page.evaluate(async () => {
-  const c = window.corridor
+  const c = window.piedmont
   const THREE = c.THREE
   c.tune.set('TIME_RATE', 0)
   const D2R = Math.PI / 180
@@ -85,7 +85,7 @@ if (!night) { console.error('FAIL: could not find a moment with the sun down and
 await page.waitForTimeout(1200)
 
 const out = await page.evaluate(async () => {
-  const c = window.corridor
+  const c = window.piedmont
   const THREE = c.THREE
   const mw = c.scene.getObjectByName('milkyway')
   if (!mw) return { error: 'no milkyway object in the scene — the map did not load' }

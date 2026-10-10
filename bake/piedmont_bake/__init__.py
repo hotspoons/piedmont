@@ -1,4 +1,4 @@
-"""The corridor bake.
+"""The piedmont bake.
 
 Two things live at the package root because every stage needs them and none owns them:
 `BakeFault`, and `write_atomic` for anything written into the shared cache.

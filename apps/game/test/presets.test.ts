@@ -29,7 +29,7 @@ function store(init: Record<string, number>): TuneAccess & { values: Record<stri
   }
 }
 
-/** A tiny tab set with one knob of each kind, so a test does not depend on corridor's real knobs. */
+/** A tiny tab set with one knob of each kind, so a test does not depend on the game's real knobs. */
 function tabs(v: Record<string, number>): TuneTab[] {
   const g = (n: string) => () => v[n]
   const s = (n: string) => (x: number) => { v[n] = x }
@@ -311,7 +311,7 @@ describe('Presets', () => {
     const { p } = make()
     p.put({ id: 'dusk', name: 'Dusk', note: 'low sun', values: { FOG: 0.6, WEATHER: 1 } })
     const doc = p.toDoc('crofton-triangle')
-    expect(doc.kind).toBe('corridor-presets')
+    expect(doc.kind).toBe('piedmont-presets')
     expect(doc.slug).toBe('crofton-triangle')
 
     const { p: q } = make()
@@ -322,7 +322,7 @@ describe('Presets', () => {
 
   it('says which knobs a document carried that this build does not have', () => {
     const { p } = make()
-    const r = p.load({ kind: 'corridor-presets', version: 1, presets: [{ id: 'old', values: { FOG: 0.5, GONE_KNOB: 2 } }] })
+    const r = p.load({ kind: 'piedmont-presets', version: 1, presets: [{ id: 'old', values: { FOG: 0.5, GONE_KNOB: 2 } }] })
     expect(r.loaded).toEqual(['old'])
     expect(r.dropped.join(' ')).toContain('1 knob')
   })
@@ -357,7 +357,7 @@ describe('ease', () => {
   })
 })
 
-describe("corridor's real knobs", () => {
+describe("the game's real knobs", () => {
   it('marks the world and leaves the machine alone', () => {
     const all = knobs(TUNE_TABS)
     const world = all.filter((k) => k.scope === 'world').map((k) => k.name)

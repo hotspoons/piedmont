@@ -5,7 +5,7 @@
 //
 // THE ACTIVE MODE FIRST, then the smallest of everything else. That reverses the rule this
 // replaced, which was "smallest wins across every mode", written (2026-09-29) because a canopy area
-// covers the whole corridor, so in the Areas tab an active-first rule meant a loop standing in the
+// covers the whole road band, so in the Areas tab an active-first rule meant a loop standing in the
 // middle of it could never be clicked. That problem is real, and it is answered here differently:
 //
 // A SECOND CLICK ON THE SAME SPOT GOES TO THE NEXT THING THERE. The first click takes the active

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Look at the mesh. A proportion that reads like a car does not prove the thing is a car.
 //
-//   node tools/assetlib/turntable.mjs --id rx7-fd
-//   node tools/assetlib/turntable.mjs --class hero-car --out /tmp/sheet
+//   node pipelines/assetlib/turntable.mjs --id rx7-fd
+//   node pipelines/assetlib/turntable.mjs --class hero-car --out /tmp/sheet
 //
 // Renders each finished glb from four yaws into one contact sheet, so the half TRELLIS invented
 // from a single three-quarter view is visible next to the half it was shown. That far flank is the
@@ -11,7 +11,7 @@
 //
 // A DRACOLoader IS MANDATORY and its absence does not warn — GLTFLoader simply rejects, so a
 // `.catch(() => placeholder)` anywhere in a consumer turns a real model into a box silently. The
-// decoder is the vendored copy the corridor viewer already ships.
+// decoder is the vendored copy the viewer already ships.
 
 import { createServer } from 'node:http'
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
@@ -21,8 +21,8 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const LIB = path.resolve(HERE, '..')
-const ROOT = path.resolve(LIB, '../..')
+const LIB = HERE
+const ROOT = path.resolve(HERE, '../..')
 
 const TYPES = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.glb': 'model/gltf-binary', '.html': 'text/html' }
 
@@ -41,7 +41,7 @@ const S = ${size}
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
 renderer.setSize(S, S); document.body.appendChild(renderer.domElement)
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8a8f96)
-// Lit, not unlit: these keep their PBR material because corridor lights its own scene, so a flat
+// Lit, not unlit: these keep their PBR material because the game lights its own scene, so a flat
 // render here would be lying about what the game will show.
 scene.add(new THREE.HemisphereLight(0xffffff, 0x444450, 1.4))
 const pmrem = new THREE.PMREMGenerator(renderer)
@@ -49,7 +49,7 @@ scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
 const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(3, 5, 4); scene.add(key)
 const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 100)
 
-const draco = new DRACOLoader(); draco.setDecoderPath('/apps/corridor/public/assets/vendor/draco/')
+const draco = new DRACOLoader(); draco.setDecoderPath('/apps/game/public/assets/vendor/draco/')
 const loader = new GLTFLoader(); loader.setDRACOLoader(draco)
 
 window.__shots = []

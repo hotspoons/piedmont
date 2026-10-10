@@ -1,5 +1,5 @@
 // Night: is there any light on the road, do the headlights work, and are the stars points?
-//   PORT=5185 node probes/corridor-nightlight.mjs [slug]
+//   PORT=5185 node probes/nightlight.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -8,12 +8,12 @@ const p = await b.newPage({ viewport: { width: 800, height: 500 } })
 p.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await p.route('**/@vite/client', (r) => r.abort())
 await p.goto(`http://localhost:${PORT}/#${slug}?lite=1&fresh`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await p.waitForTimeout(3000)
 let fails = 0
 const ok = (what, cond, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++ }
 const lights = () => p.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   const sun = c.scene.children.find((o) => o.isDirectionalLight)
   const amb = c.scene.children.find((o) => o.isHemisphereLight)
   const beams = []
@@ -22,10 +22,10 @@ const lights = () => p.evaluate(() => {
 })
 await p.keyboard.press('Tab')          // into the seat, so the headlights exist
 await p.waitForTimeout(1200)
-await p.evaluate(() => window.corridor.time.setLocal('2026-06-21', '13:00', 'America/New_York'))
+await p.evaluate(() => window.piedmont.time.setLocal('2026-06-21', '13:00', 'America/New_York'))
 await p.waitForTimeout(900)
 const day = await lights()
-await p.evaluate(() => window.corridor.time.setLocal('2026-06-21', '23:30', 'America/New_York'))
+await p.evaluate(() => window.piedmont.time.setLocal('2026-06-21', '23:30', 'America/New_York'))
 await p.waitForTimeout(1200)
 const night = await lights()
 ok('there is ambient light at night', night.ambI > day.ambI * 0.15, `${night.ambI} vs ${day.ambI} by day`)
@@ -35,7 +35,7 @@ ok('they are off in daylight', day.beams.every((x) => !x.on || x.i < 1), JSON.st
 ok('and on at night', night.beams.every((x) => x.on && x.i > 10), JSON.stringify(night.beams))
 // the road under the car should not be pure black: sample the rendered frame
 const px = await p.evaluate(async () => {
-  const c = window.corridor
+  const c = window.piedmont
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
   const cv = document.querySelector('canvas')
   const g = document.createElement('canvas')
@@ -61,7 +61,7 @@ await p.waitForTimeout(800)
 await p.keyboard.press('KeyM')   // chrome off: the minimap is satellite imagery and would read as a very bright "star"
 await p.waitForTimeout(400)
 await p.evaluate(() => {
-  const { camera, orbit, site } = window.corridor
+  const { camera, orbit, site } = window.piedmont
   const c = site.manifest.spine.coords, a = c[Math.floor(c.length / 2)]
   const g = site.groundAt(a[0], -a[1]) ?? 0
   // the orbit controls stop at the horizon by default so you cannot fly under the ground; let
@@ -107,7 +107,7 @@ ok('and they are points, not blobs', stars.median <= 3 && stars.p90 <= 6, `media
 // nothing about the scene's lights, so at night they used to stay lit for noon (Rich, 2026-09-26).
 // Measured as the brightest green pixel in the verge at midday against the same one at midnight.
 const verge = async (time) => {
-  await p.evaluate((t) => window.corridor.time.setLocal('2026-06-21', t, 'America/New_York'), time)
+  await p.evaluate((t) => window.piedmont.time.setLocal('2026-06-21', t, 'America/New_York'), time)
   await p.waitForTimeout(2500)
   return p.evaluate(async () => {
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
@@ -127,7 +127,7 @@ const verge = async (time) => {
 // the minimap is satellite imagery — green, and the same green at midnight — so the chrome goes
 // away before any pixel is counted (it is already off from the star test, but not in isolation)
 if (!(await p.evaluate(() => document.body.classList.contains('chrome-off')))) { await p.keyboard.press('KeyM'); await p.waitForTimeout(400) }
-await p.evaluate(() => { const c = window.corridor; const s = c.site.manifest.spine.coords, a = s[Math.floor(s.length / 2)]
+await p.evaluate(() => { const c = window.piedmont; const s = c.site.manifest.spine.coords, a = s[Math.floor(s.length / 2)]
   const gy = c.site.groundAt(a[0], -a[1]) ?? 0
   c.camera.position.set(a[0] + 12, gy + 2.2, -a[1] + 12); c.orbit.target.set(a[0], gy + 1, -a[1]); c.orbit.update() })
 const dayGreen = await verge('13:00')

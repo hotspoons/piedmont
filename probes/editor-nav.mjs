@@ -10,7 +10,7 @@
 // close in. Then what a frame costs while panning and zooming (CPU of the camera + map, the render
 // call, draw calls). Screenshots at overview, mid, orbit, z14 and close go to $OUT.
 //
-//   PORT=5185 OUT=/tmp node probes/corridor-editor-nav.mjs [slug]     (dc-metro-take-2 is the scale case)
+//   PORT=5185 OUT=/tmp node probes/editor-nav.mjs [slug]     (dc-metro-take-2 is the scale case)
 import { chromium } from 'playwright'
 const PORT = process.env.PORT ?? '5185'
 const SLUG = process.argv[2] ?? 'dc-metro-take-2'
@@ -23,30 +23,30 @@ page.on('pageerror', (e) => errs.push(e.message.split('\n')[0]))
 const say = (k, v) => console.log(`${k.padEnd(30)} ${typeof v === 'object' ? JSON.stringify(v) : v}`)
 const t0 = Date.now()
 await page.goto(`http://127.0.0.1:${PORT}/editor.html#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 const tSite = Date.now() - t0
-await page.waitForFunction(() => window.corridor.roads.stats.built > 0, null, { timeout: 120000 })
+await page.waitForFunction(() => window.piedmont.roads.stats.built > 0, null, { timeout: 120000 })
 const tLegible = Date.now() - t0
-const legible = await page.evaluate(() => ({ firstMajorPageMs: window.corridor.roads.stats.firstMajorPageMs, siteReadyApprox: Math.round(performance.now()) }))
+const legible = await page.evaluate(() => ({ firstMajorPageMs: window.piedmont.roads.stats.firstMajorPageMs, siteReadyApprox: Math.round(performance.now()) }))
 say('site ready / first roads ms (wall)', [tSite, tLegible])
-const bootSegs = (await page.evaluate(() => window.corridor.roads.stats.segments))
+const bootSegs = (await page.evaluate(() => window.piedmont.roads.stats.segments))
 say('first legible frame (page clock ms)', legible.firstMajorPageMs)
 await page.waitForTimeout(1500)
 await page.screenshot({ path: `${SHOTS}/${SLUG}-1-overview.png` })
 
 const box = await page.$eval('#gl', (c) => { const r = c.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height } })
 const settle = async () => {
-  await page.waitForFunction(() => window.corridor.nav.state === 'idle' && !window.corridor.nav.moving, null, { timeout: 120000, polling: 250 }).catch(() => fail.push('the camera never settled'))
+  await page.waitForFunction(() => window.piedmont.nav.state === 'idle' && !window.piedmont.nav.moving, null, { timeout: 120000, polling: 250 }).catch(() => fail.push('the camera never settled'))
 }
 // world → screen
 const proj = (p) => page.evaluate((p) => {
-  const c = window.corridor
+  const c = window.piedmont
   const v = c.camera.position.clone().set(p.x, p.y, p.z).project(c.camera)
   const r = document.querySelector('#gl').getBoundingClientRect()
   return { x: (v.x + 1) / 2 * r.width + r.left, y: (1 - v.y) / 2 * r.height + r.top }
 }, p)
-const pick = (x, y) => page.evaluate(([x, y]) => { const p = window.corridor.nav.pickAt(x, y); return p && { x: p.x, y: p.y, z: p.z } }, [x, y])
-const state = () => page.evaluate(() => ({ mpp: +window.corridor.nav.metresPerPixel.toFixed(2), d: Math.round(window.corridor.nav.distance), pitch: +window.corridor.nav.pitchDeg.toFixed(1), heading: +window.corridor.nav.headingDeg.toFixed(1), roads: window.corridor.roads.stats }))
+const pick = (x, y) => page.evaluate(([x, y]) => { const p = window.piedmont.nav.pickAt(x, y); return p && { x: p.x, y: p.y, z: p.z } }, [x, y])
+const state = () => page.evaluate(() => ({ mpp: +window.piedmont.nav.metresPerPixel.toFixed(2), d: Math.round(window.piedmont.nav.distance), pitch: +window.piedmont.nav.pitchDeg.toFixed(1), heading: +window.piedmont.nav.headingDeg.toFixed(1), roads: window.piedmont.roads.stats }))
 
 // ---- 1 · wheel zoom toward the cursor keeps the ground under it
 const zx = box.x + box.w * 0.42, zy = box.y + box.h * 0.36
@@ -159,14 +159,14 @@ const perf = await page.evaluate(() => {
     navAndMapCpu: { p50: pc(lastK(all.nav), 0.5), p99: pc(lastK(all.nav), 0.99) },
     renderCall: { p50: pc(lastK(all.render), 0.5), p99: pc(lastK(all.render), 0.99) },
     drawCalls: { p50: pc(lastK(all.calls), 0.5), max: Math.max(...lastK(all.calls)) },
-    roads: window.corridor.roads.stats,
+    roads: window.piedmont.roads.stats,
   }
 })
 say('perf while moving', perf)
 
 // ---- 5 · close in, buildings on
 await page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   c.footprints.on = true
 })
 for (let k = 0; k < 40; k++) {
@@ -178,21 +178,21 @@ for (let k = 0; k < 40; k++) {
   await settle()
 }
 await settle()
-await page.waitForFunction(() => window.corridor.footprints.stats.footprints > 0, null, { timeout: 60000 }).catch(() => fail.push('buildings never appeared'))
+await page.waitForFunction(() => window.piedmont.footprints.stats.footprints > 0, null, { timeout: 60000 }).catch(() => fail.push('buildings never appeared'))
 await page.waitForTimeout(2500)
 const close = await state()
-const fb = await page.evaluate(() => ({ ...window.corridor.footprints.stats, calls: window.__mapPerf().calls.slice(-1)[0] }))
+const fb = await page.evaluate(() => ({ ...window.piedmont.footprints.stats, calls: window.__mapPerf().calls.slice(-1)[0] }))
 say('close', close)
 say('buildings', fb)
 await page.screenshot({ path: `${SHOTS}/${SLUG}-5-close-buildings.png` })
 
 // ---- 6 · keys: W slides the view north (heading 0)
-const tBefore = await page.evaluate(() => window.corridor.orbitTarget.toArray())
+const tBefore = await page.evaluate(() => window.piedmont.orbitTarget.toArray())
 await page.mouse.move(box.x + 5, box.y + 5)
 await page.keyboard.down('KeyW')
 await page.waitForTimeout(700)
 await page.keyboard.up('KeyW')
-const tAfter = await page.evaluate(() => window.corridor.orbitTarget.toArray())
+const tAfter = await page.evaluate(() => window.piedmont.orbitTarget.toArray())
 say('W moved target (dx, dz)', [+(tAfter[0] - tBefore[0]).toFixed(1), +(tAfter[2] - tBefore[2]).toFixed(1)])
 if (!(tAfter[2] < tBefore[2] - 1)) fail.push('W did not move the view north')
 

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 /**
- * The dev operator shell (see packages/engine/src/dev/bridge-plugin.ts). Resolves to no-op stubs
+ * The dev operator shell (see vendor/arcade/packages/engine/src/dev/bridge-plugin.ts). Resolves to no-op stubs
  * unless the dev server was started with APEX_BRIDGE set, and never exists at all in a production
  * build.
  */

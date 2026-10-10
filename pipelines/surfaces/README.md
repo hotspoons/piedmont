@@ -1,12 +1,12 @@
 # surfaces — road textures from flux, matched to measured pavement
 
 ```bash
-tools/corridor/.venv/bin/python tools/surfaces/gen.py            # all six sets
-tools/corridor/.venv/bin/python tools/surfaces/gen.py concrete   # one
+bake/.venv/bin/python pipelines/surfaces/gen.py            # all six sets
+bake/.venv/bin/python pipelines/surfaces/gen.py concrete   # one
 ```
 
-Output: `apps/corridor/public/surfaces/<class>/{albedo.jpg,normal.png,roughness.jpg}` and
-`surfaces.json`. The class names are the join with the bake: `tools/corridor/corridor/surface.py`
+Output: `apps/game/public/surfaces/<class>/{albedo.jpg,normal.png,roughness.jpg}` and
+`surfaces.json`. The class names are the join with the bake: `bake/piedmont_bake/surface.py`
 labels every 20 m of a spine `asphalt_new | asphalt_aged | asphalt_patched | concrete | chipseal`,
 and the viewer's road mesh is split by that label and textured from this catalogue at real scale
 (`metres_per_tile`).
@@ -17,11 +17,11 @@ Two signals already in every site directory, plus OSM when it bothers to say:
 
 | signal | what it separates | caveat |
 |---|---|---|
-| **lidar return intensity** of ground points inside the lanes | new asphalt (near-black to a 1064 nm laser) from aged (greyer) from concrete (bright) | not comparable between lidar projects: the same asphalt reads 5,900 on MD_Western_2 and 14,300 on MD_Western_1. Used only RELATIVE to the corridor's own median |
+| **lidar return intensity** of ground points inside the lanes | new asphalt (near-black to a 1064 nm laser) from aged (greyer) from concrete (bright) | not comparable between lidar projects: the same asphalt reads 5,900 on MD_Western_2 and 14,300 on MD_Western_1. Used only RELATIVE to the game's own median |
 | **NAIP brightness/chroma/texture** inside the lanes | concrete (≥120) from asphalt; texture picks chip seal on small roads | shadows and vehicles raise texture on interstates, so chip seal is gated to non-motorway classes |
 | **OSM `surface=`** | an explicit vote | rarely more specific than `asphalt` |
 
-What it found on the first seven corridors: interstates are aged asphalt end to end, with concrete
+What it found on the first seven road bands: interstates are aged asphalt end to end, with concrete
 exactly where the bridge decks are (Braddock's two I-70 bridges, Frederick's overpasses) — the
 intensity jump lands on the OSM `bridge=yes` segments to the station. Clarksburg I-270 reads
 concrete over ~3.7 km; that is a real concrete section of I-270 and worth checking against the

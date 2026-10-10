@@ -216,20 +216,20 @@ Everything below the line is shared; the two games are thin on top of it.
 | 8 | **rage sim** | countdown, rage meter, missiles, wrecks that make the jam worse, two-number scoring |
 
 Steps 1–5 are the "real life systems simulator" Rich asked for and are worth building whether or
-not either game happens: a corridor with traffic on it is a different world from an empty one, and
+not either game happens: a road band with traffic on it is a different world from an empty one, and
 the hunt and the parkour both get better the moment the roads have cars on them.
 
 ### Probes that must exist
 
-- `corridor-traffic-signal.mjs` — watch one baked signal for a full cycle: the queue must **form**
+- `traffic-signal.mjs` — watch one baked signal for a full cycle: the queue must **form**
   on red, **discharge** on green, and the discharge rate must be in the region of a real saturation
   flow (about 1,800 vehicles an hour per lane). A traffic model that cannot reproduce that number
   is not simulating traffic, it is animating it.
-- `corridor-traffic-jam.mjs` — raise the density until the road jams, and assert a stop-and-go wave
+- `traffic-jam.mjs` — raise the density until the road jams, and assert a stop-and-go wave
   travels **backwards** through the queue. That is the emergent behaviour the whole model is for.
-- `corridor-beam.mjs` — latch, carry, place; assert the handling envelope changes while loaded, and
+- `beam.mjs` — latch, carry, place; assert the handling envelope changes while loaded, and
   that a bridge with a measured clearance takes the load off.
-- `corridor-wreck.mjs` — a wreck blocks a lane; assert the flow through that junction drops and the
+- `wreck.mjs` — a wreck blocks a lane; assert the flow through that junction drops and the
   route the agents take changes.
 
 ---

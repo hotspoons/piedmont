@@ -1,6 +1,6 @@
 // What happens where two roads meet: signals that actually cycle, stop bars, and street name blades.
 //
-// The bake (`corridor/intersections.py`) works out the junction graph, who stops, and which arms
+// The bake (`piedmont_bake/intersections.py`) works out the junction graph, who stops, and which arms
 // share a phase. This module draws it and runs the clock.
 //
 // THE CONTROLLER is the piece that was missing. street-furniture built the masts and deliberately

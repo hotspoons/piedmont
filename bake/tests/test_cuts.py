@@ -6,7 +6,7 @@ the per-road walk across the fork pool (cuts.py docstring). These tests pin the 
 go wrong in that refactor: the detection still finds a face, and the forked path returns exactly
 what the serial path does.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ import numpy as np  # noqa: E402
 import rasterio  # noqa: E402
 from rasterio.transform import from_origin  # noqa: E402
 
-from corridor import cuts  # noqa: E402
+from piedmont_bake import cuts  # noqa: E402
 
 H = W = 200
 #: terrain rises 0.7 m per metre for every y above 100 — a 30 m wall beside a road at y=100 and
@@ -94,16 +94,16 @@ class WaterDistanceTest(unittest.TestCase):
 
 class MeasureNetworkTest(unittest.TestCase):
     def _run(self, site: Path, jobs: int) -> dict:
-        old = os.environ.get("CORRIDOR_TILE_JOBS")
-        os.environ["CORRIDOR_TILE_JOBS"] = str(jobs)
+        old = os.environ.get("PIEDMONT_TILE_JOBS")
+        os.environ["PIEDMONT_TILE_JOBS"] = str(jobs)
         try:
             cuts._CUTS_CTX = {}
             return cuts.measure_network(site)
         finally:
             if old is None:
-                os.environ.pop("CORRIDOR_TILE_JOBS", None)
+                os.environ.pop("PIEDMONT_TILE_JOBS", None)
             else:
-                os.environ["CORRIDOR_TILE_JOBS"] = old
+                os.environ["PIEDMONT_TILE_JOBS"] = old
 
     def test_finds_a_face_beside_the_primary(self):
         with tempfile.TemporaryDirectory() as d:
@@ -135,7 +135,7 @@ class MeasureNetworkTest(unittest.TestCase):
             cuts._CUTS_CTX = {**ctx, "jobs": []}
             ctx["jobs"] = [{"prefix": "", "ident": "Test Rd", "line": None, "prof": None}]
             reads = {"n": 0}
-            from corridor.water import _Heights
+            from piedmont_bake.water import _Heights
 
             real = Path.read_text
 

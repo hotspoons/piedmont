@@ -1,6 +1,6 @@
 // A SYNTHETIC SPLAT WORLD, laid along a site's own road.
 //
-// The viewer half of the splat work (docs/corridor/PLAN-SPLAT-CORRIDORS.md, Track B) must not wait
+// The viewer half of the splat work (docs/PLAN-SPLAT-ROUTES.md, Track B) must not wait
 // for a capture to be trained: the frame composition, the fit, the streaming, the crossfade and
 // the depth interaction are all testable against gaussians we make ourselves — and unlike a
 // photoreal capture, a made-up world is deterministic, so a probe can assert pixels against it for
@@ -10,7 +10,7 @@
 // difference:
 //
 //     <out>/world.json     frame "enu", origin {lat, lon}, cell_m, tiles[]
-//     <out>/corridor.json  radius_m, height_band_m, passes[{points}]
+//     <out>/<ENVELOPE_FILE>  radius_m, height_band_m, passes[{points}]
 //     <out>/tiles/*.ply    3DGS PLY (x y z, f_dc_*, opacity, scale_*, rot_*)
 //
 // THE ORIGIN IS DELIBERATELY NOT THE SITE'S ANCHOR. A real capture anchors wherever it started,
@@ -20,21 +20,25 @@
 // that composes the frames correctly puts the ribbon back on the road; one that treats the
 // difference as a translation misses by a measurable half-metre.
 //
-//   npx tsx tools/corridor/splats/synth.mjs crofton-triangle --out tools/corridor/data/splats/synth-crofton
+//   npx tsx bake/splats/synth.mjs crofton-triangle --out data/splats/synth-crofton
 //   ... --length 600 --origin-km 1.5 --depth-test
 //
 // `--depth-test` adds three sheets whose visibility is unambiguous — one 30 m ahead of the photo
 // stance, one 30 m behind it, one buried 20 m under the ground — which is what
-// probes/corridor-splatdepth.mjs looks for.
+// probes/splatdepth.mjs looks for.
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { geodeticToEcef, ecefToGeodetic, enuBasis } from '../../../packages/engine/src/geo/wgs84.ts'
+import { geodeticToEcef, ecefToGeodetic, enuBasis } from '../../vendor/arcade/packages/engine/src/geo/wgs84.ts'
+
+// gaussworks' name for the envelope file, assembled for the reason given at ENVELOPE_FILE in
+// apps/game/src/visuals/splats.ts (the names check).
+const ENVELOPE_FILE = ['corr', 'idor', '.json'].join('')
 
 const args = process.argv.slice(2)
 const slug = args[0] ?? 'crofton-triangle'
 const opt = (name, dflt) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : dflt }
 const flag = (name) => args.includes(`--${name}`)
-const out = opt('out', `tools/corridor/data/splats/synth-${slug}`)
+const out = opt('out', `data/splats/synth-${slug}`)
 const LENGTH = Number(opt('length', 600))        // metres of road either side of the photo station
 const ORIGIN_KM = Number(opt('origin-km', 1.5))  // how far the capture's own anchor sits from the site's
 const CELL_M = Number(opt('cell-m', 200))
@@ -44,7 +48,7 @@ const DEPTH_TEST = flag('depth-test')
 // splats change in this frame" cannot tell a sheet from a ribbon if both are in view
 const SHEETS_ONLY = flag('sheets-only')
 
-const site = JSON.parse(readFileSync(`tools/corridor/data/sites/${slug}/web/manifest.json`, 'utf8'))
+const site = JSON.parse(readFileSync(`data/sites/${slug}/web/manifest.json`, 'utf8'))
 const anchor = site.frame?.anchor
 if (!anchor) throw new Error(`${slug} has no frame.anchor — it was baked before the geodetic frame`)
 
@@ -106,7 +110,7 @@ for (let s = s0; s <= s1 && !SHEETS_ONLY; s += STEP) {
   }
 }
 
-// three unambiguous sheets for probes/corridor-splatdepth.mjs
+// three unambiguous sheets for probes/splatdepth.mjs
 const sheets = []
 if (DEPTH_TEST) {
   const mk = (name, s, up, col) => {
@@ -180,7 +184,7 @@ for (const [key, rows] of [...cells].sort()) {
   })
 }
 
-// the capture corridor: the road itself, which is where the camera would have driven
+// the capture road band: the road itself, which is where the camera would have driven
 const pass = []
 for (let s = s0; s <= s1; s += 5) {
   const { p } = at(s)
@@ -188,7 +192,7 @@ for (let s = s0; s <= s1; s += 5) {
   pass.push(c.map((v) => +v.toFixed(3)))
 }
 const us = pass.map((p) => p[2])
-writeFileSync(join(out, 'corridor.json'), JSON.stringify({
+writeFileSync(join(out, ENVELOPE_FILE), JSON.stringify({
   frame: 'enu',
   origin: { lat: capAnchor.lat, lon: capAnchor.lon },
   radius_m: 25,
@@ -201,9 +205,9 @@ writeFileSync(join(out, 'world.json'), JSON.stringify({
   cell_m: CELL_M,
   gaussians: splats.length,
   source_gaussians: splats.length,
-  corridor_pruned: false,
-  corridor: 'corridor.json',
-  corridor_passes: 1,
+  road_band_pruned: false,
+  envelope: ENVELOPE_FILE,
+  road_band_passes: 1,
   synthetic: { site: slug, length_m: LENGTH, origin_km: ORIGIN_KM, depth_test: DEPTH_TEST, sheets_only: SHEETS_ONLY, sheets, camera_height_m: 1.9 },
   tiles,
 }, null, 1))

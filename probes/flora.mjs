@@ -1,7 +1,7 @@
 // What this site decided grows on it, and what it would have decided before.
 //
-//   PORT=5201 SLUG=acadia-ocean-dr node probes/corridor-flora.mjs
-//   PORT=5201 SLUG=all            node probes/corridor-flora.mjs     # every site with a flora block
+//   PORT=5201 SLUG=acadia-ocean-dr node probes/flora.mjs
+//   PORT=5201 SLUG=all            node probes/flora.mjs     # every site with a flora block
 //
 // Species and ground cover are the two things in this world you cannot check by looking at a
 // screenshot: a spruce-shaped tree is only right if the data says spruce, and "the hillside looks
@@ -11,7 +11,7 @@
 //           replayed over the SAME measured trees (site.treeSpecies(true))
 //   AFTER   the draw from the LANDFIRE class the tree stands on and the FIA species mix in it
 //
-// plus the vegetation classes with their corridor area share, the ground-cover class, and — for
+// plus the vegetation classes with their road-band area share, the ground-cover class, and — for
 // each of the four seasons — how far this site's palette has moved from the piedmont reference and
 // what that does to the grass. Colours are printed as hex because a hillside going from #97a054 to
 // #cfbd8a IS the answer to "is California brown in September".
@@ -30,9 +30,9 @@ const slugs = WANT === 'all' ? index.sites.map((s) => s.slug) : WANT.split(',')
 
 for (const slug of slugs) {
   await page.goto(`http://127.0.0.1:${PORT}/#${slug}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-  await page.waitForFunction((s) => window.corridor?.site?.manifest?.slug === s && !!window.corridor.site.treePalette, slug, { timeout: 300000 })
+  await page.waitForFunction((s) => window.piedmont?.site?.manifest?.slug === s && !!window.piedmont.site.treePalette, slug, { timeout: 300000 })
   const out = await page.evaluate(() => {
-    const site = window.corridor.site
+    const site = window.piedmont.site
     const f = site.flora
     const seasons = ['winter', 'spring', 'summer', 'autumn']
     const before = site.treeSpecies(true)

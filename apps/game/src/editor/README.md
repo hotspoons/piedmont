@@ -1,15 +1,15 @@
-# corridor editor
+# site editor
 
-`/editor.html` on the same dev server as the viewer (`just corridor-view`, :5185). The viewer shows
+`/editor.html` on the same dev server as the viewer (`just dev`, :5185). The viewer shows
 what the bake measured; this page is where you say what the bake got wrong, and what to put beside
 the road. It builds the scene with the viewer's own `buildSite` — read-only — because an editor
 looking at anything other than what the game looks at is correcting the wrong thing.
 
 Three files come out, written **beside** the bake (never inside `web/`, which the bake owns):
 
-    tools/corridor/data/sites/<slug>/adjustments.json    areas
-    tools/corridor/data/sites/<slug>/placements.json     objects
-    tools/corridor/data/sites/<slug>/structures.json     what the road does along an interval
+    data/sites/<slug>/adjustments.json    areas
+    data/sites/<slug>/placements.json     objects
+    data/sites/<slug>/structures.json     what the road does along an interval
 
 Saving is a `PUT` to the dev middleware in `vite.config.ts`, which whitelists exactly those three
 names. Pointing the page at a published bucket with `?data=` disables saving.
@@ -27,9 +27,9 @@ names. Pointing the page at a published bucket with `?data=` disables saving.
 | `author/place.ts` | mode 2: arm an asset, click, drag, rotate, scale |
 | `author/structures.ts` | mode 4: two clicks on the road → an interval on the spine; a bridge over it, a grade to flatten, a detection to ignore |
 | `author/grow.ts` | mode 3: run autogen, and keep your corrections across a re-run |
-| `author/autogen.ts` | the rules from `tools/corridor/AUTOGEN.md`, over the bake's buildings/landuse/pois |
+| `author/autogen.ts` | the rules from `bake/AUTOGEN.md`, over the bake's buildings/landuse/pois |
 | `view/preview.ts` | the dialog: the same site from the driver's seat |
-| `author/corridor.ts` | along-track/lateral coordinates, and every sign convention in one place |
+| `author/roadband.ts` | along-track/lateral coordinates, and every sign convention in one place |
 | `author/catalog.ts` | `public/assets/catalog.json` → a `.glb` or a labelled box at the real footprint |
 | `view/drape.ts` | polygons made to lie on the ground rather than hover over it |
 | `author/ui.ts` | the panel's sliders and rows |
@@ -75,7 +75,7 @@ switch:
 
 A cyan ring marks the point a zoom or an orbit is turning about. Every glide stops the moment you
 press, scroll or touch a movement key. Where you were in each world comes back on reload.
-`probes/corridor-editor-nav.mjs` holds it to its promises with real mouse input (each measured at
+`probes/editor-nav.mjs` holds it to its promises with real mouse input (each measured at
 0 px of drift on dc-metro-take-2), and `test/editor-nav.test.ts` states the maths.
 
 The tools still come first: a press on a vertex handle, a gizmo or a stunt piece belongs to that
@@ -152,7 +152,7 @@ is what gets scaled, not the height.
 
 ## The preview is the editor's own site
 
-Not a second one built beside it. A second `buildSite` would double the memory — a corridor is a
+Not a second one built beside it. A second `buildSite` would double the memory — a road band is a
 22 MP drape, a fine terrain strip and up to 120k trees — and, worse, it would be a second thing
 that can disagree with the first. The bug you would never catch is a preview showing you something
 the game does not.
@@ -171,7 +171,7 @@ measure Y from the BOTTOM, hence `innerHeight - rect.bottom`.
 ## Things that were learned the hard way
 
 - **Drape on `site.groundAt`, not `site.heightAt`.** `heightAt` is the raw 2 m DEM; `groundAt` is
-  the graded corridor strip near the road and the DEM beyond — the surface the car drives on. They
+  the graded road-band strip near the road and the DEM beyond — the surface the car drives on. They
   differ by metres beside the pavement, which is exactly where everything gets authored.
 - **A missing optional file does not 404 in dev.** The bake middleware calls `next()`, Vite's SPA
   fallback answers `index.html` with a 200, and `r.json()` dies on `<!doctype`. `schema.ts::load`
@@ -185,14 +185,14 @@ measure Y from the BOTTOM, hence `innerHeight - rect.bottom`.
 - **flux.2-dev will not be talked out of its framing.** A tall subject (the water tower) comes back
   with its feet off the bottom edge, and TRELLIS then invents them. Naming a margin *size* and
   naming the bottom of the object explicitly changed the width and not the crop — measured twice.
-  Same class of failure `tools/assetgen/README.md` reports for proportion, where the fix was an
+  Same class of failure `pipelines/assetgen/README.md` reports for proportion, where the fix was an
   attached reference rather than a better sentence. Wide subjects frame themselves fine.
 - **Two sign conventions, and both bite.** A placement's `yaw_deg` is a compass bearing and
   renders as `rotation.y = -yaw·π/180` — the first cut of `place.ts` used `+`, so the editor drew
   every asymmetric model mirrored against the viewer and the selection arrow disagreed with the
   model it was attached to. Separately, `buildings[].rect.yaw_deg` from the bake is a MATH angle
   from east describing an axis, so aligning a box's long side with a footprint is
-  `yaw = -rect.yaw_deg`. Both live in `corridor.ts` now (`bearingOf`, `yawForLongAxis`) with the
+  `yaw = -rect.yaw_deg`. Both live in `roadband.ts` now (`bearingOf`, `yawForLongAxis`) with the
   derivations written out, because a mirrored town looks entirely plausible on its own.
 - **Nothing stores a z.** Polygons are x/y and placements default to `z: null`. A re-bake with a
   better DEM then moves the authoring with the hillside instead of burying it.
@@ -201,7 +201,7 @@ measure Y from the BOTTOM, hence `innerHeight - rect.bottom`.
   and a 3:1 one when it said *classic American covered bridge* — the noun's prior did more than
   the numbers. The shipped horse bridge is that 3:1 model with `--stretch 1.5` along its long axis
   (`editor-trim.mjs`); vertical board siding stretches gracefully, so it reads as a longer bridge.
-  Same finding as `tools/assetgen/README.md`'s: proportion is fixed by a reference, not a sentence.
+  Same finding as `pipelines/assetgen/README.md`'s: proportion is fixed by a reference, not a sentence.
 - **A stance stores yesterday's road height.** The viewer's `?stance=` carries the car's world
   position as it was; a `flatten` or a re-profile moves the road, and a probe that puts the camera
   at the stored height then looks up at the pavement from underneath. `editor-shot.mjs`'s
@@ -210,7 +210,7 @@ measure Y from the BOTTOM, hence `innerHeight - rect.bottom`.
 ## Mode 3 · grow
 
 `G` runs `autogen.ts` over the bake's `buildings` / `landuse` / `pois` and drops `g-` placements
-into the same document mode 2 edits. The rules are `tools/corridor/AUTOGEN.md`; what makes it a
+into the same document mode 2 edits. The rules are `bake/AUTOGEN.md`; what makes it a
 loop rather than a one-shot is that a generated id is derived from its SOURCE BUILDING INDEX, so
 the same input lands on the same id every run:
 
@@ -232,7 +232,7 @@ Two corrections to the first version, both measured rather than reasoned:
 
 ## Two things about the preview that look like bugs and are not
 
-- **The green band above the corridor from a few hundred metres up** is the horizon layer, not
+- **The green band above the road band from a few hundred metres up** is the horizon layer, not
   trees. `layers.horizon` is ±30 km at 60 m/px, so everything past the near bbox (2.1 × 3.4 km on
   frederick-i70) is that mesh, compressed by perspective and tinted by `LOOK[season].ground`; the
   straight edge below it is the near terrain's bbox. The viewer draws it identically — it just
@@ -254,8 +254,8 @@ it", which is why they are all optional — an area is a correction, not a descr
 | `canopy_scale`, `canopy_offset_m` | numbers | baked into the CHM at load; changes tree heights AND the tree list |
 | `tree_density` | 0–1, thins only | there are no canopy cells to grow extra trees from |
 | `grass_height`, `grass_density` | numbers | the grass ring, live |
-| `ground_offset_m` | ±10 m | deforms the corridor strip off the pavement |
-| `surface_class` | the `tools/surfaces` set names | the road texture at spine stations inside the polygon |
+| `ground_offset_m` | ±10 m | deforms the road-band strip off the pavement |
+| `surface_class` | the `pipelines/surfaces` set names | the road texture at spine stations inside the polygon |
 | `species` | oak, ash, aspen, pine | which tree the near field grows |
 | `markings` | none, class, full | how much paint. Site default is the `ROAD_MARKINGS` knob |
 | `centre_line` | dashed, solid, solid_left, solid_right | where overtaking is allowed |
@@ -270,7 +270,7 @@ editor selects on a click, so the area you can see yourself picking is the one t
 
 **Why these are area keys and not a new interval file.** road-and-car asked for `centre_line` as
 an interval with `s_start`/`s_end`. An area polygon already IS a stretch of road, and
-`python -m corridor areas` already emits a band polygon along the spine for every surface-class
+`python -m piedmont_bake areas` already emits a band polygon along the spine for every surface-class
 run — so the shapes exist, are drawn, and are draggable. A new file would have been a new mode, a
 new save path and a new composition rule for one enum.
 
@@ -280,7 +280,7 @@ direction we know.
 
 ## Per-site knobs — `tuning.json`
 
-`tools/corridor/data/sites/<slug>/tuning.json`, `{ version: 1, values: { KNOB: number } }`.
+`data/sites/<slug>/tuning.json`, `{ version: 1, values: { KNOB: number } }`.
 Sideling Hill is closed forest on a mountain grade, Bowie is a suburban arterial, Ecola is a
 coast; one `GRASS_RADIUS` cannot be right for all of them.
 
@@ -313,7 +313,7 @@ should appear bolder than other tabs items and be first on selection when clicki
 - **Names.** The active mode's things carry their names (`view/labels.ts`); the passive ones do not.
 - **Clicks.** Every mode answers `pick(pt)` without taking the click. The active mode's thing wins,
   then the smallest of the rest; **a second click on the same spot takes the next thing there**, so
-  a loop standing inside a corridor-wide canopy area is still reachable from the Areas tab.
+  a loop standing inside a road-band-wide canopy area is still reachable from the Areas tab.
   Choosing another mode's thing switches to that mode with it selected and its row in view. A tool
   mid-gesture (drawing, armed, picking an interval) still keeps every click.
 - **Hover.** What a click would take is outlined in white before you click, across modes.
@@ -358,8 +358,8 @@ came to paint area fills and structure ribbons over the road in its first versio
 
 ## Seeding areas from the bake
 
-`python -m corridor areas <slug|all>` proposes polygons rather than making you hunt for them: one
+`python -m piedmont_bake areas <slug|all>` proposes polygons rather than making you hunt for them: one
 per stretch where the lidar canopy disagrees with the rest of its own side, one per structure, one
 per surface-class run, every knob neutral. Ids encode position (`canopy-l-0420`, `struct-0500`) so
 a re-run after a re-bake merges instead of duplicating, and it only ever appends ids it does not
-already find — a hand-drawn `a-01` is never touched. See `tools/corridor/corridor/areas.py`.
+already find — a hand-drawn `a-01` is never touched. See `bake/piedmont_bake/areas.py`.

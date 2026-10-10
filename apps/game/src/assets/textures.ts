@@ -7,7 +7,7 @@
 // instead of having them generated on upload. Measured on a crofton-triangle tile, 292 KB jpg ->
 // 176 KB ktx2.
 //
-// The bake writes .ktx2 as a TWIN, never a replacement (corridor/ktx2.py), so this is a preference
+// The bake writes .ktx2 as a TWIN, never a replacement (piedmont_bake/ktx2.py), so this is a preference
 // and not a requirement: no `ktx2` in the manifest, a browser without the transcoder, or a
 // transcode failure all fall back to the .jpg and the site looks the same.
 import * as THREE from 'three'

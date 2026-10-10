@@ -2,8 +2,8 @@
 // A keyed cut-out, as a .glb the game can load: one textured quad, standing on the ground, at the
 // spec's metres.
 //
-//   node tools/assetgen/card.mjs --id palm
-//   node tools/assetgen/card.mjs --all --out apps/coast/public/assets/generated
+//   node pipelines/assetgen/card.mjs --id palm
+//   node pipelines/assetgen/card.mjs --all --out apps/coast/public/assets/generated
 //
 // WHY A CARD IS NOT A COMPROMISE HERE, for roadside kinds. Every nature, prop and architecture
 // entry in `models.ts` is declared `yaws: [0]` — the game bakes it from exactly ONE angle and
@@ -93,7 +93,7 @@ export function cardGlb(pngBytes, widthM, heightM, name) {
   }
 
   const json = {
-    asset: { version: '2.0', generator: 'apex-conduit tools/assetgen/card.mjs' },
+    asset: { version: '2.0', generator: 'piedmont pipelines/assetgen/card.mjs' },
     extensionsUsed: ['KHR_materials_unlit'],
     scene: 0,
     scenes: [{ nodes: [0] }],
@@ -178,7 +178,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const id = flag('id')
   if ((!id && !has('all')) || has('help')) {
     console.log(`
-  node tools/assetgen/card.mjs --id palm [--out DIR]
+  node pipelines/assetgen/card.mjs --id palm [--out DIR]
 
     --id ID     one asset that has been generated
     --all       every generated asset whose class is not vehicle

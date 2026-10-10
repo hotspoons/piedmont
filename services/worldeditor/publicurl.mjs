@@ -6,7 +6,7 @@
 // Host header was all it knew. A reverse proxy says what the client actually used:
 // `X-Forwarded-Proto` and `X-Forwarded-Host` (the first value of each, since proxies append).
 //
-//   WORLDEDITOR_PUBLIC_URL      wins outright when set — the operator knows the address
+//   PIEDMONT_EDITOR_PUBLIC_URL      wins outright when set — the operator knows the address
 //   X-Forwarded-Proto / -Host   what the ingress saw
 //   Host, http                  a bare server on a laptop
 
@@ -17,7 +17,7 @@ function first(v) {
 }
 
 export function publicMcpUrl(headers, env, port) {
-  const fixed = env.WORLDEDITOR_PUBLIC_URL
+  const fixed = env.PIEDMONT_EDITOR_PUBLIC_URL
   if (fixed) return `${fixed.replace(/\/$/, '')}/api/agent/mcp`
   const proto = first(headers['x-forwarded-proto']) || 'http'
   const host = first(headers['x-forwarded-host']) || first(headers.host) || `localhost:${port}`

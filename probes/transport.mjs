@@ -6,7 +6,7 @@
 // camera, and that the craft are distinguishable in flight rather than being one model with seven
 // names.
 //
-//   node probes/corridor-transport.mjs
+//   node probes/transport.mjs
 import { chromium } from 'playwright'
 
 const url = process.env.PROBE_URL ?? 'http://localhost:5185/#arrowhead-farms?lite'
@@ -15,7 +15,7 @@ const page = await browser.newPage({ viewport: { width: 1100, height: 620 } })
 const errs = []
 page.on('pageerror', (e) => errs.push(e.message))
 await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 })
-await page.waitForFunction(() => typeof window.corridor?.craft === 'function', null, { timeout: 60000 })
+await page.waitForFunction(() => typeof window.piedmont?.craft === 'function', null, { timeout: 60000 })
 await page.keyboard.press('Enter')
 await page.waitForTimeout(2000)
 
@@ -31,7 +31,7 @@ const say = (k, v) => console.log(`${k.padEnd(28)} ${typeof v === 'object' ? JSO
  */
 async function flight(kind, keys, frames = 12) {
   return page.evaluate(async ({ kind, keys, frames }) => {
-    const a = window.corridor
+    const a = window.piedmont
     a.craft(kind)
     const t = a.transport
     const before = { at: { ...t.state.at }, cam: a.camera.position.toArray().map((n) => +n.toFixed(2)) }
@@ -72,7 +72,7 @@ for (const kind of ['walk-third', 'helicopter', 'omnicopter', 'ornithopter', 'pl
 
 // 2. the ground under a craft is the real terrain, not zero
 const ground = await page.evaluate(() => {
-  const a = window.corridor
+  const a = window.piedmont
   a.craft('helicopter')
   const t = a.transport
   const g = a.site.groundAt(t.state.at.x, t.state.at.z)
@@ -87,7 +87,7 @@ say('a UFO left alone', { moved: hover.moved, alt: hover.altitude })
 if (hover.moved > 0.01) fail.push(`a UFO with no input moved ${hover.moved} m`)
 
 const glide = await page.evaluate(async () => {
-  const a = window.corridor
+  const a = window.piedmont
   a.craft('plane')
   const t = a.transport
   // put it up high and give it flying speed, then let go of everything
@@ -102,7 +102,7 @@ if (glide.fell <= 0) fail.push('a plane with no engine did not descend')
 
 // 4. switching back leaves one controller in charge
 const back = await page.evaluate(() => {
-  const a = window.corridor
+  const a = window.piedmont
   a.craft('jet')
   const on = a.transport.enabled
   a.craft(null)

@@ -32,7 +32,7 @@ READING. Each item is opened over /vsicurl/ with the SAS token, at the coarsest 
 still at least as fine as the lattice asked for (a 0.3 m quarter-quad read for a 0.6 m lattice uses
 its 0.6 m overview, a quarter of the bytes; the 60 m horizon reads 19.2 m overviews), and warped
 onto the site's own lattice. The resolution is the CALLER's — `NAIP_RES_M` for the tiled bakes,
-`naip.RES` for a corridor — so nothing downstream changes.
+`naip.RES` for a road band — so nothing downstream changes.
 
 REGISTRATION, measured 2026-10-10 over Crofton: this path agrees with `gdalwarp` of the same COG to
 0.003 px, and so with every other raster the bake reprojects through PROJ (the 3DEP DEM, the lidar
@@ -61,8 +61,8 @@ import requests
 import shapely
 from shapely.geometry import box, shape
 
-STAC = os.environ.get("CORRIDOR_NAIP_PC_STAC", "https://planetarycomputer.microsoft.com/api/stac/v1").rstrip("/")
-TOKEN_URL = os.environ.get("CORRIDOR_NAIP_PC_TOKEN", "https://planetarycomputer.microsoft.com/api/sas/v1/token/naip")
+STAC = os.environ.get("PIEDMONT_NAIP_PC_STAC", "https://planetarycomputer.microsoft.com/api/stac/v1").rstrip("/")
+TOKEN_URL = os.environ.get("PIEDMONT_NAIP_PC_TOKEN", "https://planetarycomputer.microsoft.com/api/sas/v1/token/naip")
 COLLECTION = "naip"
 #: Crofton, Maryland (the crofton-triangle site): NAIP has flown it in every cycle since 2011 at
 #: least (the catalogue lists 2011, 2013, 2015, 2017, 2018, 2021 and 2023 items over it). An empty
@@ -95,7 +95,7 @@ REDACT_MIN_M2 = 10_000.0
 #: err on (a missed cloud is better than a roof from another year). And it is still fooled: on the
 #: dc central block it called sun glint on the Tidal Basin in Maryland's 2021-06 flight a 33 ha cloud
 #: and swapped in Virginia's September water, no better. Not reliable enough to run unasked, so it is
-#: OFF unless CORRIDOR_NAIP_CLOUDS=1 (2026-10-10).
+#: OFF unless PIEDMONT_NAIP_CLOUDS=1 (2026-10-10).
 CLOUD_MIN_M2 = 30_000.0
 CLOUD_LUM, CLOUD_SAT, CLOUD_TEX = 165.0, 40.0, 10.0
 CLOUD_DARKER = 35.0   # median luminance drop, cloud flight minus the other, to call it cloud
@@ -120,7 +120,7 @@ for _ca in ("/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.
         break
 
 session = requests.Session()
-session.headers["User-Agent"] = "apex-conduit corridor (github.com/hotspoons)"
+session.headers["User-Agent"] = "piedmont (github.com/hotspoons)"
 
 
 def _backoff(attempt: int) -> float:
@@ -241,12 +241,12 @@ class Item:
 
 
 def leaf_on_months() -> tuple[int, int]:
-    """CORRIDOR_NAIP_LEAF_ON: the leaf-on months, inclusive, as `5-9` (May to September, the default).
+    """PIEDMONT_NAIP_LEAF_ON: the leaf-on months, inclusive, as `5-9` (May to September, the default).
 
     May, not June: Maryland flew a third of its 2023 quarter-quads on 2023-05-25, in full leaf,
     and with June-September crofton-triangle lost its 2023 0.3 m year to 2021 0.6 m (2023 leaf-on
     covered 82.7%). October stays out: Virginia's 2023-10-11 flight is already turning."""
-    v = os.environ.get("CORRIDOR_NAIP_LEAF_ON", "5-9").strip()
+    v = os.environ.get("PIEDMONT_NAIP_LEAF_ON", "5-9").strip()
     try:
         lo, hi = (int(x) for x in v.split("-", 1))
         if 1 <= lo <= hi <= 12:
@@ -257,10 +257,10 @@ def leaf_on_months() -> tuple[int, int]:
 
 
 def leaf_on_years() -> int:
-    """CORRIDOR_NAIP_LEAF_ON_YEARS: how many years older a leaf-on item may be and still beat a
+    """PIEDMONT_NAIP_LEAF_ON_YEARS: how many years older a leaf-on item may be and still beat a
     leaf-off one (default 2; 0 turns the preference off except within one year)."""
     try:
-        return max(0, int(os.environ.get("CORRIDOR_NAIP_LEAF_ON_YEARS", "2")))
+        return max(0, int(os.environ.get("PIEDMONT_NAIP_LEAF_ON_YEARS", "2")))
     except ValueError:
         return 2
 
@@ -273,7 +273,7 @@ def ranking_rule() -> str:
 
 def rule_tag() -> str:
     """The ranking knobs as a cache-name suffix: a piece composed under one rule is never reused
-    under another (changing CORRIDOR_NAIP_LEAF_ON* re-reads, it does not silently keep old pieces)."""
+    under another (changing PIEDMONT_NAIP_LEAF_ON* re-reads, it does not silently keep old pieces)."""
     lo, hi = leaf_on_months()
     return f"lo{lo}-{hi}y{leaf_on_years()}" + ("c" if clouds_enabled() else "")
 
@@ -377,12 +377,12 @@ class YearPolicy:
     Per-pixel newest-first stitched Maryland's September 2023 to Virginia's November 2023 across
     Arlington, and the leaf-on preference still left a seam wherever one state's newest leaf-on
     year met the other's. So the bake first picks the newest acquisition YEAR whose leaf-on items
-    cover the whole area (all but `CORRIDOR_NAIP_YEAR_MAX_BARE`, default 2 %, of what ANY year
+    cover the whole area (all but `PIEDMONT_NAIP_YEAR_MAX_BARE`, default 2 %, of what ANY year
     covers — open water and other countries do not count against a year), and reads only that
     year's leaf-on items, finer first; everything else only fills holes (redactions, collars,
     edges) in the existing ranking. The area is the WORLD's bbox, so every shard of a world, and
     every tile of a shard, picks the same year. `year` None is the per-pixel ranking: forced
-    (`CORRIDOR_NAIP_YEAR=off`), or no year covers enough (`why` says which)."""
+    (`PIEDMONT_NAIP_YEAR=off`), or no year covers enough (`why` says which)."""
 
     year: int | None
     why: str
@@ -411,14 +411,14 @@ class YearPolicy:
 
 
 def year_setting() -> str:
-    """CORRIDOR_NAIP_YEAR: `auto` (default), a four-digit year, or `off`."""
-    v = os.environ.get("CORRIDOR_NAIP_YEAR", "auto").strip().lower()
+    """PIEDMONT_NAIP_YEAR: `auto` (default), a four-digit year, or `off`."""
+    v = os.environ.get("PIEDMONT_NAIP_YEAR", "auto").strip().lower()
     return v if v in ("auto", "off") or (v.isdigit() and len(v) == 4) else "auto"
 
 
 def year_max_bare() -> float:
     try:
-        return min(1.0, max(0.0, float(os.environ.get("CORRIDOR_NAIP_YEAR_MAX_BARE", "0.02"))))
+        return min(1.0, max(0.0, float(os.environ.get("PIEDMONT_NAIP_YEAR_MAX_BARE", "0.02"))))
     except ValueError:
         return 0.02
 
@@ -442,12 +442,12 @@ def year_policy(frame, area_bbox, tries: int = TRIES) -> YearPolicy:
     """The year to bake `area_bbox` (frame CRS: the world's or site's whole extent) from."""
     setting = year_setting()
     if setting == "off":
-        return YearPolicy(None, "off: CORRIDOR_NAIP_YEAR=off, the per-pixel ranking")
+        return YearPolicy(None, "off: PIEDMONT_NAIP_YEAR=off, the per-pixel ranking")
     items = search(frame.bbox_wgs(*area_bbox), tries=tries)
     area = box(*area_bbox)
     if setting != "auto":
         y = int(setting)
-        return YearPolicy(y, f"forced: CORRIDOR_NAIP_YEAR={y}", year_coverage(items, frame, area, y) if items else {})
+        return YearPolicy(y, f"forced: PIEDMONT_NAIP_YEAR={y}", year_coverage(items, frame, area, y) if items else {})
     tried = {}
     for y in sorted({it.year for it in items if it.leaf_on()}, reverse=True):
         cov = year_coverage(items, frame, area, y)
@@ -574,7 +574,7 @@ def redacted(sub: np.ndarray, res: float) -> np.ndarray:
 
 
 def clouds_enabled() -> bool:
-    return os.environ.get("CORRIDOR_NAIP_CLOUDS", "0").strip().lower() in ("1", "on", "yes", "true")
+    return os.environ.get("PIEDMONT_NAIP_CLOUDS", "0").strip().lower() in ("1", "on", "yes", "true")
 
 
 def cloud_candidates(sub: np.ndarray, res: float) -> list:

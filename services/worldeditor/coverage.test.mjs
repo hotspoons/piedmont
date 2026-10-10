@@ -29,7 +29,7 @@ const EU = F('europe').geometry
 
 // dc-metro-take-2, as the deployed editor holds it (GET /api/worlds, 2026-10-10)
 const DC_METRO = { slug: 'dc-metro-take-2', lat: 38.911621, lon: -77.005045, radius_m: 19933 }
-// what the bake itself asks for: the geodetic box of its UTM square, from corridor.geo.Frame
+// what the bake itself asks for: the geodetic box of its UTM square, from piedmont_bake.geo.Frame
 const DC_METRO_BAKE = { south: 38.72795519222667, west: -77.24044548871936, north: 39.09487915067008, east: -76.77080061999021 }
 const CROFTON = { slug: 'crofton-triangle', lat: 39.007758, lon: -76.670706, radius_m: 5260 }
 const CROFTON_BAKE = { south: 38.95949417551713, west: -76.73258691798829, north: 39.055992743158505, east: -76.60890603372998 }

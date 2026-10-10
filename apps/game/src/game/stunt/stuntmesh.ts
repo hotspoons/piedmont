@@ -8,13 +8,13 @@
 // WHY NOT `apps/stuntin/src/render/RoadBuilder.ts`. It builds a far better road than this: curbs,
 // pillars under the elevated sections, tube walls through tunnels, bridge parapets over water. But
 // it takes STUNTIN's own `Track` — a baked graph of placed pieces, links and lanes on a grid — and
-// corridor has one piece standing in a field. Building a synthetic `Track` to satisfy it means
+// the game has one piece standing in a field. Building a synthetic `Track` to satisfy it means
 // faking a grid position, a level and a link table for a thing that has none of them. The honest
 // options are to extract its ribbon generator so both games share one, or to write the simple
 // version here first and find out what is actually missing. This is the second, and the note in
-// `docs/corridor/PLAN-RACES-TRAFFIC.md` says so.
+// `docs/PLAN-RACES-TRAFFIC.md` says so.
 //
-// THE FRAME IS THE FIDDLY PART. `Pose` is the corridor site frame — x east, y north, z up — and
+// THE FRAME IS THE FIDDLY PART. `Pose` is the road band site frame — x east, y north, z up — and
 // three is x east, y UP, z SOUTH. Every vertex crosses that boundary, so the conversion happens in
 // exactly one function and nothing else in this file may do it.
 //

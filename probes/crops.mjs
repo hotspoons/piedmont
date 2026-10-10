@@ -1,6 +1,6 @@
 // Crop fields: are there rows, are they aligned, and does the season move them?
 //
-//   PORT=5201 SLUG=chesterfield-rd node probes/corridor-crops.mjs
+//   PORT=5201 SLUG=chesterfield-rd node probes/crops.mjs
 //
 // Rich's ask (main's 009) is a FIELD — rows running in one direction with furrows between them —
 // so the things to check are the row count per crop, that the rows follow the authored or
@@ -13,10 +13,10 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
 
 console.log(JSON.stringify(await page.evaluate(() => {
-  const site = window.corridor.site, tune = window.corridor.tune
+  const site = window.piedmont.site, tune = window.piedmont.tune
   const g = site.layers.crops
   const farmland = (site.manifest.landuse ?? []).filter((l) => l.class === 'farmland').length
   if (!g) return { site: site.manifest.slug, farmland_rings: farmland, crops: null, note: 'no crop group built' }

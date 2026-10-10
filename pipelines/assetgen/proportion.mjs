@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // A measured outline of an asset, drawn from its spec's metres and nothing else.
 //
-//   node tools/assetgen/proportion.mjs --id hero-prototype
-//   node tools/assetgen/proportion.mjs --all --annotate --out ext/assetgen/_proportions
+//   node pipelines/assetgen/proportion.mjs --id hero-prototype
+//   node pipelines/assetgen/proportion.mjs --all --annotate --out ext/assetgen/_proportions
 //
 // WHY THIS EXISTS. Generators have strong, wrong priors about proportion, and words barely move
 // them: "low" produces a car of ordinary height, and the fighter pipeline's first Kestrel came back
@@ -260,7 +260,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const id = flag('id')
   if ((!id && !has('all')) || has('help')) {
     console.log(`
-  node tools/assetgen/proportion.mjs --id hero-prototype [--out FILE|DIR]
+  node pipelines/assetgen/proportion.mjs --id hero-prototype [--out FILE|DIR]
 
     --id ID        one asset out of assets.json
     --all          every asset, into --out as a directory

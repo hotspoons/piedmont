@@ -1,4 +1,4 @@
-// Form controls. Every field in both corridor UIs is one of these six things.
+// Form controls. Every field in both game UIs is one of these six things.
 //
 // They all share a shape — label on the left, value on the right, control below or inline — because
 // the previous UI had sliders that looked like one thing in the tuning panel and another in the

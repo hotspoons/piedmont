@@ -3,7 +3,7 @@
 Rich, driving Crofton: "not seeing any sidewalks even though the entire triangle and the north
 Crofton is fully covered - are these not in the OSM data?"
 
-Measured, inside crofton-triangle's own corridor:
+Measured, inside crofton-triangle's own road band:
 
     drivable ways                        854
       tagged `sidewalk=both|left|right`   50

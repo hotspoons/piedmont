@@ -9,7 +9,7 @@ import { existsSync, readFileSync, unlinkSync } from 'node:fs'
 
 const SLUG = process.env.SLUG ?? 'bowie-racetrack-rd'
 const EDITOR = process.env.EDITOR ?? 'http://127.0.0.1:5185/editor.html'
-const FILE = `/workspaces/apex-conduit/tools/corridor/data/sites/${SLUG}/stunts.json`
+const FILE = `/workspaces/piedmont/data/sites/${SLUG}/stunts.json`
 const dir = '/tmp/claude-1000/-workspaces-apex-conduit/12eaed6d-83ff-4605-9fb1-f5c0b0bc5019/scratchpad'
 
 if (existsSync(FILE)) unlinkSync(FILE)
@@ -21,18 +21,18 @@ let bad = 0
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++ }
 
 await p.goto(`${EDITOR}#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 180000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 180000 })
 await p.waitForTimeout(6000)
 
 await p.keyboard.press('6')
 await p.waitForTimeout(1500)
-check(await p.evaluate(() => !!window.corridor.stunts), 'the stunts mode is mounted')
+check(await p.evaluate(() => !!window.piedmont.stunts), 'the stunts mode is mounted')
 check(await p.evaluate(() => [...document.querySelectorAll('.chip')].some((c) => c.textContent === 'Loop')), 'the palette offers a Loop')
 
 // arm the loop and click a point ON the road, the way a person does
 const placed = await p.evaluate(() => {
-  const st = window.corridor.stunts
-  const site = window.corridor.site
+  const st = window.piedmont.stunts
+  const site = window.piedmont.site
   const mid = site.manifest.spine.length_m / 2
   const at = site.spineAt(mid).pos
   st.arm('loop')
@@ -57,7 +57,7 @@ check(placed.entry < placed.mid && placed.exit > placed.mid, 'its two ends strad
  * crashed the swiftshader page outright.
  */
 const suppressed = await p.evaluate(() => {
-  const road = window.corridor.site.group.getObjectByName('road')
+  const road = window.piedmont.site.group.getObjectByName('road')
   if (!road) return { error: 'no road group' }
   /*
    * COUNT ONLY WHAT IS VISIBLE. The base road is built once and KEPT — a stunt hides it and shows a
@@ -80,7 +80,7 @@ const suppressed = await p.evaluate(() => {
   const shown = (o) => { let up = o; while (up) { if (!up.visible) return false; up = up.parent }; return true }
   let hidden = 0
   road.traverse((o) => { if (o.isMesh && !shown(o)) hidden++ })
-  window.corridor.site.setRoadSkip(null)
+  window.piedmont.site.setRoadSkip(null)
   const whole = count()
   return { withFixture, whole, hidden, baseKept: hidden > 0 }
 })
@@ -100,15 +100,15 @@ check(suppressed.baseKept, `the base road is kept and merely hidden (${suppresse
 
 const meshed = await p.evaluate(() => {
   let ribbons = 0
-  window.corridor.stunts.group.traverse((o) => { if (o.isMesh) ribbons++ })
+  window.piedmont.stunts.group.traverse((o) => { if (o.isMesh) ribbons++ })
   return ribbons
 })
 check(meshed >= 3, `the approach, the stunt and the exit are all built (${meshed} ribbons)`)
 
 // drag the entry handle up the road, and confirm it moved along the road rather than to the pointer
 const dragged = await p.evaluate(() => {
-  const st = window.corridor.stunts
-  const site = window.corridor.site
+  const st = window.piedmont.stunts
+  const site = window.piedmont.site
   const f = st.doc.fixtures[0]
   const before = f.entry.s
   const target = site.spineAt(Math.max(0, before - 200)).pos
@@ -120,7 +120,7 @@ const dragged = await p.evaluate(() => {
 })
 check(Math.abs(dragged.after - (dragged.before - 200)) < 30, `dragging an end slides it ALONG the road (${dragged.before.toFixed(0)} → ${dragged.after.toFixed(0)} m)`)
 
-const saved = await p.evaluate(() => window.corridor.stunts.save().then((m) => m, (e) => 'ERROR ' + e.message))
+const saved = await p.evaluate(() => window.piedmont.stunts.save().then((m) => m, (e) => 'ERROR ' + e.message))
 console.log('save:', saved)
 check(!String(saved).startsWith('ERROR'), 'it saved')
 check(existsSync(FILE), 'stunts.json is on disk')
@@ -142,8 +142,8 @@ if (existsSync(FILE)) {
  * each other by the same curve that joins one to a road.
  */
 const field = await p.evaluate(() => {
-  const st = window.corridor.stunts
-  const site = window.corridor.site
+  const st = window.piedmont.stunts
+  const site = window.piedmont.site
   /*
    * A POINT JUST OFF THE ROAD — thirty metres, well inside the snapping radius. Four hundred metres
    * out would pass whether the toggle worked or not, because there is nothing near enough to snap
@@ -189,8 +189,8 @@ check(field.approach === 1, `the join is drawn once, as a curve (${field.approac
  * rather than by the selection — clicking a road while a link is armed must not deselect.
  */
 const joined = await p.evaluate(() => {
-  const st = window.corridor.stunts
-  const site = window.corridor.site
+  const st = window.piedmont.stunts
+  const site = window.piedmont.site
   const f = st.doc.fixtures[st.doc.fixtures.length - 1]
   st.select(f.id)
   const at = site.spineAt(site.manifest.spine.length_m / 2 + 300).pos
@@ -215,7 +215,7 @@ check(joined.departure === 1, 'and a curve now leaves it for the road')
  * path from a handle to the document, and it is the path that was broken for placements.
  */
 const gizmo = await p.evaluate(() => {
-  const st = window.corridor.stunts
+  const st = window.piedmont.stunts
   const f = st.doc.fixtures[st.doc.fixtures.length - 1]
   st.select(f.id)
   const g = st.gizmo
@@ -241,7 +241,7 @@ check(gizmo.rings, 'the turn mode shows the yaw ring and nothing else')
 
 // back to the way the rest of this probe expects to find things
 await p.evaluate(() => {
-  const st = window.corridor.stunts
+  const st = window.piedmont.stunts
   for (const f of [...st.doc.fixtures]) if (f.id !== st.doc.fixtures[0].id) st.remove(f.id)
   st.snapToRoad = true
   st.setGizmoMode('translate')
@@ -261,9 +261,9 @@ check(buttons.includes('remove'), `there is a way to remove one (${buttons.join(
 check(buttons.includes('turn it round'), 'and a one-click fix for a backwards fixture')
 
 const turned = await p.evaluate(() => {
-  const before = window.corridor.stunts.doc.fixtures[0].yaw_deg
+  const before = window.piedmont.stunts.doc.fixtures[0].yaw_deg
   ;[...document.querySelectorAll('.inspector-body button')].find((b) => b.textContent.trim() === 'turn it round').click()
-  return { before, after: window.corridor.stunts.doc.fixtures[0].yaw_deg }
+  return { before, after: window.piedmont.stunts.doc.fixtures[0].yaw_deg }
 })
 // normalise the turn into 0…360 and compare with 180. The first version subtracted 180 twice and
 // reported a perfect half turn as a 180° error.
@@ -273,7 +273,7 @@ check(delta < 1, `turning it round is a half turn (${turned.before.toFixed(0)}°
 
 // AND A BACKWARDS FIXTURE MUST STILL SAVE, because the editor's preview saves everything first and
 // one fixture halfway through being turned must not block the whole site.
-const savedBackwards = await p.evaluate(() => window.corridor.stunts.save().then(() => 'ok', (e) => 'ERROR ' + e.message))
+const savedBackwards = await p.evaluate(() => window.piedmont.stunts.save().then(() => 'ok', (e) => 'ERROR ' + e.message))
 check(savedBackwards === 'ok', `a fixture facing the wrong way still saves (${savedBackwards})`)
 
 const removed = await p.evaluate(() => {
@@ -281,12 +281,12 @@ const removed = await p.evaluate(() => {
   // THE FIXTURE'S OWN MESHES, not everything in the group: the gizmo's helper lives there too and
   // counting it reports a removed fixture as still in the world
   let meshes = 0
-  for (const c of window.corridor.stunts.group.children) {
+  for (const c of window.piedmont.stunts.group.children) {
     if (!c.name.startsWith('fixture:')) continue
     c.traverse((o) => { if (o.isMesh) meshes++ })
   }
-  const gizmoShown = window.corridor.stunts.group.getObjectByName('stunt-gizmo-host')?.visible
-  return { left: window.corridor.stunts.doc.fixtures.length, meshes, gizmoShown }
+  const gizmoShown = window.piedmont.stunts.group.getObjectByName('stunt-gizmo-host')?.visible
+  return { left: window.piedmont.stunts.doc.fixtures.length, meshes, gizmoShown }
 })
 check(removed.left === 0, 'remove takes it out of the document')
 // AND OUT OF THE SCENE. A fixture deleted from the document but left in the world is the failure
@@ -298,25 +298,25 @@ check(removed.gizmoShown === false, 'and the gizmo goes with it')
 
 // put one back for the picture
 await p.evaluate(() => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const at = site.spineAt(site.manifest.spine.length_m / 2).pos
-  window.corridor.stunts.arm('loop')
-  window.corridor.stunts.placeAt({ x: at.x, y: -at.z })
+  window.piedmont.stunts.arm('loop')
+  window.piedmont.stunts.placeAt({ x: at.x, y: -at.z })
 })
 await p.waitForTimeout(800)
 
 // look at it from the side
 await p.evaluate(() => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const mid = site.manifest.spine.length_m / 2
   const a = site.spineAt(mid - 60).pos
   const c = site.spineAt(mid + 60).pos
   const here = site.spineAt(mid).pos
   const heading = Math.atan2(-(c.z - a.z), c.x - a.x)
-  const cam = window.corridor.camera
+  const cam = window.piedmont.camera
   cam.position.set(here.x - Math.sin(heading) * 150, here.y + 45, here.z - Math.cos(heading) * 150)
   cam.lookAt(here.x, here.y + 18, here.z)
-  window.corridor.orbitTarget.set(here.x, here.y + 18, here.z)
+  window.piedmont.orbitTarget.set(here.x, here.y + 18, here.z)
 })
 await p.waitForTimeout(2500)
 await p.screenshot({ path: `${dir}/stuntmode.png` })

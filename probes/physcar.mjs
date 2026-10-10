@@ -1,9 +1,9 @@
 // Do the five driving profiles actually drive, on the real baked ground?
 //
-//   node probes/corridor-physcar.mjs [site]
+//   node probes/physcar.mjs [site]
 //
-// Step 2 of docs/corridor/PLAN-PHYSICS.md. `test/physics.test.ts` already proves each profile
-// accelerates, turns and brakes — on a flat 1 km cuboid. This is the other question: a corridor
+// Step 2 of docs/PLAN-PHYSICS.md. `test/physics.test.ts` already proves each profile
+// accelerates, turns and brakes — on a flat 1 km cuboid. This is the other question: a road band
 // site has camber, a crown, a verge the grip drops on, kerbs, and a heightfield built from the
 // site's own sampler rather than from a plane. A car that drives beautifully on a test slab and
 // falls through the road at Bowie is a car nobody has actually checked.
@@ -28,7 +28,7 @@
 import { chromium } from 'playwright'
 
 const site = process.argv[2] ?? 'bowie-racetrack-rd'
-const PORT = process.env.CORRIDOR_PORT ?? '5185'
+const PORT = process.env.PIEDMONT_PORT ?? '5185'
 const SECONDS = 6
 
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
@@ -36,11 +36,11 @@ const page = await browser.newPage({ viewport: { width: 640, height: 420 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite&phys=1`, { waitUntil: 'load' })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 240000 })
-await page.waitForFunction(() => !!window.corridor.physics, null, { timeout: 120000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 240000 })
+await page.waitForFunction(() => !!window.piedmont.physics, null, { timeout: 120000 })
 
 const result = await page.evaluate(async ({ SECONDS }) => {
-  const a = window.corridor
+  const a = window.piedmont
   const phys = a.physics
   const site = a.site
   const s0 = site.manifest.spine.length_m ? site.manifest.spine.length_m / 3 : 500
@@ -56,7 +56,7 @@ const result = await page.evaluate(async ({ SECONDS }) => {
     const at = { x: here.pos.x + offset * Math.cos(yaw + Math.PI / 2), z: here.pos.z + offset * Math.sin(yaw + Math.PI / 2), yaw }
     const car = phys.spawnCar(at, id)
     // `update` both builds the tiles under the eye and steps the world — `step` is the engine's and
-    // is not on the corridor's interface on purpose, so a caller cannot step without the ground
+    // is not on the game's interface on purpose, so a caller cannot step without the ground
     // having been given a chance to exist first.
     for (let i = 0; i < 120; i++) phys.update({ x: at.x, y: 0, z: at.z }, 1 / 120) // settle on its springs
     const p0 = car.body.translation()

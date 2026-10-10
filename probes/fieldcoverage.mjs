@@ -12,7 +12,7 @@
 // walks EVERY carriageway's own centreline and asserts the field agrees it is pavement there.
 // It is three seconds of work and it would have failed loudly the day it regressed.
 //
-//   PORT=5185 node probes/corridor-fieldcoverage.mjs [slug]
+//   PORT=5185 node probes/fieldcoverage.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -21,11 +21,11 @@ const page = await browser.newPage({ viewport: { width: 700, height: 450 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await page.waitForTimeout(3000)
 
 const out = await page.evaluate(() => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const m = site.manifest
   const d = (x, z) => site.edgeInfo(x, z, undefined, true).d
   // CONTROL: the spine. If the field cannot say "pavement" on the site's main road, the probe is

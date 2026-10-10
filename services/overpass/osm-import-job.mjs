@@ -1,20 +1,20 @@
 #!/usr/bin/env node
-// Writes tools/overpass/osm-import-job.yaml: the Job the world editor creates for an osm-import,
-// rendered from the editor's own code (tools/worldeditor/runs.mjs `osmImportJob`) so the manifest
+// Writes services/overpass/osm-import-job.yaml: the Job the world editor creates for an osm-import,
+// rendered from the editor's own code (services/worldeditor/runs.mjs `osmImportJob`) so the manifest
 // an admin reviews cannot drift from the one that runs. A test (runs-osm.test.mjs) fails if it has.
 //
-//   node tools/overpass/osm-import-job.mjs > tools/overpass/osm-import-job.yaml
+//   node services/overpass/osm-import-job.mjs > services/overpass/osm-import-job.yaml
 
 import { osmImportJob } from '../worldeditor/runs.mjs'
 
-const HEADER = `# THE JOB AN OSM-IMPORT CREATES, for review. GENERATED from tools/worldeditor/runs.mjs
-# (osmImportJob) by tools/overpass/osm-import-job.mjs; a test fails if the two differ.
+const HEADER = `# THE JOB AN OSM-IMPORT CREATES, for review. GENERATED from services/worldeditor/runs.mjs
+# (osmImportJob) by services/overpass/osm-import-job.mjs; a test fails if the two differ.
 #
 # Example values: adding us/virginia to the \`overpass\` instance, which runs on gh200-1-node-2.
 # The editor fills in the instance, the region, the node (read from the instance's pod) and a
 # unique name; nothing else varies.
 #
-# What it does (the script is the chart's ConfigMap, tools/overpass/chart/files/import.sh):
+# What it does (the script is the chart's ConfigMap, deploy/helm/overpass/files/import.sh):
 #   1. downloads the region's .pbf and .poly from Geofabrik onto the instance's volume, under
 #      /db/regions/<id>/ and nowhere else;
 #   2. checks it (osmium reads it; it carries a replication sequence to follow; there is room);
@@ -25,7 +25,7 @@ const HEADER = `# THE JOB AN OSM-IMPORT CREATES, for review. GENERATED from tool
 #
 # RBAC: none beyond the world editor's existing Role — it creates Jobs, and lists pods (to find the
 # instance's node). Mounting a PVC and a ConfigMap in a pod spec needs no grant to the creator.
-# Prerequisite: the instance's release has regions.enabled=true (tools/overpass/chart/values.yaml),
+# Prerequisite: the instance's release has regions.enabled=true (deploy/helm/overpass/values.yaml),
 # which creates the \`<instance>-regions\` ConfigMap and the sidecar. Without it the Job exits 3 and
 # says so.
 `

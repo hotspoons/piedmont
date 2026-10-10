@@ -6,7 +6,7 @@
 // program is served by intercepting the viewer's `?js=1` request, so NOTHING is written to the
 // programs volume — the probe is safe against a deployed editor.
 //
-//   PROBE_URL=http://127.0.0.1:5197 PROBE_BUILD=mister-pizza-suv node probes/corridor-program-points.mjs crofton-triangle
+//   PROBE_URL=http://127.0.0.1:5197 PROBE_BUILD=mister-pizza-suv node probes/program-points.mjs crofton-triangle
 import { chromium } from 'playwright'
 
 const base = process.env.PROBE_URL ?? 'http://localhost:5186'
@@ -51,7 +51,7 @@ const level = { id: 'zz-refs-probe', world, program: 'zz-refs-probe.ts' }
 await page.route('**/api/levels/zz-refs-probe', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ level, ok: true, errors: [], warnings: [] }) }))
 await page.route('**/api/programs/zz-refs-probe.ts?js=1', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'zz-refs-probe.ts', js, errors: [] }) }))
 await page.goto(`${base}/#${world}?level=zz-refs-probe`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 180000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 180000 })
 say('booted', true)
 const started = await page.waitForFunction(() => !!window.__refsProbe, null, { timeout: 60000 }).then(() => true, () => false)
 say('program started', started)
@@ -73,10 +73,10 @@ if (p?.where && (Math.abs(p.where.x - point.at[0]) > 0.01 || Math.abs(p.where.y 
 
 // into the zone, by the developer teleport: `enters` must fire on a zone the program never declared
 const [cx, cy] = zone.polygon.slice(0, 4).reduce(([a, b], [x, y]) => [a + x / 4, b + y / 4], [0, 0])
-await page.evaluate(([x, y]) => window.corridor.chrome.teleport(x, y), [cx, cy])
+await page.evaluate(([x, y]) => window.piedmont.chrome.teleport(x, y), [cx, cy])
 await page.waitForTimeout(2500)
 p = await page.evaluate(() => window.__refsProbe)
-const car = await page.evaluate(() => window.corridor.game?.error ?? null)
+const car = await page.evaluate(() => window.piedmont.game?.error ?? null)
 say('after teleport', { entered: p?.entered, inZone: p?.inZone, programError: car })
 if (!(p?.entered >= 1)) fail.push(`entering ${zone.id} did not fire on('enters')`)
 if (car) fail.push(`the program stopped: ${car}`)

@@ -3,7 +3,7 @@
 // Rich, 2026-09-27: "make the night sky based on reality wrt stars, and make the moon and the
 // stars move across the sky as they would in reality."
 //
-// `apps/corridor/test/celestial.test.ts` proves the arithmetic against Polaris, the sidereal rate
+// `apps/game/test/celestial.test.ts` proves the arithmetic against Polaris, the sidereal rate
 // and NOAA's Sun. This proves the RENDERER: that the catalogue reached the GPU, that the object
 // the viewer turns is the one the maths says, and that what you can see changes over a night and
 // over a year the way it does outside.
@@ -13,7 +13,7 @@
 // the data the GPU was actually given, is a statement about the whole chain that no single star
 // could make.
 //
-//   PORT=5185 node probes/corridor-sky.mjs [slug]
+//   PORT=5185 node probes/sky.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -23,11 +23,11 @@ page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 page.on('console', (m) => { if (/^sky:/.test(m.text())) console.log('  page:', m.text()) })
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 900000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 900000 })
 await page.waitForTimeout(4000)
 
 const out = await page.evaluate(async () => {
-  const c = window.corridor
+  const c = window.piedmont
   const THREE = c.THREE
   const pts = c.scene.getObjectByName('stars')
   if (!pts) return { error: 'no star object in the scene — the catalogue did not load' }

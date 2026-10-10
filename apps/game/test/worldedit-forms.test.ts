@@ -10,7 +10,7 @@
 // `4320s` are both technically the answer to a question nobody asked.
 import { describe, expect, it } from 'vitest'
 // the service's own rule, imported straight out of the service
-import { slugify } from '../../../tools/worldeditor/geo.mjs'
+import { slugify } from '../../../services/worldeditor/geo.mjs'
 import { slugFromName } from '../src/editor/worldedit/slug'
 import { elapsed } from '../src/editor/worldedit/runs'
 

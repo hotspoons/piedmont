@@ -15,7 +15,7 @@ the cut/fill profile: a blasted rock cut is ground standing 10-30 m above the pa
 metres to the side; an embankment is the reverse.
 
 WHY EPT. USGS stages every 3DEP project as Entwine Point Tiles on a public bucket: an octree of
-LAZ files with a JSON hierarchy. A 6 km corridor a few hundred metres wide is a handful of octree
+LAZ files with a JSON hierarchy. A 6 km road band a few hundred metres wide is a handful of octree
 nodes — tens of MB — where the same stretch as LAZ delivery tiles is 850 MB. EPT is in Web
 Mercator; points are re-projected to the site frame on the way in. There is no PDAL in this
 container (Debian trixie/arm64 has none) so the octree walk is done by hand here and the LAZ nodes
@@ -47,7 +47,7 @@ from . import write_atomic
 from .geo import Frame
 
 BASE = "https://usgs-lidar-public.s3.us-west-2.amazonaws.com/{ds}/"
-# Newest and best first. A dataset is used when its bounds contain the corridor.
+# Newest and best first. A dataset is used when its bounds contain the road band.
 DATASETS = [
     "MD_Western_2_D21",
     "MD_Western_1_D21",
@@ -69,7 +69,7 @@ DIP_MAX_LEN = 120.0
 
 CLASS_NAMES = {0: "never", 1: "unassigned", 2: "ground", 3: "veg_low", 4: "veg_med", 5: "veg_high", 6: "building", 7: "noise", 9: "water", 10: "rail", 11: "road", 13: "wire_guard", 14: "wire_conductor", 15: "tower", 16: "wire_connector", 17: "bridge_deck", 18: "noise_high", 20: "ignored_ground", 21: "snow", 22: "temporal_exclusion"}
 session = requests.Session()
-session.headers["User-Agent"] = "apex-conduit corridor (github.com/hotspoons)"
+session.headers["User-Agent"] = "piedmont (github.com/hotspoons)"
 
 
 def _get_json(url: str, cache: Path) -> dict:
@@ -95,7 +95,7 @@ def _get_json(url: str, cache: Path) -> dict:
 
 
 def fetch_points(frame: Frame, bbox: tuple[float, float, float, float], cache: Path, jobs: int = 16, clip: Polygon | None = None) -> tuple[dict, dict]:
-    """The whole corridor's points in memory, for the single-image paths. See point_batches."""
+    """The whole road band's points in memory, for the single-image paths. See point_batches."""
     meta: dict = {}
     # no DEM check per batch here: both callers run check_units on the whole cloud afterwards
     parts = [p for _, p in point_batches(frame, bbox, cache, clip, meta, None, jobs) if p]
@@ -119,7 +119,7 @@ def point_batches(frame: Frame, bbox, cache: Path, clip: Polygon | None, meta: d
     """Point batches in the site frame, clipped to the streets, from the best source there is.
 
     EPT first (lidar_sources: USGS's staged sets, then NOAA's), when together they cover enough of
-    the streets; the TNM delivery tiles otherwise, or when CORRIDOR_LIDAR_SOURCE=tnm. Yields
+    the streets; the TNM delivery tiles otherwise, or when PIEDMONT_LIDAR_SOURCE=tnm. Yields
     (label, part) — part may be None for a tile with nothing inside — and fills `meta` with what
     the manifest records. A batch from an EPT whose vertical unit is undeclared is checked against
     the DEM once per source, as the single-road path always did for the whole cloud.
@@ -147,9 +147,9 @@ def point_batches(frame: Frame, bbox, cache: Path, clip: Polygon | None, meta: d
         elif cands:
             print(f"  lidar   EPT covers only {share:.0%} of the streets; the TNM tiles instead", flush=True)
         elif choice == "ept":
-            raise RuntimeError("no lidar at all for this corridor as EPT (CORRIDOR_LIDAR_SOURCE=ept)")
+            raise RuntimeError("no lidar at all for this road band as EPT (PIEDMONT_LIDAR_SOURCE=ept)")
     proj, tiles = tnm_pick(frame, bbox, clip)
-    paths = tnm_download(proj, tiles, cache, int(os.environ.get("CORRIDOR_TNM_JOBS", "16")))
+    paths = tnm_download(proj, tiles, cache, int(os.environ.get("PIEDMONT_TNM_JOBS", "16")))
     meta.update({"dataset": f"TNM:{proj}", "source": "tnm", "tiles_laz": len(paths)})
     for i, pth in enumerate(paths, 1):
         yield f"tile {i}/{len(paths)} {pth.name}", _read_laz_tile(pth, frame, bbox, clip)
@@ -162,7 +162,7 @@ TNM = "https://tnmaccess.nationalmap.gov/api/v1/products"
 #:
 #: MEASURED, not chosen. `laspy.read` on one 213 MiB delivery tile holds 36.5 million points and
 #: peaks at 2.44 GB — the point record, then x and y materialised as float64, then the reprojected
-#: pair, then z. 72 bytes of peak per point, for a tile of which a 9.5 km² corridor keeps under a
+#: pair, then z. 72 bytes of peak per point, for a tile of which a 9.5 km² road band keeps under a
 #: million of them. Rich's t-section bake was killed by the kernel on the fifth of seventeen tiles
 #: with 3 GB free, and the runner said `exited null`.
 #:
@@ -182,7 +182,7 @@ def _laz_crs(reader, path: Path, frame: Frame, bbox):
     # Deliveries from before the convention of writing a CRS into the header exist and are
     # otherwise fine: OR_NorthCoast_2008-2009 is why Ecola would not bake. Decide it by geometry
     # instead of guessing — try the site's own CRS and the UTM zone either side, and keep the one
-    # whose transformed extent lands on the corridor we asked USGS for.
+    # whose transformed extent lands on the road band we asked USGS for.
     #
     # FROM THE HEADER'S EXTENT, not a median over the points: the header records the tile's bounds,
     # so this reads nothing. The median version read all thirty-six million points to take the
@@ -207,7 +207,7 @@ def _read_laz_tile(path: Path, frame: Frame, bbox, clip: Polygon | None = None) 
     """One delivery tile: read, re-project from ITS declared CRS to the site frame, clip.
 
     IN CHUNKS (LAZ_CHUNK), because the whole tile does not have to be in memory at once and on a
-    loaded machine it does not fit. Only the points that survive the bbox and the corridor clip are
+    loaded machine it does not fit. Only the points that survive the bbox and the road band clip are
     kept, and on a 9.5 km² site that is a per cent or two of what was read.
     """
     from pyproj import Transformer
@@ -235,7 +235,7 @@ def _read_laz_tile(path: Path, frame: Frame, bbox, clip: Polygon | None = None) 
             if not m.any():
                 continue
             if clip is not None:
-                # the corridor is a strip on a diagonal; its bbox is mostly air. Clip per chunk so
+                # the road band is a strip on a diagonal; its bbox is mostly air. Clip per chunk so
                 # the concatenated cloud is the strip, not the box (memory: 300 M points vs 40 M
                 # on Clarksburg)
                 idx = np.flatnonzero(m)
@@ -262,9 +262,9 @@ def _read_laz_tile(path: Path, frame: Frame, bbox, clip: Polygon | None = None) 
 def tnm_pick(frame: Frame, bbox, clip: Polygon | None = None) -> tuple[str, list[dict]]:
     """The TNM project to use and ITS tiles that touch the streets.
 
-    ONE project (mixing vintages inside a corridor makes seams no game wants) — but the one that
-    COVERS the corridor, then the newest. "Newest only" picked MD_4County_D24 for Bonnie Branch
-    because a single edge tile of it touched the bbox: 0.4 % of the corridor had lidar, the DTM
+    ONE project (mixing vintages inside a road band makes seams no game wants) — but the one that
+    COVERS the road band, then the newest. "Newest only" picked MD_4County_D24 for Bonnie Branch
+    because a single edge tile of it touched the bbox: 0.4 % of the road band had lidar, the DTM
     was nearest-filled from that sliver, and the road ran 60 m below the real ground in a canyon
     of its own making (Rich, terrain-and-data agent, 2026-09-21).
 
@@ -278,7 +278,7 @@ def tnm_pick(frame: Frame, bbox, clip: Polygon | None = None) -> tuple[str, list
     r.raise_for_status()
     items = r.json().get("items", [])
     if not items:
-        raise RuntimeError("no lidar at all for this corridor (EPT or TNM)")
+        raise RuntimeError("no lidar at all for this road band (EPT or TNM)")
     by_proj: dict[str, list[dict]] = {}
     for it in items:
         by_proj.setdefault(" ".join(it["title"].split(" ")[4:-1]), []).append(it)
@@ -302,7 +302,7 @@ def tnm_pick(frame: Frame, bbox, clip: Polygon | None = None) -> tuple[str, list
     for k in scored[:4]:
         print(f"  lidar   TNM candidate {k}: {len(by_proj[k])} tiles, covers {coverage(by_proj[k]):.0%} of the bbox, {max(i.get('publicationDate', '') for i in by_proj[k])[:10]}", flush=True)
     if coverage(tiles) < 0.6:
-        print(f"  lidar   WARNING best TNM project covers only {coverage(tiles):.0%} of the corridor; gaps fall back to the 3DEP DEM", flush=True)
+        print(f"  lidar   WARNING best TNM project covers only {coverage(tiles):.0%} of the road band; gaps fall back to the 3DEP DEM", flush=True)
     kept = tiles_touching(tiles, ls.area_in_wgs(frame, bbox, clip)) if clip is not None else tiles
     total = sum(i.get("sizeInBytes", 0) for i in kept) / 2**20
     skipped = len(tiles) - len(kept)
@@ -438,8 +438,8 @@ def check_units(pts: dict, dem_path: Path) -> float:
 
 def classification_quality(pts: dict) -> dict:
     """Is this vendor's class 17 (bridge deck) believable? USGS's 2014 Sandy NCR delivery has 23% of
-    the corridor as class 17 and another 23% as class 18 (high noise), at ground height — those bins
-    were used for something else. Anything over 3% deck is not a road corridor's bridges. When the
+    the road band as class 17 and another 23% as class 18 (high noise), at ground height — those bins
+    were used for something else. Anything over 3% deck is not a road road band's bridges. When the
     share is implausible, 17 and 18 are demoted to unassigned before any structure logic runs, and
     the manifest says so; the geometric overhead test still finds real overpasses."""
     cls = pts["cls"]
@@ -456,10 +456,10 @@ def classification_quality(pts: dict) -> dict:
     return q
 
 
-def rasters(pts: dict, bbox, frame: Frame, corridor: Polygon, out_dir: Path) -> dict:
+def rasters(pts: dict, bbox, frame: Frame, road_band: Polygon, out_dir: Path) -> dict:
     w, h, tr = _grid(bbox)
     row, col, ok = _cells(pts, bbox, w, h)
-    inside = rasterize([(corridor, 1)], out_shape=(h, w), transform=tr, fill=0, dtype=np.uint8).astype(bool)
+    inside = rasterize([(road_band, 1)], out_shape=(h, w), transform=tr, fill=0, dtype=np.uint8).astype(bool)
     keep = ok.copy()
     keep[ok] &= inside[row[ok], col[ok]]
     pts = {k: v[keep] for k, v in pts.items()}
@@ -476,7 +476,7 @@ def rasters(pts: dict, bbox, frame: Frame, corridor: Polygon, out_dir: Path) -> 
     ground = cls == 2
     dtm = agg(ground, np.minimum, np.inf)
     # Fill lidar gaps: nearest lidar within 10 m (a bridge deck shadow, a pond), the 3DEP DEM beyond
-    # that. Nearest-fill across a real coverage gap paints the whole corridor with the edge tile's
+    # that. Nearest-fill across a real coverage gap paints the whole road band with the edge tile's
     # heights (Bonnie Branch: 0.4 % coverage became a 60 m canyon).
     dtm_filled = _fill_nan(dtm.copy())
     nan = np.isnan(dtm)
@@ -526,9 +526,9 @@ def rasters(pts: dict, bbox, frame: Frame, corridor: Polygon, out_dir: Path) -> 
     import pyproj
 
     las.header.add_crs(pyproj.CRS.from_user_input(crs))
-    las.write(out_dir / "corridor.laz")
+    las.write(out_dir / "road_band.laz")
 
-    return {"points_in_corridor": int(len(z)), "classes": classes, "grid": [w, h], "rasters": ["dtm.tif", "dsm.tif", "chm.tif", "deck_z.tif", "deck_n.tif", "building_n.tif"], "pts": pts, "dtm": dtm_filled, "chm": chm, "transform": tr}
+    return {"points_in_road_band": int(len(z)), "classes": classes, "grid": [w, h], "rasters": ["dtm.tif", "dsm.tif", "chm.tif", "deck_z.tif", "deck_n.tif", "building_n.tif"], "pts": pts, "dtm": dtm_filled, "chm": chm, "transform": tr}
 
 
 def _runs(mask: np.ndarray) -> list[tuple[int, int]]:

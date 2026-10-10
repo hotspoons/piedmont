@@ -18,11 +18,11 @@ TWO KINDS OF SOURCE, fastest first:
         43 MiB/s measured) covers 88 %; NOAA 9235 (2018 Prince George's) fills the western edge.
   TNM   the USGS delivery tiles, whole, through tnmaccess — the fallback when no EPT covers enough.
         Newer, sometimes (2024 vs 2020 at Crofton), and slow: a person can force it with
-        CORRIDOR_LIDAR_SOURCE=tnm when the vintage matters more than the hours.
+        PIEDMONT_LIDAR_SOURCE=tnm when the vintage matters more than the hours.
 
 DENSITY, NOT DEPTH. An EPT's full depth over Crofton is 21 points/m², 1.3 billion points, 11 GiB.
 The rasters are 1 m and the bridge-deck test was calibrated at ~8 points/m², so the walk stops at
-the shallowest depth whose cumulative density reaches CORRIDOR_LIDAR_DENSITY (default 8): depth 9,
+the shallowest depth whose cumulative density reaches PIEDMONT_LIDAR_DENSITY (default 8): depth 9,
 ~4 GiB, about two minutes.
 
 GAPS ARE FILLED, not averaged. The best source is used wherever it has points; the next source's
@@ -71,11 +71,11 @@ BATCH_POINTS = 5_000_000
 
 
 def density_target() -> float:
-    return float(os.environ.get("CORRIDOR_LIDAR_DENSITY", "8"))
+    return float(os.environ.get("PIEDMONT_LIDAR_DENSITY", "8"))
 
 
 def source_choice() -> str:
-    v = os.environ.get("CORRIDOR_LIDAR_SOURCE", "auto").strip().lower()
+    v = os.environ.get("PIEDMONT_LIDAR_SOURCE", "auto").strip().lower()
     return v if v in ("auto", "ept", "tnm") else "auto"
 
 

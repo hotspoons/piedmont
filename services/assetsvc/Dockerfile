@@ -7,7 +7,7 @@
 # WHAT IT DOES NEED is the glTF toolchain, because finishing a reconstruction runs
 # @gltf-transform/cli three times — and `sharp`, because generating a material is a flux image
 # plus arithmetic over its pixels (tileable roll-and-blend, a normal map, a roughness map). That
-# arithmetic is a port of tools/surfaces/gen.py, which needs numpy, scipy and PIL; sharp is one
+# arithmetic is a port of pipelines/surfaces/gen.py, which needs numpy, scipy and PIL; sharp is one
 # prebuilt binary for both architectures and does the decode, the blur and the encode, with the
 # per-pixel work in plain JavaScript. That is installed HERE rather than fetched by `npx` at runtime:
 # a pod that reaches out to the npm registry the first time somebody finishes a mesh is a pod that
@@ -30,14 +30,14 @@ RUN npm install --no-audit --no-fund --omit=dev \
  && npm cache clean --force
 
 # The service, and the finisher it calls. finish-one.mjs imports finish() out of
-# tools/assetgen/finish.mjs — the one copy of the simplify/unlit/Draco knowledge, not duplicated
+# pipelines/assetgen/finish.mjs — the one copy of the simplify/unlit/Draco knowledge, not duplicated
 # here — and THAT file imports loadSpecs and expand from proportion.mjs and generate.mjs at module
 # level, so all three have to be present or the import throws. They pull in node builtins only,
 # and assets.json is read when loadSpecs is CALLED (the CLI path, which assetsvc does not use), so
-# three files is the whole closure. `grep "from './" tools/assetgen/*.mjs` if that ever changes.
-COPY tools/assetsvc/ tools/assetsvc/
-COPY tools/assetgen/finish.mjs tools/assetgen/proportion.mjs tools/assetgen/generate.mjs tools/assetgen/
-# tools/assetlib — the ROSTERS and the taste.
+# three files is the whole closure. `grep "from './" pipelines/assetgen/*.mjs` if that ever changes.
+COPY services/assetsvc/ services/assetsvc/
+COPY pipelines/assetgen/finish.mjs pipelines/assetgen/proportion.mjs pipelines/assetgen/generate.mjs pipelines/assetgen/
+# pipelines/assetlib — the ROSTERS and the taste.
 #
 # `specs.mjs` imports `../assetlib/style.mjs` for buildPrompt, and reads the rosters from
 # `assetlib/specs/`: the hero cars, the traffic vehicles, the building materials and the buildings
@@ -45,9 +45,9 @@ COPY tools/assetgen/finish.mjs tools/assetgen/proportion.mjs tools/assetgen/gene
 # like an empty library rather than a missing directory.
 #
 # The .mjs files and specs/ only. `out/` is the built library and belongs on a volume; it is
-# gigabytes and `tools/assetsvc/import-assetlib.mjs` is how it gets there.
-COPY tools/assetlib/*.mjs tools/assetlib/
-COPY tools/assetlib/specs/ tools/assetlib/specs/
+# gigabytes and `services/assetsvc/import-assetlib.mjs` is how it gets there.
+COPY pipelines/assetlib/*.mjs pipelines/assetlib/
+COPY pipelines/assetlib/specs/ pipelines/assetlib/specs/
 
 # Data never lives in the image: ASSETSVC_DATA is the mount (a PVC in the chart).
 RUN useradd -u 10001 -m app && mkdir -p /data && chown app /data
@@ -63,4 +63,4 @@ EXPOSE 8770
 
 # A reconstruction comes back as tens of megabytes and is held in memory while it is written, so
 # the heap ceiling above is not decoration.
-ENTRYPOINT ["node", "tools/assetsvc/server.mjs"]
+ENTRYPOINT ["node", "services/assetsvc/server.mjs"]

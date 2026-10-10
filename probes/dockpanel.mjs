@@ -1,5 +1,5 @@
 // The tuning panel as a working surface: drag it, resize it, dock it, and no scrim when docked.
-//   PORT=5185 node probes/corridor-dockpanel.mjs
+//   PORT=5185 node probes/dockpanel.mjs
 import { chromium } from 'playwright'
 const PORT = process.env.PORT ?? '5185'
 const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
@@ -8,7 +8,7 @@ const p = await ctx.newPage()
 p.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await p.route('**/@vite/client', (r) => r.abort())
 await p.goto(`http://localhost:${PORT}/#crofton-triangle?lite=1&fresh`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await p.waitForTimeout(2500)
 let fails = 0
 const ok = (what, cond, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++ }
@@ -46,7 +46,7 @@ const moved = await box('.dialog')
 ok('dragging the title bar moves it', Math.abs(moved.x - resized.x - 100) < 30 && Math.abs(moved.y - resized.y - 76) < 30, `${resized.x},${resized.y} -> ${moved.x},${moved.y}`)
 ok('and it keeps the size it was given', Math.abs(moved.w - resized.w) < 4 && Math.abs(moved.h - resized.h) < 4)
 // dock right
-await p.evaluate(() => window.corridor.tuneDialog.dock('right'))
+await p.evaluate(() => window.piedmont.tuneDialog.dock('right'))
 await p.waitForTimeout(400)
 const docked = await box('.dialog')
 const s1 = await scrim()
@@ -54,17 +54,17 @@ ok('docked right, it is a column at the right edge', Math.abs(docked.x + docked.
 ok('and the scrim is gone', s1.docked && s1.bg === 'rgba(0, 0, 0, 0)', JSON.stringify(s1))
 ok('so clicks reach the scene', s1.pointer === 'none')
 // the scene is still live behind it: the world keeps updating
-const before = await p.evaluate(() => window.corridor.camera.position.x)
-await p.evaluate(() => { const c = window.corridor; c.camera.position.x += 30; c.orbit.target.x += 30; c.orbit.update() })
+const before = await p.evaluate(() => window.piedmont.camera.position.x)
+await p.evaluate(() => { const c = window.piedmont; c.camera.position.x += 30; c.orbit.target.x += 30; c.orbit.update() })
 await p.waitForTimeout(600)
-ok('and the scene behind it is live', (await p.evaluate(() => window.corridor.camera.position.x)) !== before)
+ok('and the scene behind it is live', (await p.evaluate(() => window.piedmont.camera.position.x)) !== before)
 // dock left, then reload: the choice sticks
-await p.evaluate(() => window.corridor.tuneDialog.dock('left'))
+await p.evaluate(() => window.piedmont.tuneDialog.dock('left'))
 await p.waitForTimeout(300)
 const left = await box('.dialog')
 ok('docked left, it is a column at the left edge', left.x < 4, JSON.stringify(left))
 await p.reload({ waitUntil: 'commit', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await p.waitForTimeout(2000)
 await p.keyboard.press('F6')
 await p.waitForTimeout(700)

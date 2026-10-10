@@ -1,5 +1,5 @@
 // Time of day in the viewer: does the sun move, does the world go dark, and does the clock home?
-//   PORT=5185 node probes/corridor-timeofday.mjs [slug]
+//   PORT=5185 node probes/timeofday.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -8,12 +8,12 @@ const p = await b.newPage({ viewport: { width: 700, height: 450 } })
 p.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await p.route('**/@vite/client', (r) => r.abort())
 await p.goto(`http://localhost:${PORT}/#${slug}?lite=1&fresh`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await p.waitForTimeout(2500)
 let fails = 0
 const ok = (what, cond, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++ }
 const sky = () => p.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   const sun = c.scene.children.find((o) => o.isDirectionalLight)
   const amb = c.scene.children.find((o) => o.isHemisphereLight)
   const dome = c.scene.getObjectByName('sky')
@@ -31,8 +31,8 @@ const sky = () => p.evaluate(() => {
     clockMs: c.time?.ms ?? null,
   }
 })
-const setTime = (date, time) => p.evaluate(({ date, time }) => window.corridor.time.setLocal(date, time), { date, time })
-ok('the page exposes the world clock', await p.evaluate(() => !!window.corridor.time))
+const setTime = (date, time) => p.evaluate(({ date, time }) => window.piedmont.time.setLocal(date, time), { date, time })
+ok('the page exposes the world clock', await p.evaluate(() => !!window.piedmont.time))
 // --- noon in June: the sun is high and in the south -------------------------------------------
 await setTime('2026-06-21', '13:00')
 await p.waitForTimeout(900)
@@ -65,14 +65,14 @@ await p.waitForTimeout(900)
 const dec = await sky()
 ok('December noon is much lower than June noon', dec.sunEl < noon.sunEl - 35, `${dec.sunEl}° vs ${noon.sunEl}°`)
 // --- the rate knob moves the sun by itself ------------------------------------------------------
-await p.evaluate(() => window.corridor.tune.set('TIME_RATE', 3600))
+await p.evaluate(() => window.piedmont.tune.set('TIME_RATE', 3600))
 const t0 = await sky()
 await p.waitForTimeout(4000)
 const t1 = await sky()
 ok('at 3600x the sun moves on its own', Math.abs(t1.sunEl - t0.sunEl) > 1, `${t0.sunEl}° -> ${t1.sunEl}°`)
-await p.evaluate(() => window.corridor.tune.set('TIME_RATE', 1))
+await p.evaluate(() => window.piedmont.tune.set('TIME_RATE', 1))
 // --- home comes back to the real now ------------------------------------------------------------
-await p.evaluate(() => window.corridor.time.home())
+await p.evaluate(() => window.piedmont.time.home())
 await p.waitForTimeout(600)
 const home = await sky()
 ok('home puts the clock back on real time', Math.abs(home.clockMs - Date.now()) < 5000, `${((home.clockMs - Date.now()) / 1000).toFixed(0)} s from now`)

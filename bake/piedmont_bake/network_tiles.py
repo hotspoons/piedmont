@@ -1,24 +1,24 @@
-"""The tiled path for a big network (cadre §6): rasters clipped to the union corridor and cut into
+"""The tiled path for a big network (cadre §6): rasters clipped to the union road band and cut into
 1 km tiles, so an 18 km region never has to exist as one array.
 
-    lidar/tiles/<x>_<y>.{dtm,dsm,chm,deck_z,deck_n,building_n}.tif   1 m, one per corridor tile
+    lidar/tiles/<x>_<y>.{dtm,dsm,chm,deck_z,deck_n,building_n}.tif   1 m, one per road band tile
     lidar/{dtm,dsm,chm}.vrt                                            gdalbuildvrt over the tiles
-    lidar/corridor.laz                                                 the NEAR-ROAD points only
+    lidar/road_band.laz                                                 the NEAR-ROAD points only
                                                                        (within BAND_M of any chain)
     lidar/lidar.done.json                                              the point pass finished; a
                                                                        rerun reuses the two above
     naip_1m.tif                                                        1 m, windowed writes, only the
                                                                        4 km service tiles that touch
-                                                                       the corridor are fetched
+                                                                       the road band are fetched
     web/tiles/0/<x>_<y>.dem.png|chm.png|naip.jpg + layers.tiles        main's 011/012 schema
 
 Tile (x, y) covers origin + [x·1000, (x+1)·1000) × [y·1000, (y+1)·1000) in site metres, where
-`origin` is the corridor bbox's lower-left snapped to 1 km. Only tiles whose square intersects
-the union corridor exist.
+`origin` is the road band bbox's lower-left snapped to 1 km. Only tiles whose square intersects
+the union road band exist.
 
-WHY TILE-WISE POINTS. Bacon Ridge's 2.6 km² corridor held 13.6 M points; the Crofton region's
+WHY TILE-WISE POINTS. Bacon Ridge's 2.6 km² road band held 13.6 M points; the Crofton region's
 30.7 km² would hold ~150 M — 4-5 GB as numpy arrays, on a box other agents share. So each TNM LAZ
-delivery tile is read, clipped to the corridor, scattered into the 1 km output tiles' min/max/count
+delivery tile is read, clipped to the road band, scattered into the 1 km output tiles' min/max/count
 arrays, and dropped. The only points kept are the ones within BAND_M of a road, which is what the
 profile's structure test needs (decks within 14 m, spans within 10 m).
 
@@ -130,8 +130,8 @@ class LazyRaster:
         self.ds.close()
 
 
-def tile_index(bbox, corridor, origin: tuple[float, float] | None = None) -> tuple[tuple[float, float], list[tuple[int, int]]]:
-    """Tile origin and the (x, y) tiles intersecting the corridor.
+def tile_index(bbox, road_band, origin: tuple[float, float] | None = None) -> tuple[tuple[float, float], list[tuple[int, int]]]:
+    """Tile origin and the (x, y) tiles intersecting the road band.
 
     The origin is the bbox's lower-left snapped to 1 km, unless the caller names one. A SHARD must:
     its tiles are merged with every other shard's by file name, and on 2026-10-10 the dc-metro
@@ -150,7 +150,7 @@ def tile_index(bbox, corridor, origin: tuple[float, float] | None = None) -> tup
     for tx in range(tx_lo, nx):
         for ty in range(ty_lo, ny):
             sq = box(x0 + tx * TILE_M, y0 + ty * TILE_M, x0 + (tx + 1) * TILE_M, y0 + (ty + 1) * TILE_M)
-            if sq.intersects(corridor):
+            if sq.intersects(road_band):
                 tiles.append((tx, ty))
     return (x0, y0), tiles
 
@@ -170,8 +170,8 @@ class NoLidarHere(RuntimeError):
     """
 
 
-def lidar_tiled(frame: Frame, bbox, corridor, chains: list[dict], ldir: Path, cache: Path, origin: tuple[float, float] | None = None) -> dict:
-    """Points → per-tile rasters + near-road corridor.laz. Returns what the manifest records.
+def lidar_tiled(frame: Frame, bbox, road_band, chains: list[dict], ldir: Path, cache: Path, origin: tuple[float, float] | None = None) -> dict:
+    """Points → per-tile rasters + near-road road_band.laz. Returns what the manifest records.
 
     `origin` anchors the 1 km tile names (see `tile_index`); a shard passes the world's grid."""
     ldir.mkdir(exist_ok=True)
@@ -180,7 +180,7 @@ def lidar_tiled(frame: Frame, bbox, corridor, chains: list[dict], ldir: Path, ca
     done = _resume_lidar(frame, bbox, chains, ldir)
     if done is not None:
         return done
-    (x0, y0), tiles = tile_index(bbox, corridor, origin)
+    (x0, y0), tiles = tile_index(bbox, road_band, origin)
     n = int(TILE_M)
     acc: dict[tuple[int, int], dict[str, np.ndarray]] = {}
     for t in tiles:
@@ -196,7 +196,7 @@ def lidar_tiled(frame: Frame, bbox, corridor, chains: list[dict], ldir: Path, ca
     demoted = 0
     meta: dict = {}
     # EPT (USGS, then NOAA) when it covers these streets, the TNM tiles otherwise — lidar.point_batches
-    batches = lidar.point_batches(frame, bbox, cache, corridor, meta, lidar.dem_beside(ldir.parent))
+    batches = lidar.point_batches(frame, bbox, cache, road_band, meta, lidar.dem_beside(ldir.parent))
     # a single TNM LAZ tile is 300+ MB and can take minutes, so a per-batch count alone would still
     # go quiet; the heartbeat prints "reading points, Ns in" if no batch lands within the interval
     hb = progress.Progress("lidar", None)
@@ -211,8 +211,8 @@ def lidar_tiled(frame: Frame, bbox, corridor, chains: list[dict], ldir: Path, ca
                 raise NoLidarHere(str(exc)) from exc
             raise
         if not part:
-            print(f"  lidar   {label}: outside the corridor", flush=True)
-            hb.tick(note=f"{label}: outside the corridor")
+            print(f"  lidar   {label}: outside the road band", flush=True)
+            hb.tick(note=f"{label}: outside the road band")
             continue
         cls = part["cls"]
         share17 = float((cls == 17).sum()) / max(1, len(cls))
@@ -258,8 +258,8 @@ def lidar_tiled(frame: Frame, bbox, corridor, chains: list[dict], ldir: Path, ca
         keep = road > 0
         if keep.any():
             near_parts.append({k2: v[keep] for k2, v in part.items()} | {"road": road[keep].astype(np.int16)})
-        print(f"  lidar   {label}: {len(cls):,} pts in corridor, {int(keep.sum()):,} near a road", flush=True)
-        hb.tick(note=f"{label}: {total / 1e6:.0f}M pts in corridor")
+        print(f"  lidar   {label}: {len(cls):,} pts in road band, {int(keep.sum()):,} near a road", flush=True)
+        hb.tick(note=f"{label}: {total / 1e6:.0f}M pts in road band")
         del part
     hb.close()
     # the 2 m band was only for picking the near-road points; the tiles below are the peak
@@ -335,10 +335,10 @@ def lidar_tiled(frame: Frame, bbox, corridor, chains: list[dict], ldir: Path, ca
         las.classification = pts["cls"]
         las.return_number, las.number_of_returns, las.intensity = pts["rn"], pts["nr"], pts["i"]
         las.header.add_crs(pyproj.CRS.from_user_input(crs))
-        las.write(ldir / "corridor.laz")
+        las.write(ldir / "road_band.laz")
     classes = {lidar.CLASS_NAMES.get(i, str(i)): int(c) for i, c in enumerate(counts) if c}
     zf = meta.pop("z_factor", 1.0)
-    result = {**meta, "points_in_corridor": int(total), "near_road_points": int(len(pts["x"])) if pts else 0, "classes": classes, "classification": {"tiles_demoted_17_18": demoted, "class17_trusted": demoted == 0}, "z_factor": zf, "tiles": {"size_m": TILE_M, "origin": [x0, y0], "list": written}, "rasters": ["tiles/*.dtm.tif", "tiles/*.dsm.tif", "tiles/*.chm.tif", "dtm.vrt", "dsm.vrt", "chm.vrt"]}
+    result = {**meta, "points_in_road_band": int(total), "near_road_points": int(len(pts["x"])) if pts else 0, "classes": classes, "classification": {"tiles_demoted_17_18": demoted, "class17_trusted": demoted == 0}, "z_factor": zf, "tiles": {"size_m": TILE_M, "origin": [x0, y0], "list": written}, "rasters": ["tiles/*.dtm.tif", "tiles/*.dsm.tif", "tiles/*.chm.tif", "dtm.vrt", "dsm.vrt", "chm.vrt"]}
     _mark_lidar_done(frame, bbox, chains, ldir, result, written, pts)
     return {**result, "pts": pts}
 
@@ -347,7 +347,7 @@ def _mark_lidar_done(frame: Frame, bbox, chains: list[dict], ldir: Path, result:
     """Record that the lidar stage finished, atomically, so a later run can reuse it.
 
     The VRTs and the near-road cloud are the durable output but nothing said so: bake 495 wrote all
-    643 tiles and their VRTs at 04:04, died on `corridor.laz`, and the rerun could not tell the
+    643 tiles and their VRTs at 04:04, died on `road_band.laz`, and the rerun could not tell the
     difference between that and an empty directory, so it re-read 3.08 B cached EPT points and
     rebuilt every tile. This marker is that difference. It is written last and replaced into place
     in one step, so a run killed mid-write leaves either the old marker or none, never a half one.
@@ -358,7 +358,7 @@ def _mark_lidar_done(frame: Frame, bbox, chains: list[dict], ldir: Path, result:
     """
     if not written:
         return
-    laz = ldir / "corridor.laz"
+    laz = ldir / "road_band.laz"
     marker = {
         "version": _LIDAR_MARKER_VERSION,
         "crs": frame.crs,
@@ -396,7 +396,7 @@ def _chains_signature(chains: list[dict]) -> str:
 def _resume_lidar(frame: Frame, bbox, chains: list[dict], ldir: Path) -> dict | None:
     """The finished lidar stage read back from disk, or None when it must be rebuilt.
 
-    Reuse is only claimed for the SAME corridor: the marker records the frame, the snapped bbox and
+    Reuse is only claimed for the SAME road band: the marker records the frame, the snapped bbox and
     a digest of the chain geometry, and every one has to match, because a site can be re-baked with
     a wider half-width or a different primary and a tile grid from the old one is silently the
     wrong shape (the same failure `rastercache.py` documents for a stale DEM). Every recorded tile
@@ -426,13 +426,13 @@ def _resume_lidar(frame: Frame, bbox, chains: list[dict], ldir: Path) -> dict | 
                     print(f"  lidar   completion marker present but {f.name} is missing; redoing the point pass", flush=True)
                     return None
         near = int(saved.get("near_road_points", 0))
-        laz = ldir / "corridor.laz"
+        laz = ldir / "road_band.laz"
         if near and (not laz.exists() or laz.stat().st_size == 0):
-            print("  lidar   completion marker present but corridor.laz is missing; redoing the point pass", flush=True)
+            print("  lidar   completion marker present but road_band.laz is missing; redoing the point pass", flush=True)
             return None
         pts = _near_points_from_laz(bbox, chains, laz) if near else None
         if pts is not None and len(pts["x"]) != near:
-            print(f"  lidar   completion marker says {near:,} near-road points but corridor.laz holds {len(pts['x']):,}; redoing the point pass", flush=True)
+            print(f"  lidar   completion marker says {near:,} near-road points but road_band.laz holds {len(pts['x']):,}; redoing the point pass", flush=True)
             return None
     except Exception as exc:
         # Any doubt at all means rebuild. Reuse that is wrong is worse than a slow bake.
@@ -443,7 +443,7 @@ def _resume_lidar(frame: Frame, bbox, chains: list[dict], ldir: Path) -> dict | 
 
 
 def _near_points_from_laz(bbox, chains: list[dict], laz: Path) -> dict:
-    """Rebuild the near-road point dict from `corridor.laz`, road index and all.
+    """Rebuild the near-road point dict from `road_band.laz`, road index and all.
 
     The road index is not stored in the LAZ; it is recomputed here exactly as `lidar_tiled` made it
     for the bake and as `reprofile` makes it for a rule change — the same 2 m band, the same chain
@@ -469,8 +469,8 @@ def _near_points_from_laz(bbox, chains: list[dict], laz: Path) -> dict:
     return pts
 
 
-def naip_tiled(frame: Frame, bbox, corridor, out: Path, cache: Path, res: float = 1.0, area=None) -> dict:
-    """NAIP at `res` m over the bbox, only the service tiles that touch the corridor, written
+def naip_tiled(frame: Frame, bbox, road_band, out: Path, cache: Path, res: float = 1.0, area=None) -> dict:
+    """NAIP at `res` m over the bbox, only the service tiles that touch the road band, written
     window by window into one JPEG-compressed GeoTIFF. `area` is the extent the NAIP year is
     chosen over (the world's bbox for a shard, so every shard picks the same one); the bbox
     itself when not given."""
@@ -488,12 +488,12 @@ def naip_tiled(frame: Frame, bbox, corridor, out: Path, cache: Path, res: float 
     xmin, ymin, xmax, ymax = bbox
     width = int(round((xmax - xmin) / res))
     height = int(round((ymax - ymin) / res))
-    # The pieces the corridor actually touches, with where each lands in the output. Build the
+    # The pieces the road band actually touches, with where each lands in the output. Build the
     # whole plan first so the downloads can run concurrently (from the Planetary Computer or the
     # ImageServer — `naip.fetch_tiles` chooses); a single GeoTIFF still has one writer, so the
     # windows are written serially afterwards — from the cache, which is instant.
     policy = naip_mod.year_policy(frame, area if area is not None else bbox)
-    plan = naip_mod.plan_tiles(frame, bbox, res, cache, keep=lambda b: box(*b).intersects(corridor), policy=policy)
+    plan = naip_mod.plan_tiles(frame, bbox, res, cache, keep=lambda b: box(*b).intersects(road_band), policy=policy)
     prov = naip_mod.fetch_tiles(frame, [t for _, _, t in plan], policy=policy)
     fetched = 0
     blank_tiles: list = []
@@ -502,8 +502,8 @@ def naip_tiled(frame: Frame, bbox, corridor, out: Path, cache: Path, res: float 
             tile = naip_mod.read_tile(t)
             dst.write(np.moveaxis(tile, -1, 0), window=rasterio.windows.Window(c0, r0, t.w, t.h))
             fetched += 1
-            # A corridor tile that comes back all-black is a SERVICE HOLE, not "no corridor here" —
-            # the plan already dropped the tiles with no corridor. The 2026-10-07 dc-metro shards
+            # A road band tile that comes back all-black is a SERVICE HOLE, not "no road band here" —
+            # the plan already dropped the tiles with no road band. The 2026-10-07 dc-metro shards
             # 1/2/7 wrote as 19 KB of pure black and nothing said so; the pyramid then painted that
             # black into the ground. Report every hole by name so a missing area is never silent.
             if (tile <= naip_mod.NAIP_BLANK_MAX).all():
@@ -517,7 +517,7 @@ def naip_tiled(frame: Frame, bbox, corridor, out: Path, cache: Path, res: float 
             flush=True,
         )
     elif not plan:
-        print(f"  naip    no service tiles touch the corridor for {out.name}", flush=True)
+        print(f"  naip    no service tiles touch the road band for {out.name}", flush=True)
     return {"file": out.name, "res_m": res, "size": [width, height], "tiles_fetched": fetched, "blank_tiles": len(blank_tiles), **prov}
 
 
@@ -646,7 +646,7 @@ def _export_tiles_serial(site_dir: Path, web: Path, frame, mask_shapes: list, vi
     # band "no lidar" was written as "0 m canopy" and the tree planter grew nothing there.
     # Measured 2026-09-26 over the same 2 km of Crofton: crofton-triangle 40.7 % canopy > 3 m,
     # crofton-crownsville 10.2 %, with crownsville's DTM valid on 16 % of that ground. If the site
-    # carries the global 1 m canopy (`canopy_global.tif`, from corridor.canopy / Meta-WRI), it
+    # carries the global 1 m canopy (`canopy_global.tif`, from piedmont_bake.canopy / Meta-WRI), it
     # fills every cell the lidar DTM does not cover.
     dtm_p = _raster(site_dir / "lidar", "dtm")
     gchm_p = site_dir / "canopy_global.tif"
@@ -725,7 +725,7 @@ def _export_tiles_serial(site_dir: Path, web: Path, frame, mask_shapes: list, vi
             rgb = naip_ds.read(out_shape=(3, nn, nn), window=win, resampling=Resampling.average, boundless=True, fill_value=0)
             # A TILE AT THE EDGE OF COVERAGE IS NOT BLACK GROUND. `boundless=True` lets the window
             # run past the source raster and fills whatever it finds outside with 0, and the tile
-            # grid is the corridor hull snapped to 1 km — so edge tiles legitimately reach past
+            # grid is the road band hull snapped to 1 km — so edge tiles legitimately reach past
             # where NAIP was fetched and came out as black slabs with a dead straight edge exactly
             # where coverage stops.
             #
@@ -815,7 +815,7 @@ def _fill_along(values: list[float]) -> list[float]:
 
     THE BUG THIS FIXES (2026-09-21): the single-image path hands lidar.profile a gap-filled DTM
     (`_fill_nan`), but the tiled path hands it a VRT, and LazyRaster answers nodata with NaN — so a
-    station whose 1 m cell is outside the lidar (a road crossing the corridor's own edge, a hole in
+    station whose 1 m cell is outside the lidar (a road crossing the road band's own edge, a hole in
     the flight) came back NaN, that NaN went into road_z, into the manifest's branch coords, and
     `json.dump` wrote a literal `NaN` that `JSON.parse` refuses: the whole Crofton site failed to
     load in the browser. Interpolating is also the physically right answer, and matches what the
@@ -852,7 +852,7 @@ def crossings_over(site_dir: Path) -> list[float]:
     """Along-track metres where OSM says a way crosses OVER the primary (from crossings.json).
 
     The overpass/gantry call in `lidar.profile` needs this to tell a real bridge deck from a sign
-    gantry. `corridor plan` writes crossings.json next to the site; a bake that never planned one
+    gantry. `piedmont_bake plan` writes crossings.json next to the site; a bake that never planned one
     gets an empty list, which reads as "we checked and nothing crosses" — correct for a fresh
     single-image bake, and the thing that stops a motorway gantry becoming a road.
     """
@@ -890,7 +890,7 @@ def profile_tiled(line: LineString, ldir: Path, pts: dict | None, road_index: in
             span = road_index_cache[1].get(int(road_index)) if road_index_cache is not None else None
             if span is not None:
                 a, b = span
-                # np.sort keeps the points in their original corridor.laz order, so a profile does
+                # np.sort keeps the points in their original road_band.laz order, so a profile does
                 # not change just because the index exists
                 sel = np.sort(road_index_cache[0][a:b])
                 sub = {k: v[sel] for k, v in pts.items() if k != "road"}
@@ -927,10 +927,10 @@ def build_road_index(pts: dict | None) -> tuple | None:
 
 
 def _default_jobs() -> int:
-    """How many workers a profile pool may use: CORRIDOR_JOBS, else min(cpu_count, 32)."""
+    """How many workers a profile pool may use: PIEDMONT_JOBS, else min(cpu_count, 32)."""
     import os
 
-    env = os.environ.get("CORRIDOR_JOBS", "").strip()
+    env = os.environ.get("PIEDMONT_JOBS", "").strip()
     if env:
         try:
             return max(1, int(env))
@@ -1064,7 +1064,7 @@ def reprofile(site_dir: Path) -> dict:
     The expensive half of a tiled bake is the download and the point pass (Crofton: 199 LAZ tiles,
     500 M points, 8.7 h); the profiles are minutes. So a rule change downstream of the rasters —
     the NaN fill above, a new structure test — re-runs this instead of the bake. Inputs: the VRTs,
-    `lidar/corridor.laz` (the near-road points), and `spine_utm.json` (the chains). The road index
+    `lidar/road_band.laz` (the near-road points), and `spine_utm.json` (the chains). The road index
     each point belongs to is recomputed exactly as the bake did it, by rasterizing the chain band.
     """
     import laspy
@@ -1081,7 +1081,7 @@ def reprofile(site_dir: Path) -> dict:
         coords = [c for part in parts for c in part]
         if len(coords) >= 2:
             chains.append({"id": sib.get("id"), "line": LS(coords), "primary": False, "sib": sib})
-    las = laspy.read(ldir / "corridor.laz")
+    las = laspy.read(ldir / "road_band.laz")
     pts = {"x": np.asarray(las.x), "y": np.asarray(las.y), "z": np.asarray(las.z), "cls": np.asarray(las.classification).astype(np.uint8), "rn": np.asarray(las.return_number).astype(np.uint8), "nr": np.asarray(las.number_of_returns).astype(np.uint8), "i": np.asarray(las.intensity).astype(np.uint16)}
     xmin, ymin = float(pts["x"].min()) - 50, float(pts["y"].min()) - 50
     xmax, ymax = float(pts["x"].max()) + 50, float(pts["y"].max()) + 50
@@ -1143,7 +1143,7 @@ def reprofile_from_dtm(site_dir: Path, step_m: float = 2.0) -> dict:
     within centimetres, so sampling `lidar/dtm.vrt` every `step_m` along each chain gives the
     same road_z for grading without touching the points. No structures — a side street's
     overpasses are not found this way, and the primary keeps its own profile.json. Falls back to
-    the 1 m DEM where the DTM is nodata (the band-limited rasters stop at the lidar corridor).
+    the 1 m DEM where the DTM is nodata (the band-limited rasters stop at the lidar road band).
     """
     import rasterio
     from shapely.geometry import LineString as LS
@@ -1235,7 +1235,7 @@ def _read_strips(path: Path, bbox, res: float, count: int = 1, strips: int | Non
     `overview()` read each 1 m source in a single `rasterio.read` over the whole site, and for a
     world those sources are VRTs of hundreds of 1 km tiles with no overviews — so GDAL decodes every
     source pixel at full resolution to average it down. On the Capital Beltway's `naip_1m.tif` that
-    was hours in one call, with no log line between start and finish (corridor-bake-495, 2026-10-04,
+    was hours in one call, with no log line between start and finish (piedmont-bake-495, 2026-10-04,
     silent for 3.4 h at "overview dem …"). The output rows are independent, so the read is split into
     strips and run concurrently.
 
@@ -1285,7 +1285,7 @@ def overview(site_dir: Path, web: Path, frame, mask_shapes: list, vivid) -> dict
     only height layer is `layers.tiles` fails outright — `scene.ts` raises "site has no DEM layer"
     and you get nothing at all (Rich, 2026-09-21, on crofton-crownsville). One overview at 8 m is
     5.4 M pixels for an 18 km region, which decodes in a browser without complaint, and it is only
-    the FAR terrain: within 40 m of any road the corridor strip is built from the carriageway
+    the FAR terrain: within 40 m of any road the road band strip is built from the carriageway
     spline, so the road you drive on is unaffected by the coarseness. Whoever wires tile streaming
     should prefer `layers.tiles` when it is present and treat these as the fallback.
     """
@@ -1368,7 +1368,7 @@ def ensure_overview(site_dir: Path) -> dict | None:
     repair: build the images if they are missing, merge the three layer entries into the manifest
     on disk, leave everything else exactly as it was.
 
-        python -m corridor.overview <slug> [...]
+        python -m piedmont_bake.overview <slug> [...]
     """
     web = site_dir / "web"
     man = web / "manifest.json"

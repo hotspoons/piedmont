@@ -14,7 +14,7 @@
 // so a worker cell is identical to a main-thread one. Keep them in step.
 
 import { planDressing, type DressingPart, type DressingSite, type Footprint } from './dressing'
-import kitSpec from '../../../../tools/assetlib/specs/buildings-dressing.json'
+import kitSpec from '../../../../pipelines/assetlib/specs/buildings-dressing.json'
 
 /** The merged dressing arrays while they are built; typed at the end. */
 export interface DressBuild {
@@ -63,7 +63,7 @@ export const DRESS: Record<string, Draw> = {
   'fire-escape-landing': { kind: 'box', colour: [0.28, 0.28, 0.30], depth: 1, anchor: 'below' },
 }
 
-/** the kit's placement rules, as `tools/assetlib/specs/buildings-dressing.json` declares them */
+/** the kit's placement rules, as `pipelines/assetlib/specs/buildings-dressing.json` declares them */
 export const KIT: DressingPart[] = (kitSpec as { assets: DressingPart[] }).assets
 const KIT_BY_ID = new Map(KIT.map((p) => [p.id, p]))
 

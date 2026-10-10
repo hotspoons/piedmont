@@ -15,5 +15,5 @@
  "credit": "Milky Way: NASA/Goddard Space Flight Center Scientific Visualization Studio (Ernie Wright). Gaia DR2: ESA/Gaia/DPAC.",
  "note": "The galaxy as an actual image, not contours: Deep Star Maps 2020 in celestial coordinates, linear half-float OpenEXR, with the bright Hipparcos/Tycho stars removed by NASA precisely so a star map can be layered under its own catalogue. Decoded here from the 4k EXR, rotated 180 degrees into this tool's equatorial convention (NASA centres on 0h with r.a. increasing to the LEFT and the file runs south-first; ours runs r.a. to the right, north-first), median-filtered to drop the faint stars NASA still leaves in, black-pointed so the empty sky is exactly zero, then sRGB-encoded. The zero background is what lets it be added to the dome instead of pasted over it, and the shader keys on luminance as well. JPEG rather than PNG: lossless colour here is tens of megabytes and the band is soft enough that it does not need them.",
  "fetched": "2026-10-03T04:16:10.984Z",
- "tool": "tools/sky/ingest.mjs"
+ "tool": "pipelines/sky/ingest.mjs"
 }

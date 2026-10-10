@@ -1,4 +1,4 @@
-// Regenerate apps/corridor/src/ui/icons.ts from the installed Heroicons package.
+// Regenerate apps/game/src/ui/icons.ts from the installed Heroicons package.
 //
 // Heroicons ships one SVG file per icon. Pulling the package into the browser bundle would ship
 // 1,300 of them to draw the twenty we use, and hand-copying path data is how you end up with an
@@ -17,9 +17,9 @@ import { dirname, join } from 'node:path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SRC = join(root, 'node_modules/heroicons/24/outline')
-const OUT = join(root, 'apps/corridor/src/ui/icons.ts')
+const OUT = join(root, 'apps/game/src/ui/icons.ts')
 
-/** Every icon the two corridor UIs use, grouped by where it earns its place. */
+/** Every icon the two game UIs use, grouped by where it earns its place. */
 const NAMES = [
   // shell
   'bars-3', 'cog-6-tooth', 'x-mark', 'chevron-down', 'chevron-right', 'check', 'arrow-path',

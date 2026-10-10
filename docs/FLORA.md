@@ -3,7 +3,7 @@
 Rich, 2026-09-21:
 
 > Is there a canonical source of data we can use to correctly set the tree types for a given map in
-> corridor? Right now everything gets mid-Atlantic trees. Definitely would like to see pines or
+> the game? Right now everything gets mid-Atlantic trees. Definitely would like to see pines or
 > whatever conifers are in MDI, and some pines and sequoias in CA, and regionally appropriate trees.
 > It would be great if we could automate this from government climate data.
 >
@@ -55,7 +55,7 @@ green. That is where Rich's guess lands, and it lands hard — see [§5](#5-daym
   individual named wood, not as the mechanism.
 - **Köppen / PRISM / plant hardiness zones.** These are the "government climate data" the brief
   guessed at. They say what the climate permits, which is a much larger set than what is standing
-  there — and on a coast they are almost constant along the whole corridor. Used for phenology
+  there — and on a coast they are almost constant along the whole road band. Used for phenology
   only; see §5.
 
 ---
@@ -63,7 +63,7 @@ green. That is where Rich's guess lands, and it lands hard — see [§5](#5-daym
 ## 2. The chain, and what falls back to what
 
 ```
-EVT class of every 30 m pixel in the corridor          ← always, this is the spine of it
+EVT class of every 30 m pixel in the road band          ← always, this is the spine of it
    └─ species mix for each class = f · (FHP basal area over that class's pixels)
                                  + (1−f) · (the class NAME parsed against FIA's vocabulary)
         where f = the fraction of the class's pixels that carry any basal area at all
@@ -89,12 +89,12 @@ is both, in proportion.
 
 ## 3. What it actually returns — the readouts
 
-Printed by `probes/corridor-flora.mjs` and by `python -m corridor flora <slug>`, not predicted.
+Printed by `probes/flora.mjs` and by `python -m piedmont_bake flora <slug>`, not predicted.
 
 ### acadia-ocean-dr — Park Loop Road, Mount Desert Island, Maine
 
 ```
-32 EVT classes over 266 ha of corridor
+32 EVT classes over 266 ha of road band
   19.3%  Acadian Low-Elevation Spruce-Fir Forest            Tree   Evergreen closed tree canopy
   18.1%  Open Water                                         Water
   13.7%  Acadian Low-Elevation Spruce-Fir-Hardwood Forest   Tree   Mixed evergreen-deciduous closed
@@ -172,7 +172,7 @@ ground   hardwood_litter 73 %, mixed_litter 14 %, mown 11 %
 
 ```
   39.4%  Developed-Roads      19.9% Developed-Medium Intensity      18.6% Developed-Low Intensity
-canopy   0 % — no basal-area raster has a single non-zero pixel in this corridor
+canopy   0 % — no basal-area raster has a single non-zero pixel in this road band
          the mix is `oak 100 %`, from "Eastern Cool Temperate Urban Deciduous Forest"
 ground   mown 98 %
 ```
@@ -183,7 +183,7 @@ out of a default.
 
 ### Before and after, counted
 
-`probes/corridor-flora.mjs` replays the old rule — canopy height and a hash over five fixed hardwood
+`probes/flora.mjs` replays the old rule — canopy height and a hash over five fixed hardwood
 presets — over the SAME measured trees, so this is the change and not a description of it.
 
 | site | trees | before | after | evergreen |
@@ -215,22 +215,22 @@ brown in April, because in Maine it is.
 
 ## 4. Why these sources, and the traps in them
 
-**The class at the centre of a corridor is always `Developed-Roads`.** The centre point of every
+**The class at the centre of a road band is always `Developed-Roads`.** The centre point of every
 site is, by construction, on the pavement, and LANDFIRE has a 30 m class for that. A point sample
-is worthless here: `flora.py` rasterises the corridor polygon and takes area shares over every pixel
+is worthless here: `flora.py` rasterises the road-band polygon and takes area shares over every pixel
 inside it, the way `groundcover.ts` already weighted OSM land use by area rather than counting it.
 
 **`getSamples` with `processAsMultidimensional` silently truncates, and drops the most important
 species.** It is the obvious cheap call — one request returns every species slice at up to a few
 dozen points, in about 30 s. At Acadia it returns 99 rasters and **red spruce is not among them**,
-although its raster plainly has data there (mean 10.5, max 237 ft²/ac over the corridor). The
+although its raster plainly has data there (mean 10.5, max 237 ft²/ac over the road band). The
 service reports `maxMosaicImageCount: 100`; the truncation is silent, unordered and not flagged in
 the response. The reliable call is one `exportImage` per species variable, with the variable and the
 year pinned by `mosaicRule.multidimensionalDefinition`.
 
 **340 species is 340 requests unless you ask the catalogue first.** The service holds 7017 rasters —
 one per species per year per FIA production zone. A spatial `query` against the raster catalogue
-with the corridor's envelope costs one request and names the 45–130 species that have a raster over
+with the road band's envelope costs one request and names the 45–130 species that have a raster over
 this site (45 at Bixby, 49 at Acadia, 102 at Chesterfield). That is the difference between a six
 minute bake and a ninety second one, and it is also the honest way to say "these are the species
 this dataset models here".
@@ -242,7 +242,7 @@ decimal — the rollup *is* the sum. Mixed together, "spruce" came out as 44 % o
 23 %. `flora.py` pins one year (2011) and drops every `*_spp` and `other_unknown` rollup by rule.
 
 **The basal-area rasters are dense in the East and nearly empty in the West.** At Bixby Bridge only
-136 of 4248 corridor pixels carry any basal area at all — 3 % — and the ones that do carry plausible
+136 of 4248 road-band pixels carry any basal area at all — 3 % — and the ones that do carry plausible
 values (114 ft²/ac of bay laurel, 37 of redwood). The proportions survive; the absolute numbers and
 the spatial detail do not. This is the single reason the EVT-name fallback exists, and it is why
 the site-wide `canopy.coverage` is reported in the manifest: a consumer can see how much of the
@@ -250,13 +250,13 @@ species mix was measured and how much was read off a class name.
 
 **FIA's species table has four placeholder rows filed under the genus "Tree"** — `unknown dead
 hardwood`, `other or unknown live tree`, and two conifer equivalents. They match the word
-"hardwood" in an EVT class name, and until they were excluded every mid-Atlantic corridor carried a
+"hardwood" in an EVT class name, and until they were excluded every mid-Atlantic road band carried a
 species called `Tree broadleaf`.
 
 **A group word must be earned.** Reading an EVT class name against FIA's vocabulary means matching
 the last word of a common name — "spruce" → Picea, "oak" → Quercus. Two failures, both visible in a
 printed mix: "pine" expands to Pinus (54 species) *and* Araucaria, Podocarpus and Casuarina, so a
-corridor listed `pine 0 %` twice; and the single FIA species "myrtle of the river" makes "river" a
+road band listed `pine 0 %` twice; and the single FIA species "myrtle of the river" makes "river" a
 tree group, which put a Calyptranthes in a Maryland oak wood. A group word now needs three species
 and resolves to the one genus with the most of them.
 
@@ -269,7 +269,7 @@ the class name too. The genus and the silhouette were right either way; the spec
 manifest was not, and a manifest nobody can trust at the species level is not worth writing.
 
 **LANDFIRE's ImageServer does not publish its raster attribute table.** `.../ImageServer/rasterAttributeTable`
-returns `{}` and `/legend` gives labels with no values against them, so a corridor is a histogram of
+returns `{}` and `/legend` gives labels with no values against them, so a road band is a histogram of
 integers until you fetch the CSV LANDFIRE ships beside the product. The CSV is not linked from the
 service; it lives at a `sites/default/files/CSV/<year>/` path on landfire.gov.
 
@@ -361,12 +361,12 @@ drier — which is the dormancy term doing its job.
 }
 ```
 
-`flora_30m.png` is the EVT class **index** per 30 m pixel (255 outside the corridor) on its own
+`flora_30m.png` is the EVT class **index** per 30 m pixel (255 outside the road band) on its own
 lattice, not the DEM's 2 m one — the source is 30 m and resampling a class raster up would be five
 megabytes of the same integer. It is what lets a tree on a canyon floor be a redwood and a tree on
 the ridge above it be a live oak.
 
-`canopy_h_m` is ours, not LANDFIRE's: the mean of **this corridor's lidar CHM** over the pixels where
+`canopy_h_m` is ours, not LANDFIRE's: the mean of **this road-band's lidar CHM** over the pixels where
 that species carries basal area. It is what makes "a 40 m stem in a redwood mix is a redwood, an 8 m
 one is a tanoak" arithmetic over two measurements instead of a rule about redwoods.
 
@@ -379,7 +379,7 @@ one is a tanoak" arithmetic over two measurements instead of a rule about redwoo
   the leader, and which way the growth force pulls their tips; the comment on each says which real
   tree the numbers are shaped after.
 - `trees.ts` — which silhouettes to build (the six heaviest by area-weighted basal area, asked at
-  the corridor's own 20th / 55th / 90th percentile canopy heights so both the understorey and the
+  the site's own 20th / 55th / 90th percentile canopy heights so both the understorey and the
   emergent builds of a species exist), and a stable per-tree draw from the pixel's mix weighted by
   height affinity.
 - `groundcover.ts` — eighteen ground classes with a blade style, a blade count and a floor texture
@@ -390,8 +390,8 @@ one is a tanoak" arithmetic over two measurements instead of a rule about redwoo
 
 - The floor textures are still painted canvases. They are now painted **per class** with a recipe
   (element colour, count, size, aspect) rather than one oak-hickory texture everywhere, but the real
-  sets belong to flux.2 through `tools/surfaces/gen.py`. There is now a named class to generate for.
-- **Chaparral and coastal scrub have no geometry.** 30 % of the Bixby corridor and 26 % of Ragged
+  sets belong to flux.2 through `pipelines/surfaces/gen.py`. There is now a named class to generate for.
+- **Chaparral and coastal scrub have no geometry.** 30 % of the Bixby road band and 26 % of Ragged
   Point is `Shrub`, and it is currently drawn as low dense ground cover with a grey gravel floor and
   no woody instances. A shrub LOD — a manzanita and a chamise the size of a car bonnet — is the next
   visible win on the California sites, and `flora.json` already says where they go.

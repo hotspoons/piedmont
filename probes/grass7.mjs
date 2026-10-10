@@ -3,11 +3,11 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width: 1200, height: 800 } })
 page.on('console', (m) => { if (m.type() === 'error') console.log('console.error', m.text().slice(0, 1500)) })
 await page.goto('http://127.0.0.1:5185/#braddock-i70', { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 180000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 180000 })
 await page.keyboard.press('d'); await page.waitForTimeout(2000)
 const r = await page.evaluate(() => {
-  const g = window.corridor.site.layers.trees.getObjectByName('grass')
-  const road = window.corridor.site.layers.road.children[0].children[0]
+  const g = window.piedmont.site.layers.trees.getObjectByName('grass')
+  const road = window.piedmont.site.layers.road.children[0].children[0]
   const pos = Array.from(g.geometry.attributes.position.array).map((v) => +v.toFixed(2))
   const idx = Array.from(g.geometry.index.array)
   const arr = g.instanceMatrix.array

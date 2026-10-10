@@ -1,4 +1,4 @@
-// The site manifest as tools/corridor/corridor/export.py writes it. Metres, relative to the site
+// The site manifest as bake/piedmont_bake/export.py writes it. Metres, relative to the site
 // origin (the photo fix projected to UTM), z in metres NAVD88. Keep this in step with export.py.
 
 import { reliefHeights } from '../visuals/relief'
@@ -19,7 +19,7 @@ import { param } from '../url'
  * whole raster and 3x3 for a 1 km tile.
  *
  * It also means the browser never learns which CRS the bake used, so a future source in some other
- * projection just emits its own lattice. See docs/corridor/FRAME.md.
+ * projection just emits its own lattice. See docs/FRAME.md.
  */
 export interface GeoLattice {
   n: number
@@ -45,7 +45,7 @@ export interface Layer {
 /**
  * `manifest.layers.tiles`: a network-sized bake cuts its DEM, canopy and imagery into `size_m`
  * tiles instead of one image per layer, and lists only the tiles that have data. Tiles outside the
- * corridor hull are simply absent. Files are `web/tiles/0/<x>_<y>.dem.png | .naip.jpg | .chm.png`,
+ * road-band hull are simply absent. Files are `web/tiles/0/<x>_<y>.dem.png | .naip.jpg | .chm.png`,
  * with the same encodings as the single-image layers.
  */
 /** What the bake's `pyramid.list` says about one tile. Bounds are NOT here — they are in the id. */
@@ -73,7 +73,7 @@ export interface PyrIndex {
   dir: string
   format: string
   /**
-   * The fine levels carry the GRADED ground (tools/corridor/corridor/grade.py — the viewer's own
+   * The fine levels carry the GRADED ground (bake/piedmont_bake/grade.py — the viewer's own
    * `gradedHeight`, run at bake time), so `physGroundAt` and the strips read the raster instead of
    * grading every sample. Absent on an older bake, which grades at run time exactly as before.
    */
@@ -84,7 +84,7 @@ export interface PyrIndex {
   texture?: string
   /**
    * The GPU-compressed twin's extension (`ktx2`), when the bake encoded one beside EVERY tile's
-   * jpg — see tools/corridor/corridor/ktx2.py and pyramidstream.ts. It carries its own mip chain
+   * jpg — see bake/piedmont_bake/ktx2.py and pyramidstream.ts. It carries its own mip chain
    * and uploads as blocks, so the frame a photo first draws costs no decode, no mipmap pass and a
    * quarter of the memory. Absent on an older bake, or one made without the encoder: the jpg path.
    */
@@ -198,7 +198,7 @@ export interface Manifest {
   /**
    * Where this site is, and what its stored metres mean. `epsg`/`origin` are the UTM the bake
    * writes; `anchor` is the same origin in WGS84 and is the geodetic authority — see
-   * docs/corridor/FRAME.md. `kind` is absent on a manifest baked before the geodetic frame
+   * docs/FRAME.md. `kind` is absent on a manifest baked before the geodetic frame
    * existed, which is how the viewer knows it cannot place that site on the ellipsoid.
    */
   frame: {
@@ -246,7 +246,7 @@ export interface Manifest {
     bars?: { x: number; y: number; z: number; travel_deg: number; width_m: number; x_id?: string; arm?: number }[]
   } | null
   /**
-   * Where the roads meet, and who has priority there (corridor/intersections.py).
+   * Where the roads meet, and who has priority there (piedmont_bake/intersections.py).
    *
    * DERIVED from the drawn network rather than transcribed from OSM, because an American suburb
    * maps almost none of it: 854 drivable ways inside crofton-triangle carry three `highway=stop`
@@ -313,13 +313,13 @@ export interface Manifest {
     units: { name: string; strat_name: string; lith: string; descrip: string; b_age: number; t_age: number }[]
   }
   photos: { file: string; heading_deg: number | null; taken: string | null }[]
-  lidar: { dataset: string | null; points_in_corridor: number | null; classes: Record<string, number> | null }
+  lidar: { dataset: string | null; points_in_road_band: number | null; classes: Record<string, number> | null }
   /** OSM land-use polygons in site coordinates; groundcover.ts picks the grass type from them */
   landuse?: { class: string; ring: [number, number][]; area_m2?: number }[]
   /** A tiled world's land-use rings stream per cell, so the class->area summary `grassTypeFor`
-   *  needs to pick the verge grass is computed once at bake and kept here (tools/corridor/export.py). */
+   *  needs to pick the verge grass is computed once at bake and kept here (bake/export.py). */
   landuse_area?: Record<string, number>
-  /** OSM footprints with a measured height, in site metres (tools/corridor/corridor/buildings.py) */
+  /** OSM footprints with a measured height, in site metres (bake/piedmont_bake/buildings.py) */
   buildings?: {
     ring: [number, number][]
     area_m2?: number
@@ -330,11 +330,11 @@ export interface Manifest {
     lat?: number
     tags?: Record<string, string>
   }[]
-  /** OSM points of interest (tools/corridor/corridor/buildings.py): an amenity/shop kind and the
+  /** OSM points of interest (bake/piedmont_bake/buildings.py): an amenity/shop kind and the
    *  index of the building it sits in. Streams per cell like the footprints. */
   pois?: { x: number; y: number; s?: number; lat?: number; kind: string; name?: string | null; building?: number | null }[]
-  /** what grows here: LANDFIRE EVT classes with their corridor share, an FIA species mix,
-   *  a ground-cover class per vegetation type and Daymet monthly climate (tools/corridor/corridor/flora.py).
+  /** what grows here: LANDFIRE EVT classes with their road-band share, an FIA species mix,
+   *  a ground-cover class per vegetation type and Daymet monthly climate (bake/piedmont_bake/flora.py).
    *  Absent on bakes older than 2026-09-21; flora.ts falls back to the OSM land-use rule. */
   flora?: import('./flora').FloraBlock | null
   /** terrain-and-data agent: cut faces (cuts.py), exposed rock (rock.py), water (water.py); absent on older bakes */

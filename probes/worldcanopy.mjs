@@ -3,7 +3,7 @@
 // Rich, 2026-09-27: "proximity to a road shouldn't really dictate tree mappings and ground
 // textures — let's build the full world out for a given network."
 //
-// The corridor clip was only half of it. `network_tiles.py` has read a file called
+// The road-band clip was only half of it. `network_tiles.py` has read a file called
 // `canopy_global.tif` for a while, with a comment explaining that a network bake rasterises lidar
 // only in a band along its roads and that outside that band "no lidar" was written as "0 m
 // canopy" — which the tree planter reads as "no trees". NOTHING HAS EVER WRITTEN THAT FILE, so
@@ -12,7 +12,7 @@
 // This measures the thing that matters rather than the plumbing: stand a long way from every
 // road, and ask whether the world knows there is a wood there.
 //
-//   PORT=5185 node probes/corridor-worldcanopy.mjs [slug]
+//   PORT=5185 node probes/worldcanopy.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-world'
 const PORT = process.env.PORT ?? '5185'
@@ -21,12 +21,12 @@ const page = await browser.newPage({ viewport: { width: 640, height: 420 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 900000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 900000 })
 await page.waitForTimeout(6000)
 
 const out = await page.evaluate(async () => {
-  const site = window.corridor.site
-  const THREE = window.corridor.THREE
+  const site = window.piedmont.site
+  const THREE = window.piedmont.THREE
   const m = site.manifest
   const bb = m.bbox
   // bands of distance from the nearest road, so "near" and "far" are measured and not assumed
@@ -84,10 +84,10 @@ const out = await page.evaluate(async () => {
      * never moved. Eighty replants had happened; all of them were to the camera.
      */
     const [fx, fy] = far[0]
-    const cam = window.corridor.camera
+    const cam = window.piedmont.camera
     cam.position.set(fx, (site.groundAt(fx, -fy) ?? 0) + 2, -fy)
-    window.corridor.orbit.target.set(fx + 30, site.groundAt(fx + 30, -fy) ?? 0, -fy)
-    window.corridor.orbit.update()
+    window.piedmont.orbit.target.set(fx + 30, site.groundAt(fx + 30, -fy) ?? 0, -fy)
+    window.piedmont.orbit.update()
     for (let k = 0; k < 90; k++) await new Promise((r) => requestAnimationFrame(r))
     /*
      * ASK THE PLANTER, not only the result. "0 trees here" has two very different causes -- the
@@ -115,6 +115,6 @@ else if (!out.near.n || !out.far.n) fail(`could not find points in both bands (n
 // liveness: the site must have canopy SOMEWHERE, or a zero far from roads means nothing
 else if (!(out.near.share > 0.1)) fail(`only ${(100 * out.near.share).toFixed(0)}% of points beside a road have canopy — this site has no canopy at all`)
 // the point: a wood a kilometre from a road is still a wood
-else if (!(out.far.share > out.near.share * 0.5)) fail(`canopy beside a road ${(100 * out.near.share).toFixed(0)}% against ${(100 * out.far.share).toFixed(0)}% at ${out.farBandFrom}m+ — the canopy still stops at the corridor`)
+else if (!(out.far.share > out.near.share * 0.5)) fail(`canopy beside a road ${(100 * out.near.share).toFixed(0)}% against ${(100 * out.far.share).toFixed(0)}% at ${out.farBandFrom}m+ — the canopy still stops at the road band`)
 else if (!(out.treesFar?.within300m > 100)) fail(`only ${out.treesFar?.within300m} trees planted ${out.treesFar?.roadDist} m from the nearest road`)
 else console.log(`PASS: canopy over 3 m on ${(100 * out.near.share).toFixed(0)}% of ground beside a road and ${(100 * out.far.share).toFixed(0)}% at ${out.farBandFrom} m or more from one (mean ${out.far.meanM} m, furthest anything gets on this site is ${out.furthestFromRoad} m); ${out.treesFar.within300m} trees planted ${out.treesFar.roadDist} m from the nearest road.`)

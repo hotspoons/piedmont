@@ -8,8 +8,8 @@
 // with its image model pointed at a recorder (anything that logs the JSON body of
 // /v1/images/generations, one line per call), and give this the log:
 //
-//   ASSETSVC_URL_FLUX2_DEV=http://localhost:8799 node tools/assetsvc/server.mjs --port 8790
-//   FLUX_LOG=/path/to/log PORT=5186 node probes/corridor-draw-draft.mjs
+//   ASSETSVC_URL_FLUX2_DEV=http://localhost:8799 node services/assetsvc/server.mjs --port 8790
+//   FLUX_LOG=/path/to/log PORT=5186 node probes/draw-draft.mjs
 import { chromium } from 'playwright'
 import { readFileSync } from 'node:fs'
 

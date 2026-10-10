@@ -9,7 +9,7 @@
 // quietly: a level for another world must not be applied to this one, and a simulation nothing
 // runs yet must be reported as not running rather than silently ignored.
 //
-//   PORT=5185 node probes/corridor-level.mjs [level] [slug]
+//   PORT=5185 node probes/level.mjs [level] [slug]
 import { chromium } from 'playwright'
 import { mkdir, writeFile } from 'node:fs/promises'
 const level = process.argv[2] ?? 'crofton-dusk'
@@ -19,13 +19,13 @@ const PORT = process.env.PORT ?? '5185'
 /*
  * THE PROBE WRITES ITS OWN FIXTURE.
  *
- * Levels live on the volume — `tools/corridor/data` is gitignored, because it is bake output and
+ * Levels live on the volume — `data` is gitignored, because it is bake output and
  * not source — so a probe that depended on a level file being there would pass on my machine and
  * fail on a fresh checkout with "no level", which reads like a broken loader. It makes the level
  * it is about to load, which also means the numbers below are checked against a document you can
  * see in this file.
  */
-const LEVELS = new URL('../tools/corridor/data/levels/', import.meta.url)
+const LEVELS = new URL('../data/levels/', import.meta.url)
 await mkdir(LEVELS, { recursive: true })
 await writeFile(new URL(`${level}.json`, LEVELS), JSON.stringify({
   id: level,
@@ -50,33 +50,33 @@ await page.route('**/@vite/client', (r) => r.abort())
 // FIRST WITHOUT THE LEVEL, so the "after" has something to be different from. A test that only
 // looks at the end state cannot tell "the level set this" from "this was already true".
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 900000 })
-await page.evaluate(() => window.corridor.tune.set('TIME_RATE', 0))
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 900000 })
+await page.evaluate(() => window.piedmont.tune.set('TIME_RATE', 0))
 const before = await page.evaluate(() => ({
-  sunEl: +window.corridor.time.sun().el.toFixed(1),
-  weather: window.corridor.tune.get('WEATHER'),
-  season: window.corridor.tune.get('SEASON'),
-  level: window.corridor.level?.() ?? null,
+  sunEl: +window.piedmont.time.sun().el.toFixed(1),
+  weather: window.piedmont.tune.get('WEATHER'),
+  season: window.piedmont.tune.get('SEASON'),
+  level: window.piedmont.level?.() ?? null,
 }))
 
 const applied = await page.evaluate(async (id) => {
-  await window.corridor.openLevel(id)
+  await window.piedmont.openLevel(id)
   await new Promise((r) => requestAnimationFrame(r))
-  const l = window.corridor.level?.()
+  const l = window.piedmont.level?.()
   return { id: l?.id ?? null, world: l?.world ?? null, defaults: l?.defaults ?? null, sims: (l?.simulations ?? []).length }
 }, level)
 
 const after = await page.evaluate(() => ({
-  sunEl: +window.corridor.time.sun().el.toFixed(1),
-  parts: window.corridor.time.parts('Etc/GMT+5'),
-  // `corridor.tune.get(name)` — this surface has no `sections`; that is coast's shape and I
+  sunEl: +window.piedmont.time.sun().el.toFixed(1),
+  parts: window.piedmont.time.parts('Etc/GMT+5'),
+  // `piedmont.tune.get(name)` — this surface has no `sections`; that is coast's shape and I
   // reached for it from memory rather than reading what is here
-  weatherKnob: window.corridor.tune.get('WEATHER'),
+  weatherKnob: window.piedmont.tune.get('WEATHER'),
 }))
 
 // a level for a DIFFERENT world must be refused rather than half-applied
 const wrongWorld = await page.evaluate(async () => {
-  const c = window.corridor
+  const c = window.piedmont
   const fake = { id: 'elsewhere', world: 'not-this-world', defaults: { weather: 'snow' } }
   const { applyLevel } = await import('/src/level.ts')
   return applyLevel(fake, { world: c.site.manifest.slug, setTimeLocal: () => {}, setWeather: () => { throw new Error('weather was applied for another world') }, setSeason: () => {}, place: async () => 0, attachSplats: async () => 0, say: () => {} })

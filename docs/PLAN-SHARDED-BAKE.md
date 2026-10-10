@@ -1,8 +1,8 @@
 # Baking a large world in pieces: plan → shard → finalize
 
 **Status:** Phase 0 (the two hangs) shipped. Phase 1 (plan → shard → finalize) shipped: the
-corridor engine (`corridor plan|shard|finalize`, `corridor/shards.py`) and the worldeditor
-orchestration (`runs.bake` fans plan → N shard Jobs → finalize above `shardAboveM`). **Default since 2026-10-10:** `shardAboveM` 5000 (a world more than 10 km across), blocks of ≤ 10 km (`shardSideM`), up to 36 of them (`maxShards`); env `WORLDEDITOR_SHARD_ABOVE_M=0` turns it off, a request's `sharded: false` opts one bake out, and the MCP `run_bake` takes `sharded`. Phase 2
+road band engine (`piedmont_bake plan|shard|finalize`, `piedmont_bake/shards.py`) and the worldeditor
+orchestration (`runs.bake` fans plan → N shard Jobs → finalize above `shardAboveM`). **Default since 2026-10-10:** `shardAboveM` 5000 (a world more than 10 km across), blocks of ≤ 10 km (`shardSideM`), up to 36 of them (`maxShards`); env `PIEDMONT_EDITOR_SHARD_ABOVE_M=0` turns it off, a request's `sharded: false` opts one bake out, and the MCP `run_bake` takes `sharded`. Phase 2
 (cluster-aware sizing) is partially shipped — shards spread by `topologySpreadConstraints`, request
 sizing is still the one 384 Gi request.
 
@@ -24,7 +24,7 @@ Known gaps vs the sections below, all on the path to the first real run:
 ## What this is
 
 A `kind: network` bake is one Job. It runs `network.fetch_site` top to bottom over one bbox, one
-corridor, one road graph, and writes one `sites/<slug>/` directory. That is the right shape for
+the game, one road graph, and writes one `sites/<slug>/` directory. That is the right shape for
 Crofton (18 km, 147 s) and it is the wrong shape for the Capital Beltway, where the same function
 runs for nine hours and then dies. This plan splits a large world into **shards baked as
 independent parallel Jobs**, plus a small **plan** Job that fixes the global identity before them
@@ -51,7 +51,7 @@ The **second hang**: `network_tiles.overview()` re-reads the full 1 m `dem_1m.ti
 `naip_1m.tif` through `rasterio.read(..., out_shape=...)` in one call, single-threaded, to produce
 an 8 m whole-region picture. On the Beltway that stage was stuck past 3.4 h.
 
-The **ceiling**: `tools/worldeditor/worlds.mjs` refuses a world over `MAX_M = 20000`, and `MAX_M` is
+The **ceiling**: `services/worldeditor/worlds.mjs` refuses a world over `MAX_M = 20000`, and `MAX_M` is
 a HALF-WIDTH — the bake takes a square of side `2R`, so 20 km is a 40 km square and a 1600 km²
 request. `validate()` says it plainly: "over the 20000 m ceiling — bake it in pieces." This plan is
 the pieces.
@@ -63,7 +63,7 @@ Most stages are already per-area or per-tile; the work is proving it and giving 
 | stage | function | already independent because |
 |---|---|---|
 | DEM fetch | `dem.fetch_dem` → `dem.discover_1m` | queried per bbox; vintages are de-duplicated per 10 km `x{n}y{m}` tile (`_newest_per_tile`) |
-| NAIP fetch | `network_tiles.naip_tiled` | windowed writes, only the 4 km service tiles touching the corridor; rastercache keys on bbox |
+| NAIP fetch | `network_tiles.naip_tiled` | windowed writes, only the 4 km service tiles touching the road band; rastercache keys on bbox |
 | lidar rasters | `network_tiles.lidar_tiled` | scatters points into 1 km `lidar/tiles/<x>_<y>.*.tif`, then `gdalbuildvrt` |
 | tile export | `network_tiles.export_tiles` | one `web/tiles/0/<x>_<y>.pack` + `.naip.jpg` per 1 km UTM tile, disjoint ids, from site-level rasters |
 | pyramid | `pyramid.bake` | one pack per geodetic `(z,x,y)`; `plan()` is a pure function of the bbox and is quad-closed |
@@ -111,8 +111,8 @@ all **9,794 branches profiled in 6m16s at ~26/s** with the main process at Threa
 (`overview`) and the tail are what the remaining watcher is for.
 
 1. **Unfork the deadlock.** Set the single-thread environment before numpy is imported (in
-   `corridor/__main__.py`, and in the Job env in `tools/worldeditor/runs.mjs` `#startJob` and
-   `tools/corridor/chart/templates/job.yaml`). Then revisit `profile_many`: either keep the fork
+   `piedmont_bake/__main__.py`, and in the Job env in `services/worldeditor/runs.mjs` `#startJob` and
+   `deploy/helm/bake/templates/job.yaml`). Then revisit `profile_many`: either keep the fork
    with a quiet parent, or move the cloud to `multiprocessing.shared_memory` and use a spawn pool.
    The parallelism is the pool; the BLAS threads were never the point.
 2. **Parallelize `export_tiles`.** It is a `for tx, ty in tiles` loop (`network_tiles.export_tiles`)
@@ -197,7 +197,7 @@ Each shard is a Job sized to a memory budget (Phase 2), started by the same Serv
   area estimate.
 - The `worldeditor` ServiceAccount already has exactly the verbs this needs for `batch/jobs`
   (`create`, `get`, `list`, `watch`, `delete`) plus `pods` and `pods/log` — see
-  `tools/worldeditor/chart/templates/rbac.yaml`. No new grant is required to start N Jobs.
+  `deploy/helm/worldeditor/templates/rbac.yaml`. No new grant is required to start N Jobs.
 
 ## Seams and correctness
 
@@ -235,7 +235,7 @@ Specific assertions:
    is lost or doubled against the single bake.
 7. **Frame holds.** A sampled branch coordinate from a shard placed back through the single bake's
    `Frame` lands at the same ENU metres as the single bake's coordinate for that chain.
-8. **`corridor.verify` passes** on the merged site, and `scene.ts` loads it with no "site has no DEM
+8. **`piedmont_bake.verify` passes** on the merged site, and `scene.ts` loads it with no "site has no DEM
    layer" and streams it.
 
 The spike is a 2×2 because four shards is enough to exercise every seam (a horizontal, a vertical
@@ -245,7 +245,7 @@ and a corner) without the cost of a full eight-node run.
 
 - **Is `surface.measure` per-shard?** The stage is per road-station, but reading `surface.py` it is
   not yet per-shard: `measure()` loads `spine_utm.json`, measures against the **primary** spine
-  `sp["coords"]`, and reads the **whole** `lidar/corridor.laz`. Its station `s` is primary-relative
+  `sp["coords"]`, and reads the **whole** `lidar/road_band.laz`. Its station `s` is primary-relative
   and its `lanes_at`/`osm_surface_at` read the primary's `segments` `s_start`/`s_end`. So a shard
   must either carry the primary's full spine and cloud (defeating the point) or `surface.measure`
   must grow an offset/stitch path like `profile.json`. Treat the "already shardable" claim above as

@@ -1,6 +1,6 @@
 // Repro for "the car flies 56 m off a flat interstate": is site.groundAt continuous along the road?
 //
-//   node probes/corridor-groundstep.mjs [site] [s0] [s1]
+//   node probes/groundstep.mjs [site] [s0] [s1]
 //
 // Car.tickGround sets  vy = (gh - ref) / dt  — the ground's vertical speed from ONE tick's change in
 // sampled height — and launch() hands that vy straight to the ballistic flight. At 40 m/s a tick
@@ -10,16 +10,16 @@ import { chromium } from 'playwright'
 const site = process.argv[2] ?? 'sideling-i68'
 const s0 = Number(process.argv[3] ?? 0)
 const s1 = Number(process.argv[4] ?? 0) || null
-const PORT = process.env.CORRIDOR_PORT ?? '5202'
+const PORT = process.env.PIEDMONT_PORT ?? '5202'
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 900, height: 600 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite`, { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 240000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 240000 })
 
 console.log(JSON.stringify(await page.evaluate(({ s0, s1 }) => {
-  const { site } = window.corridor
+  const { site } = window.piedmont
   const L = site.manifest.spine.length_m
   const a = s0, b = s1 ?? L
   const STEP = 40 / 120 // one tick at 40 m/s
@@ -43,7 +43,7 @@ console.log(JSON.stringify(await page.evaluate(({ s0, s1 }) => {
   out.structures = site.manifest.structures.map((st) => ({ kind: st.kind, s_start: +st.s_start.toFixed(0), s_end: +st.s_end.toFixed(0) }))
   // Which layer is lying? The bake's own road profile (manifest.profile.road_z, from the lidar DTM
   // along the spine) beside what the viewer's groundAt returns. If the profile is smooth and
-  // groundAt is not, the corridor strip built the bump; if both step, it is in the baked heights.
+  // groundAt is not, the road-band strip built the bump; if both step, it is in the baked heights.
   const pr = site.manifest.profile
   if (pr) {
     const rows = []

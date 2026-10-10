@@ -11,13 +11,13 @@
 // stop under it (counted before and after); the count-up lands on the total the program reported;
 // Restart is a second `setup` and a clock under a second; the turntable says what it holds.
 //
-//   PORT=5198 OUT=/tmp/shots node probes/corridor-finish.mjs [slug]
+//   PORT=5198 OUT=/tmp/shots node probes/finish.mjs [slug]
 import { chromium } from 'playwright'
 import { mkdirSync } from 'node:fs'
 
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5198'
-const OUT = process.env.OUT ?? '/tmp/corridor-finish'
+const OUT = process.env.OUT ?? '/tmp/piedmont-finish'
 mkdirSync(OUT, { recursive: true })
 
 /**
@@ -66,7 +66,7 @@ let fails = 0
 const ok = (what, cond, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++ }
 const frames = (n = 2) => p.evaluate((n) => new Promise((r) => { let i = 0; const f = () => (++i >= n ? r(0) : requestAnimationFrame(f)); requestAnimationFrame(f) }), n)
 const fin = () => p.evaluate(() => {
-  const f = window.corridor.finish
+  const f = window.piedmont.finish
   const root = document.querySelector('.finish')
   return {
     open: f.open, buttons: f.buttons, draws: f.draws, result: f.result,
@@ -86,16 +86,16 @@ const frameMs = (n) => p.evaluate((n) => new Promise((r) => {
 const pct = (a, q) => a[Math.min(a.length - 1, Math.floor(q * a.length))].toFixed(0)
 const waitFinish = async () => {
   await p.evaluate(() => { window.__finishGo = true })
-  await p.waitForFunction(() => window.corridor.finish.open && document.querySelector('.finish.counted'), null, { timeout: 240000 })
+  await p.waitForFunction(() => window.piedmont.finish.open && document.querySelector('.finish.counted'), null, { timeout: 240000 })
   await frames(2)
   return fin()
 }
 
 /* ---- 1 · the run, driving: the screen is not up until the program finishes ---- */
 await p.goto(`http://127.0.0.1:${PORT}/#${slug}?lite=1&fresh=1&ui=game&level=finish-probe`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site && !!window.corridor?.game, null, { timeout: 600000 })
+await p.waitForFunction(() => !!window.piedmont?.site && !!window.piedmont?.game, null, { timeout: 600000 })
 ok('the screen is hidden while the run is on', !(await fin()).visible)
-const world = await p.evaluate(() => ({ calls: window.corridor.renderer.info.render.calls, tris: window.corridor.renderer.info.render.triangles }))
+const world = await p.evaluate(() => ({ calls: window.piedmont.renderer.info.render.calls, tris: window.piedmont.renderer.info.render.triangles }))
 await p.waitForTimeout(3000)
 const worldMs = await frameMs(20)
 
@@ -137,7 +137,7 @@ const setups0 = await p.evaluate(() => window.__finishSetups)
 await p.keyboard.press('Enter')
 await p.waitForFunction((n) => window.__finishSetups === n + 1, setups0, { timeout: 60000 })
 await frames(1)
-const after = await p.evaluate(() => ({ open: window.corridor.finish.open, t: window.corridor.game?.facts().time ?? -1, outcome: window.corridor.game?.outcome ?? null, paused: window.corridor.chrome.paused, finishedClass: document.body.classList.contains('finished') }))
+const after = await p.evaluate(() => ({ open: window.piedmont.finish.open, t: window.piedmont.game?.facts().time ?? -1, outcome: window.piedmont.game?.outcome ?? null, paused: window.piedmont.chrome.paused, finishedClass: document.body.classList.contains('finished') }))
 ok('Restart ran the setup again', (await p.evaluate(() => window.__finishSetups)) === setups0 + 1)
 ok('…on a fresh clock, unfinished, the world running', !after.open && after.t >= 0 && after.t < 2 && after.outcome === null && !after.paused && !after.finishedClass, JSON.stringify(after))
 
@@ -157,7 +157,7 @@ await p.screenshot({ path: `${OUT}/finish-exit-menu.png`, timeout: 180000 })
 
 /* ---- 4 · show: 'character', from the menu's Restart ---- */
 js = program({ show: 'character' })
-await p.evaluate(() => window.corridor.chrome.menu.stack.current.items.find((i) => i.label === 'Restart').onSelect())
+await p.evaluate(() => window.piedmont.chrome.menu.stack.current.items.find((i) => i.label === 'Restart').onSelect())
 f = await waitFinish()
 ok("show: 'character' puts the figure on the turntable", f.show === 'character', f.show)
 ok('…and it is drawn', f.draws.calls >= 3, JSON.stringify(f.draws))
@@ -165,7 +165,7 @@ await p.screenshot({ path: `${OUT}/finish-character.png`, timeout: 180000 })
 
 /* ---- 5 · on foot with nothing said: the character by default ---- */
 js = program({ walk: true })
-await p.evaluate(() => window.corridor.finish.choose('restart'))
+await p.evaluate(() => window.piedmont.finish.choose('restart'))
 f = await waitFinish()
 ok('on foot, the default is the character', f.show === 'character', f.show)
 await p.screenshot({ path: `${OUT}/finish-onfoot.png`, timeout: 180000 })

@@ -776,7 +776,7 @@ export class MeshView {
    * A WebGL canvas without `preserveDrawingBuffer` is cleared once it has been composited, so a
    * `drawImage` from a later turn reads an empty buffer and reports a blank stage — which is
    * indistinguishable from the real failure this preview exists to make visible. The viewer
-   * learned the same thing and exposes `corridor.drawFrame` for it.
+   * learned the same thing and exposes `piedmont.drawFrame` for it.
    */
   capture(w = 120, h = 90): { min: number; max: number; mean: number } {
     this.renderer.render(this.scene, this.camera)

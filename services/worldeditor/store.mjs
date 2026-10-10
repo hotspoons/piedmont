@@ -1,19 +1,19 @@
 // The volume. Everything this service knows that outlives a pod restart is here.
 //
-// THIS FILE IS THE ANSWER TO THE BIGGEST HIDDEN PIECE OF THE JOB. The corridor editor saves its
+// THIS FILE IS THE ANSWER TO THE BIGGEST HIDDEN PIECE OF THE JOB. The site editor saves its
 // authored files — adjustments / placements / structures / dead_ends / tuning — with a PUT to
 // `/sites/<slug>/<name>.json`, and in development that is served by a middleware inside
-// `apps/corridor/vite.config.ts`. There is no Vite in a pod. Rather than change the editor, this
+// `apps/game/vite.config.ts`. There is no Vite in a pod. Rather than change the editor, this
 // service implements the SAME contract against the volume: same paths, same whitelist, same
 // {ok,bytes} reply, same atomic tmp+rename. `schema.ts` and `sitetuning.ts` are untouched and
 // cannot tell the difference, which is also why a bug fixed in one place stays fixed in both.
 //
-//   <data>/sites/<slug>/...        the bake's own output — CORRIDOR_DATA points a bake Job here
+//   <data>/sites/<slug>/...        the bake's own output — PIEDMONT_DATA points a bake Job here
 //   <data>/sites/index.json        what the viewer lists
 //   <data>/cache/overpass/*.json   SHARED with the bake: same sha1(query)[:16] key (osm.py)
 //   <data>/places/<id>.json        a place somebody found and kept — the INDEX, upstream of a world
 //   <data>/worlds/<slug>.json      a world definition drawn in the editor (superset of a site)
-//   <data>/sites.json              worlds materialised as the array `corridor fetch` reads
+//   <data>/sites.json              worlds materialised as the array `piedmont_bake fetch` reads
 //   <data>/runs/<id>.json|.log     bakes and publishes, and their output
 //   <data>/assets/catalog.json     the placement catalog, MERGED, served at /assets/catalog.json
 //
@@ -47,6 +47,9 @@ const PROGRAM_EXT = new Set(['.ts', '.tsx', '.js', '.mjs', '.json', '.md', '.txt
 export const AUTHORED = ['adjustments', 'placements', 'structures', 'dead_ends', 'tuning', 'presets', 'zones', 'courses', 'stunts', 'fixtures', 'surfaces', 'points']
 const AUTHORED_RE = new RegExp(`^[a-z0-9-]+/(${AUTHORED.join('|')})\\.json$`)
 
+/** see writeAtomic */
+let tmpSeq = 0
+
 export class Store {
   constructor(root) {
     this.root = path.resolve(root)
@@ -67,7 +70,10 @@ export class Store {
   /** Write through a temp file in the same directory, so a reader never sees a half-written JSON. */
   async writeAtomic(file, body) {
     await mkdir(path.dirname(file), { recursive: true })
-    const tmp = `${file}.tmp-${process.pid}`
+    // UNIQUE PER WRITE, not per process: two saves of one run in the same tick (a sharded bake's
+    // pod followers each save the record) shared one tmp name, interleaved inside it, and renamed
+    // a file holding one JSON document with the tail of another after it.
+    const tmp = `${file}.tmp-${process.pid}-${++tmpSeq}`
     await writeFile(tmp, body)
     await rename(tmp, file)
     return body.length
@@ -201,9 +207,9 @@ export class Store {
   }
 
   /**
-   * Every world, written as the JSON array `corridor fetch` reads, at `<data>/sites.json`.
+   * Every world, written as the JSON array `piedmont_bake fetch` reads, at `<data>/sites.json`.
    *
-   * A bake Job gets `CORRIDOR_SITES=/data/sites.json` and reads this — the chart already supports
+   * A bake Job gets `PIEDMONT_SITES=/data/sites.json` and reads this — the chart already supports
    * overriding the image's baked-in copy, so nothing in the bake changes to accept a world that
    * was drawn ten seconds ago. The editor-only keys (`boundary`, `created`, `source`) ride along;
    * `cmd_fetch` reads by `slug` and hands the whole dict to `network.fetch_site`, which reads the
@@ -333,7 +339,7 @@ export class Store {
   // choice between implementations, and "define new exploration techniques" is arbitrary code.
   //
   // TYPESCRIPT ON DISK, NOT JSON. It is source, people diff it, and the editor typechecks it in
-  // the browser against generated declarations (apps/corridor/src/generated/program-types.json).
+  // the browser against generated declarations (apps/game/src/generated/program-types.json).
   // The service does not compile it and deliberately does not try: a service that refuses to save
   // code with a type error is a service you cannot save work-in-progress to.
 

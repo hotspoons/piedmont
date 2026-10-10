@@ -1,6 +1,6 @@
 // The four grass types have to be visibly different, and the season knob has to work from F6.
 //
-//   PORT=5201 SLUG=bowie-racetrack-rd node probes/corridor-grasstype.mjs
+//   PORT=5201 SLUG=bowie-racetrack-rd node probes/grasstype.mjs
 //
 // Numbers, not a screenshot: for each type, the blade count and mean height/width/lean the
 // generator actually produced over a fixed patch, plus the colour uniforms it will shade with.
@@ -13,10 +13,10 @@ const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug && !!window.corridor.site.grass, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug && !!window.piedmont.site.grass, SLUG, { timeout: 300000 })
 
 console.log(JSON.stringify(await page.evaluate(() => {
-  const site = window.corridor.site, grass = site.grass, tune = window.corridor.tune, camera = window.corridor.camera
+  const site = window.piedmont.site, grass = site.grass, tune = window.piedmont.tune, camera = window.piedmont.camera
   const p = site.spineAt(site.manifest.spine.photo_s)
   camera.position.set(p.pos.x, p.pos.y + 1.6, p.pos.z)
   camera.lookAt(p.pos.x + p.dir.x * 60, p.pos.y + 1.2, p.pos.z + p.dir.z * 60)

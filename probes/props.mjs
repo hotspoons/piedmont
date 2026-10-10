@@ -1,6 +1,6 @@
 // Do the things beside the road stop a car, and do signs come off?
 //
-//   node probes/corridor-props.mjs [site]
+//   node probes/props.mjs [site]
 //
 // Rich, 2026-09-29: collide with houses, street signs, stop lights, power line poles and any placed
 // prop; signs and stop signs should DETACH with real physics, with their weight worked out from
@@ -21,18 +21,18 @@
 import { chromium } from 'playwright'
 
 const site = process.argv[2] ?? 'crofton-triangle'
-const PORT = process.env.CORRIDOR_PORT ?? '5185'
+const PORT = process.env.PIEDMONT_PORT ?? '5185'
 
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
 const page = await browser.newPage({ viewport: { width: 480, height: 320 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite&phys=1`, { waitUntil: 'load' })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 300000 })
-await page.waitForFunction(() => !!window.corridor.physics, null, { timeout: 120000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 300000 })
+await page.waitForFunction(() => !!window.piedmont.physics, null, { timeout: 120000 })
 
 const result = await page.evaluate(() => {
-  const a = window.corridor
+  const a = window.piedmont
   const phys = a.physics
   const site = a.site
 

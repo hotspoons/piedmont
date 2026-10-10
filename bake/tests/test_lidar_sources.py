@@ -1,4 +1,4 @@
-"""lidar_sources: which point cloud a bake reads, how deep, and how two surveys share one corridor.
+"""lidar_sources: which point cloud a bake reads, how deep, and how two surveys share one road band.
 
 Rich, 2026-09-30: a crofton-triangle bake sat for half an hour downloading 7.6 GB of whole LAZ
 tiles from rockyweb at 80 KB/s a connection, while NOAA had the same streets as EPT on S3 at
@@ -9,7 +9,7 @@ the TNM tiles are the fallback, not the default.
 The EPT under test is REAL, just small: ept.json, hierarchy and laszip nodes written with laspy and
 served over HTTP from a temporary directory, so the same code path that reads NOAA reads these.
 
-    tools/corridor/.venv/bin/python -m unittest discover -s tools/corridor/tests
+    bake/.venv/bin/python -m unittest discover -s bake/tests
 """
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ from pyproj import Transformer
 from shapely.geometry import box
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import lidar, lidar_sources as ls  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import lidar, lidar_sources as ls  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
 LON, LAT = -76.685, 39.007  # Crofton
 FRAME = Frame.at(LON, LAT)
@@ -296,13 +296,13 @@ class StreamTest(unittest.TestCase):
         # read the server's request log. The density estimate weights a node by the share of its
         # box over the area (real surveys fill their boxes; these fixtures pack the area), so the
         # targets here are in those terms: depth 0 alone estimates ~1e-4 /m², depth 1 ~1e-2.
-        os.environ["CORRIDOR_LIDAR_DENSITY"] = density
+        os.environ["PIEDMONT_LIDAR_DENSITY"] = density
         try:
             meta: dict = {}
             cache = Path(tempfile.mkdtemp(dir=self.tmp.name))
             parts = [p for _, p in ls.stream_ept(FRAME, BBOX, None, cache, self.sources(), meta, jobs=4)]
         finally:
-            os.environ.pop("CORRIDOR_LIDAR_DENSITY", None)
+            os.environ.pop("PIEDMONT_LIDAR_DENSITY", None)
         return lidar._join(parts), meta
 
     def test_the_second_survey_fills_only_the_first_ones_gaps(self):
@@ -334,12 +334,12 @@ class StreamTest(unittest.TestCase):
     def test_enough_coverage_stops_before_the_next_source(self):
         # A alone over its own west half: a clip of just that half is fully covered by A
         west = box(BBOX[0] + 50, BBOX[1] + 50, OX - 50, BBOX[3] - 50)
-        os.environ["CORRIDOR_LIDAR_DENSITY"] = "0.00001"
+        os.environ["PIEDMONT_LIDAR_DENSITY"] = "0.00001"
         try:
             meta: dict = {}
             list(ls.stream_ept(FRAME, BBOX, west, Path(tempfile.mkdtemp(dir=self.tmp.name)), self.sources(), meta, jobs=4))
         finally:
-            os.environ.pop("CORRIDOR_LIDAR_DENSITY", None)
+            os.environ.pop("PIEDMONT_LIDAR_DENSITY", None)
         self.assertEqual([s["dataset"] for s in meta["sources"]], ["TEST:A"])
 
 
@@ -383,12 +383,12 @@ class PoolThreadsTest(unittest.TestCase):
             return got
 
         shapely.contains_xy, ls.NodeReader.kit = contains_xy, kit
-        os.environ["CORRIDOR_LIDAR_DENSITY"] = "0.02"  # deep enough for all five nodes
+        os.environ["PIEDMONT_LIDAR_DENSITY"] = "0.02"  # deep enough for all five nodes
         try:
             parts = list(ls.stream_ept(FRAME, BBOX, clip, Path(tempfile.mkdtemp(dir=self.tmp.name)), [ls.EptSource("TEST:A", self.server.url + "A/", 2020)], {}, jobs=4))
         finally:
             shapely.contains_xy, ls.NodeReader.kit = real_contains, real_kit
-            os.environ.pop("CORRIDOR_LIDAR_DENSITY", None)
+            os.environ.pop("PIEDMONT_LIDAR_DENSITY", None)
 
         self.assertTrue(parts, "the clip kept points")
         main = threading.get_ident()
@@ -432,8 +432,8 @@ import sys, threading
 sys.path.insert(0, {str(Path(__file__).resolve().parents[1])!r})
 import numpy as np, shapely
 from pathlib import Path
-from corridor import lidar_sources as ls
-from corridor.geo import Frame
+from piedmont_bake import lidar_sources as ls
+from piedmont_bake.geo import Frame
 frame = Frame.at({LON}, {LAT})
 ox, oy = frame.origin
 t = np.linspace(0, 40 * np.pi, 4000)
@@ -477,7 +477,7 @@ class ChoiceTest(unittest.TestCase):
 
     def tearDown(self):
         ls.candidates, lidar.tnm_pick = self.saved
-        os.environ.pop("CORRIDOR_LIDAR_SOURCE", None)
+        os.environ.pop("PIEDMONT_LIDAR_SOURCE", None)
 
     def batches(self):
         with self.assertRaisesRegex(RuntimeError, "tnm reached"):
@@ -493,7 +493,7 @@ class ChoiceTest(unittest.TestCase):
             raise AssertionError("EPT was consulted")
 
         ls.candidates = boom
-        os.environ["CORRIDOR_LIDAR_SOURCE"] = "tnm"
+        os.environ["PIEDMONT_LIDAR_SOURCE"] = "tnm"
         self.batches()
 
 

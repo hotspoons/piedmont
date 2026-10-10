@@ -4,7 +4,7 @@
 // keeps a short dependency list it can actually account for in CREDITS. SigV4 is about eighty
 // lines of HMAC and a canonical string, it is a stable published spec, and it works unchanged
 // against AWS, Cloudflare R2, MinIO and Ceph RGW — which is the whole point of "S3-compatible".
-// `tools/corridor/corridor/publish.py` uses boto3 because it is Python and boto3 is already there;
+// `bake/piedmont_bake/publish.py` uses boto3 because it is Python and boto3 is already there;
 // this is the Node side of the same idea.
 //
 // Configuration is environment only, so the same code runs in the Helm chart and on a laptop:

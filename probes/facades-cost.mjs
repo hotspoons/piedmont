@@ -8,8 +8,8 @@
 // with its class's reflectiveness and again with the reflectiveness turned off, as two pictures and
 // as a pixel difference — the check that the reflection is really drawn and can fail.
 //
-//   PORT=5196 WORLD=dc-metro-take-2 XY=7760,10130 OUT=/tmp/shots node probes/corridor-facades-cost.mjs
-//   (dc-metro lives on the cluster: run the dev server with WORLDEDITOR_REMOTE — `just corridor-remote`)
+//   PORT=5196 WORLD=dc-metro-take-2 XY=7760,10130 OUT=/tmp/shots node probes/facades-cost.mjs
+//   (dc-metro lives on the cluster: run the dev server with PIEDMONT_EDITOR_REMOTE — `just remote`)
 import { chromium } from 'playwright'
 import { writeFileSync } from 'node:fs'
 
@@ -28,14 +28,14 @@ async function visit(facades) {
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message.slice(0, 200)))
   // the knob as the F6 panel keeps it, before the page reads it
-  await page.addInitScript((on) => { try { localStorage.setItem('apex-corridor-world.tune.v1', JSON.stringify({ v: 2, values: { BUILDING_FACADES: on }, touched: ['BUILDING_FACADES'] })) } catch { /* */ } }, facades)
+  await page.addInitScript((on) => { try { localStorage.setItem('piedmont-world.tune.v1', JSON.stringify({ v: 2, values: { BUILDING_FACADES: on }, touched: ['BUILDING_FACADES'] })) } catch { /* */ } }, facades)
   await page.goto(`http://127.0.0.1:${PORT}/#${WORLD}?ui=dev`, { waitUntil: 'domcontentloaded', timeout: 180000 })
-  await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, WORLD, { timeout: 600000 })
+  await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, WORLD, { timeout: 600000 })
   // the level places the car after the site loads: wait for it, or the drop below is undone
-  await page.waitForFunction(() => !!window.corridor.car, null, { timeout: 300000 }).catch(() => {})
+  await page.waitForFunction(() => !!window.piedmont.car, null, { timeout: 300000 }).catch(() => {})
   await page.waitForTimeout(8000)
   const at = await page.evaluate(([lon, lat, xy]) => {
-    const c = window.corridor
+    const c = window.piedmont
     const L = c.site.layers
     if (L.trees) L.trees.visible = false
     if (L.grass) L.grass.visible = false
@@ -49,7 +49,7 @@ async function visit(facades) {
   }, [LON, LAT, XY])
   await page.waitForTimeout(3000)
   // where the car really is now (world x, -z is site y): the measurement is only worth anything there
-  at.car = await page.evaluate(() => { const p = window.corridor.car?.pos ?? window.corridor.car?.position; return p ? [Math.round(p.x), Math.round(-p.z)] : null })
+  at.car = await page.evaluate(() => { const p = window.piedmont.car?.pos ?? window.piedmont.car?.position; return p ? [Math.round(p.x), Math.round(-p.z)] : null })
   // let the tiles near the eye stream and build: the pump does the ground and the roads first and
   // the buildings after, so "the massing stopped changing" is not "done" — the pump says when
   // nothing near the eye is left (site.graded().pendingNear), and the massing has stopped too
@@ -57,16 +57,16 @@ async function visit(facades) {
   const t0 = Date.now()
   while ((Date.now() - t0) / 1000 < SETTLE_S && still < 16) {
     await page.waitForTimeout(2000)
-    const s = await page.evaluate(() => { let v = 0; window.corridor.scene.traverse((o) => { if (o.name === 'buildings:massing') v += o.geometry.getAttribute('position').count }); return { v, pending: window.corridor.site.graded?.().pendingNear ?? 0 } })
+    const s = await page.evaluate(() => { let v = 0; window.piedmont.scene.traverse((o) => { if (o.name === 'buildings:massing') v += o.geometry.getAttribute('position').count }); return { v, pending: window.piedmont.site.graded?.().pendingNear ?? 0 } })
     if (s.v > 0 && s.v === last && s.pending === 0) still += 2
     else still = 0
     last = s.v
   }
   // out of the car, so the camera is ours to place; the focus stays where the car is
-  if (await page.evaluate(() => !!window.corridor.drive?.on)) await page.keyboard.press('Tab')
+  if (await page.evaluate(() => !!window.piedmont.drive?.on)) await page.keyboard.press('Tab')
   await page.waitForTimeout(1500)
   await page.evaluate(([x, y]) => {
-    const c = window.corridor
+    const c = window.piedmont
     const gy = c.site.groundAt(x, -y) ?? 0
     c.camera.position.set(x + 120, gy + 60, -y + 120)
     c.orbit.target.set(x, gy + 20, -y)
@@ -74,7 +74,7 @@ async function visit(facades) {
   }, [at.x, at.y])
   await page.waitForTimeout(3000)
   const m = await page.evaluate(() => {
-    const c = window.corridor
+    const c = window.piedmont
     c.renderer.info.reset?.()
     c.renderer.render(c.scene, c.camera)
     const info = c.renderer.info
@@ -102,7 +102,7 @@ async function visit(facades) {
   })
   let shots = null
   if (facades) shots = await towerShots(page)
-  const mode = await page.evaluate(() => (window.corridor.drive?.on ? 'drive' : 'fly')).catch(() => '?')
+  const mode = await page.evaluate(() => (window.piedmont.drive?.on ? 'drive' : 'fly')).catch(() => '?')
   await browser.close()
   return { knob: facades, at, mode, settledAfterS: Math.round((Date.now() - t0) / 1000), ...m, shots, errors }
 }
@@ -110,7 +110,7 @@ async function visit(facades) {
 /** The tallest loaded building, framed; drawn with its class's reflectiveness and without it. */
 async function towerShots(page) {
   const tower = await page.evaluate(() => {
-    const c = window.corridor, f = c.site.facades()
+    const c = window.piedmont, f = c.site.facades()
     const cam = c.camera.position
     let best = null
     for (const b of c.site.manifest.buildings ?? []) {
@@ -134,7 +134,7 @@ async function towerShots(page) {
   const on = `${OUT}/facades-tower-reflect-on.png`
   await page.screenshot({ path: on, timeout: 300000 })
   const sample = () => page.evaluate(() => {
-    const c = window.corridor
+    const c = window.piedmont
     c.renderer.render(c.scene, c.camera)
     const gl = c.renderer.getContext()
     const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight
@@ -143,7 +143,7 @@ async function towerShots(page) {
     return Array.from(px.filter((_, i) => i % 64 === 0))
   })
   const a = await sample()
-  const surface = await page.evaluate((cls) => { const f = window.corridor.site.facades(); const c = f.classes.find((x) => x.id === cls); f.setSurface(cls, { metalness: 0, roughness: 0.9 }); return { metalness: c.metalness, roughness: c.roughness } }, tower.cls)
+  const surface = await page.evaluate((cls) => { const f = window.piedmont.site.facades(); const c = f.classes.find((x) => x.id === cls); f.setSurface(cls, { metalness: 0, roughness: 0.9 }); return { metalness: c.metalness, roughness: c.roughness } }, tower.cls)
   await page.waitForTimeout(1500)
   const b = await sample()
   const off = `${OUT}/facades-tower-reflect-off.png`

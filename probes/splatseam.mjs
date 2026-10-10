@@ -1,7 +1,7 @@
 // Does the built world get out of the way where the capture takes over?
 //
 // Rich, 2026-09-27: "let's get my neighborhood baked into the world properly with a crossfade of
-// corridor rendered world as you approach the edge of the splats."
+// rendered world as you approach the edge of the splats."
 //
 // The seam is a coverage raster in site metres: 0 where the bake owns the ground, 1 where the
 // capture does, with the capture's own fade band between. Every material in the built world
@@ -9,13 +9,13 @@
 // because gaussians are depth-sorted against the scene and a half-transparent road cannot take
 // part in that order.
 //
-// THIS DOES NOT LOAD ANY GAUSSIANS. The envelope comes from `corridor.json`, which is where the
+// THIS DOES NOT LOAD ANY GAUSSIANS. The envelope comes from the envelope file (`ENVELOPE_FILE`), which is where the
 // camera was, not from the tiles — so the seam can be measured without pulling 1.5 GB of PLY
 // through a software rasteriser. What it measures is the thing that would otherwise be invisible
 // until a tile happened to be resident: that the bake yields, that it yields in the right place,
 // and that it does not yield anywhere else.
 //
-//   PORT=5185 node probes/corridor-splatseam.mjs [slug]
+//   PORT=5185 node probes/splatseam.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'arrowhead-farms-network'
 const PORT = process.env.PORT ?? '5185'
@@ -28,15 +28,15 @@ await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcon
 /*
  * STOP THE STREAM BEFORE IT STARTS.
  *
- * The seam comes from `corridor.json` -- where the camera was -- and not from the tiles, so it
+ * The seam comes from the envelope file (`ENVELOPE_FILE`) -- where the camera was -- and not from the tiles, so it
  * can be measured without a single gaussian. Letting the tiles load instead pulls 52 MB PLYs into
  * a software rasteriser and kills the tab, which is what happened the first two times this ran.
  * The knob table is published before the captures attach, so this lands in the gap: the envelope
  * is still built, the raster is still drawn, and `update` never loads anything.
  */
-await page.waitForFunction(() => !!window.corridor?.tune, null, { timeout: 600000 })
-await page.evaluate(() => window.corridor.tune.set('SPLAT_ENABLED', 0))
-await page.waitForFunction(() => !!window.corridor?.site && !!window.corridor.splatCover?.(), null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.tune, null, { timeout: 600000 })
+await page.evaluate(() => window.piedmont.tune.set('SPLAT_ENABLED', 0))
+await page.waitForFunction(() => !!window.piedmont?.site && !!window.piedmont.splatCover?.(), null, { timeout: 600000 })
 /*
  * PUT THE SUN UP FIRST.
  *
@@ -47,7 +47,7 @@ await page.waitForFunction(() => !!window.corridor?.site && !!window.corridor.sp
  * read back rather than assumed.
  */
 await page.evaluate(async () => {
-  const c = window.corridor
+  const c = window.piedmont
   const lon = c.site.manifest.frame?.anchor?.lon ?? 0
   const noon = (12 - lon / 15 + 24) % 24
   const fmt = (h) => `${String(((Math.round(h) % 24) + 24) % 24).padStart(2, '0')}:00`
@@ -63,11 +63,11 @@ await page.evaluate(async () => {
   }
 })
 await page.waitForTimeout(2000)
-const sunEl = await page.evaluate(() => +window.corridor.time.sun().el.toFixed(1))
+const sunEl = await page.evaluate(() => +window.piedmont.time.sun().el.toFixed(1))
 console.log('  sun elevation for the measurement:', sunEl, 'degrees')
 
 const info = await page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   const cov = c.splatCover?.() ?? null
   const fields = c.splats?.() ?? []
   if (!cov || !fields.length) return { error: 'no capture attached to this site', fields }
@@ -107,7 +107,7 @@ const settleAt = async (p) =>
   page.evaluate(
     ({ p }) =>
       new Promise((resolve) => {
-        const c = window.corridor
+        const c = window.piedmont
         const g = c.site.groundAt(p.x, p.z) ?? 0
         c.camera.position.set(p.x, g + 26, p.z)
         c.orbit.target.set(p.x, g, p.z)
@@ -146,7 +146,7 @@ const seamDiff = async (to) =>
   page.evaluate(
     ({ to }) =>
       new Promise((resolve) => {
-        const c = window.corridor
+        const c = window.piedmont
         /*
          * THE TRIANGLE COUNT TRAVELS WITH THE PIXELS.
          *

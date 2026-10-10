@@ -1,5 +1,5 @@
 // facades.mjs is a copy of the app's layering (src/world/facades.ts `resolveFacades`), for the MCP
-// tools. These are the app test's cases (apps/corridor/test/facades.test.ts, "three layers"), so a
+// tools. These are the app test's cases (apps/game/test/facades.test.ts, "three layers"), so a
 // change to one that is not made to the other fails here.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'

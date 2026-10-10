@@ -9,7 +9,7 @@ against the cut faces cuts.py found (Sideling's shale wall, Braddock's Catoctin 
     relief       max-min of the 1 m DTM over 7 m: 5.6-7.3 m on the faces, 3.7 m elsewhere.
     roughness    the 1 m DTM is a min-of-ground interpolation and too smooth to tell rock from
                  soil (0.19 vs 0.17 m residual std) — NOT used.
-    intensity    ground-return intensity relative to the corridor's own verge: Catoctin metabasalt
+    intensity    ground-return intensity relative to the road band's own verge: Catoctin metabasalt
                  reads 0.4× (dark), other steep ground 0.84×; Sideling's shale/sandstone reads
                  1.06× vs 1.18× — per-lithology, so it is RECORDED per polygon, not thresholded.
     NAIP         leaf-on imagery under forest shadow: luminance 65 on the face and 68 off it. Also
@@ -44,7 +44,7 @@ RELIEF_MIN = 3.0
 RELIEF_WIN = 7
 BARE_CHM = 0.5
 AREA_MIN = 15.0
-EDGE_ERODE = 6  # cells of the lidar corridor's rim to ignore (the fill there is not ground)
+EDGE_ERODE = 6  # cells of the lidar road band's rim to ignore (the fill there is not ground)
 
 
 def attribute_to_roads(site_dir: Path, polygons: list[dict]) -> None:
@@ -154,7 +154,7 @@ def measure(site_dir: Path, dtm_override: Path | None = None, chm_override: Path
         tr = s1.transform
         bounds = s1.bounds
     valid = dtm > -9000
-    # WHEN TO FALL BACK TO THE DEM. Not "most of this raster is nodata" — a corridor's DTM is a
+    # WHEN TO FALL BACK TO THE DEM. Not "most of this raster is nodata" — a road band's DTM is a
     # 200 m strip inside a bbox, so it is ALWAYS mostly nodata (Sideling: 38% valid) and that
     # trigger silently tripled its rock by detecting DEM slopes out where the CHM is 0 and every
     # cell reads as bare. The real question is whether the lidar covered THE ROAD, which is what
@@ -230,7 +230,7 @@ def measure(site_dir: Path, dtm_override: Path | None = None, chm_override: Path
 
     # ground-return intensity per cell, relative to the flat bare verge
     inten_ratio = np.full(n, np.nan)
-    laz = site_dir / "lidar" / "corridor.laz"
+    laz = site_dir / "lidar" / "road_band.laz"
     if laz.exists():
         try:
             import laspy

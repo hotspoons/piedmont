@@ -1,6 +1,6 @@
 // The design's claim: two ENU frames 3 km apart are not related by a translation, and composing
 // through ECEF fixes it. Measured with the engine's own pyproj-checked helpers.
-import { geodeticToEcef, ecefToGeodetic, enuBasis } from '/workspaces/apex-conduit/packages/engine/src/geo/wgs84.ts'
+import { geodeticToEcef, ecefToGeodetic, enuBasis } from '../../vendor/arcade/packages/engine/src/geo/wgs84.ts'
 const site = { lon: -76.69057, lat: 38.98138, h: 0 }          // arrowhead-farms' anchor
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 const toEnu = (anchor, p) => { const B = enuBasis(anchor.lon, anchor.lat); const o = geodeticToEcef(anchor.lon, anchor.lat, anchor.h); const d = [p[0] - o[0], p[1] - o[1], p[2] - o[2]]; return [dot(d, B.east), dot(d, B.north), dot(d, B.up)] }

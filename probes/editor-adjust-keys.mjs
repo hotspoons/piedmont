@@ -9,12 +9,12 @@ const p = await b.newPage({ viewport: { width: 1400, height: 950 } })
 await p.route('**/@vite/client', (r) => r.abort())
 p.on('pageerror', (e) => console.log('pageerror:', e.message))
 await p.goto(`http://localhost:5207/editor.html#${slug}:areas`, { waitUntil: 'load' })
-await p.waitForFunction(() => document.querySelector('#status')?.textContent === '' && !!window.corridor?.site, null, { timeout: 300000 })
+await p.waitForFunction(() => document.querySelector('#status')?.textContent === '' && !!window.piedmont?.site, null, { timeout: 300000 })
 await p.waitForTimeout(1200)
 
 const id = await p.evaluate(() => {
-  const a = window.corridor.areas.doc.areas[0]
-  window.corridor.areas.select(a.id)
+  const a = window.piedmont_bake.areas.doc.areas[0]
+  window.piedmont_bake.areas.select(a.id)
   return a.id
 })
 console.log('selected', id)
@@ -47,5 +47,5 @@ console.log('after cover=crop, panel shows:', await p.evaluate(() =>
 await p.keyboard.down('Control'); await p.keyboard.press('s'); await p.keyboard.up('Control')
 await p.waitForFunction(() => /saved/.test(document.querySelector('#status')?.textContent ?? ''), null, { timeout: 30000 })
 console.log('status:', await p.textContent('#status'))
-console.log('in memory:', await p.evaluate((id) => JSON.stringify(window.corridor.areas.doc.areas.find((a) => a.id === id).adjust), id))
+console.log('in memory:', await p.evaluate((id) => JSON.stringify(window.piedmont_bake.areas.doc.areas.find((a) => a.id === id).adjust), id))
 await b.close()

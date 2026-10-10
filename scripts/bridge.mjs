@@ -21,7 +21,7 @@ if (!token) {
   process.exit(2)
 }
 
-const origin = process.env.APEX_ORIGIN ?? 'http://localhost:5180'
+const origin = process.env.APEX_ORIGIN ?? 'http://localhost:5185'
 const argv = process.argv.slice(2)
 
 const flag = (name) => {
@@ -64,7 +64,7 @@ async function main() {
   }
   const shot = dataUrl(body.result)
   if (shot) {
-    const file = `/tmp/corridor-shot.${shot.ext}`
+    const file = `/tmp/piedmont-shot.${shot.ext}`
     writeFileSync(file, shot.bytes)
     console.log(JSON.stringify({ screenshot: file, bytes: shot.bytes.length }))
     return

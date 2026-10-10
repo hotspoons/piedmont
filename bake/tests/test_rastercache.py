@@ -9,7 +9,7 @@ import numpy as np
 import rasterio
 from rasterio.transform import from_origin
 
-from corridor import rastercache
+from piedmont_bake import rastercache
 
 CRS = "EPSG:32618"
 

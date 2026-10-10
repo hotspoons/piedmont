@@ -10,7 +10,7 @@
 // gizmo that moved the model and wrote the wrong numbers would look perfect in the editor and put
 // the barn somewhere else in the game.
 //
-//   node probes/corridor-handles.mjs [world-slug]
+//   node probes/handles.mjs [world-slug]
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'
@@ -25,7 +25,7 @@ const say = (k, v) => console.log(`${k.padEnd(26)} ${typeof v === 'object' ? JSO
 await page.goto(`http://localhost:${PORT}/world.html?world=${WORLD}#${WORLD}`, { waitUntil: 'networkidle', timeout: 90000 })
 await page.waitForSelector('.seg', { timeout: 30000 })
 await page.click('.seg[data-value="place"]')
-const up = await page.waitForFunction(() => !!window.corridor?.place, null, { timeout: 90000 }).then(() => true).catch(() => false)
+const up = await page.waitForFunction(() => !!window.piedmont?.place, null, { timeout: 90000 }).then(() => true).catch(() => false)
 if (!up) { console.log(`\nSKIP: ${WORLD} would not open in Place`); await browser.close(); process.exit(0) }
 await page.waitForTimeout(2500)
 // the site editor has its own rail: Areas | Place | Grow | Structures
@@ -35,12 +35,12 @@ await page.waitForTimeout(800)
 /* ---- something to hold ---- */
 const placed = await page.evaluate(async () => {
   // at the site origin, which always exists — where the camera is pointing is another probe's job
-  const ok = await window.corridor.place.addAt('barn-01', 0, 0)
+  const ok = await window.piedmont.place.addAt('barn-01', 0, 0)
   return ok ? window.__apexPlace.last() : null
 })
 say('placed', placed && { id: placed.id, asset: placed.asset })
 if (!placed) { console.log('\nFAIL:\n  nothing could be placed, so there is nothing to move'); await browser.close(); process.exit(1) }
-await page.evaluate((id) => window.corridor.place.select(id), placed.id)
+await page.evaluate((id) => window.piedmont.place.select(id), placed.id)
 await page.waitForTimeout(700)
 
 /* ---- the handles exist, and say which ones ---- */
@@ -49,7 +49,7 @@ say('buttons on the item', buttons)
 for (const want of ['move (G)', 'rotate (R)']) if (!buttons.includes(want)) fail.push(`no “${want}” control`)
 
 const gizmo = await page.evaluate(() => {
-  const g = window.corridor.scene.getObjectByName('place-gizmo')
+  const g = window.piedmont.scene.getObjectByName('place-gizmo')
   return g ? { visible: g.visible } : null
 })
 say('handles in the scene', gizmo ?? 'absent')
@@ -57,7 +57,7 @@ if (!gizmo?.visible) fail.push('the handles are not showing on the selected item
 
 /* ---- which axes each mode offers ---- */
 const axes = await page.evaluate(() => {
-  const place = window.corridor.place
+  const place = window.piedmont.place
   const read = () => ({ x: place.gizmo.showX, y: place.gizmo.showY, z: place.gizmo.showZ, mode: place.gizmo.mode })
   place.setGizmoMode('translate')
   const t = read()
@@ -74,7 +74,7 @@ if (!axes.translate.x || !axes.translate.z) fail.push('moving does not offer the
 
 /* ---- and the write-back, with its signs ---- */
 const trip = await page.evaluate((id) => {
-  const place = window.corridor.place
+  const place = window.piedmont.place
   const o = [...place.group.children].find((c) => c.userData.placeId === id)
   o.position.set(10, o.position.y, -20)
   o.rotation.y = -Math.PI / 2
@@ -89,9 +89,9 @@ if (trip.yaw !== 90) fail.push(`yaw came back as ${trip.yaw}° — the bearing s
 if (!trip.dirty) fail.push('moving it did not mark the document unsaved')
 
 /* ---- nothing selected, no handles ---- */
-await page.evaluate(() => window.corridor.place.select(null))
+await page.evaluate(() => window.piedmont.place.select(null))
 await page.waitForTimeout(400)
-const after = await page.evaluate(() => window.corridor.scene.getObjectByName('place-gizmo')?.visible)
+const after = await page.evaluate(() => window.piedmont.scene.getObjectByName('place-gizmo')?.visible)
 say('with nothing selected', after)
 if (after) fail.push('the handles are still showing with nothing selected')
 

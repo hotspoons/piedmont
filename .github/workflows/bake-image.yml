@@ -1,24 +1,24 @@
-# Build and publish the corridor bake image, both architectures, from one runner.
+# Build and publish the bake image, both architectures, from one runner.
 #
 # Unlike the recon image there is nothing to compile: every dependency is a manylinux wheel with
 # an arm64 build, so QEMU emulation costs minutes, not hours, and a single buildx invocation emits
-# the multi-arch manifest. Runs when tools/corridor changes, or by hand.
-name: Corridor image
+# the multi-arch manifest. Runs when bake changes, or by hand.
+name: Bake image
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/corridor/**'
-      - '!tools/corridor/README.md'
-      - '!tools/corridor/chart/**'
+      - 'bake/**'
+      - '!bake/README.md'
+      - '!deploy/helm/bake/**'
   workflow_dispatch:
 
 env:
-  IMAGE: ghcr.io/hotspoons/corridor
+  IMAGE: ghcr.io/hotspoons/piedmont-bake
 
 concurrency:
-  group: corridor-image-${{ github.ref }}
+  group: bake-image-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -48,23 +48,23 @@ jobs:
       # tests are mounted rather than baked in, so the published image is unchanged.
       - uses: docker/build-push-action@v6
         with:
-          context: tools/corridor
+          context: bake
           platforms: linux/amd64
           load: true
-          tags: corridor:test
+          tags: piedmont-bake:test
           cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
       - id: unittests
         name: unit tests
         shell: bash
-        run: docker run --rm -v "$PWD/tools/corridor/tests:/app/tests:ro" -w /app --entrypoint python corridor:test -m unittest discover -s tests -v 2>&1 | tee ci-unittest.log
+        run: docker run --rm -v "$PWD/bake/tests:/app/tests:ro" -w /app --entrypoint python piedmont-bake:test -m unittest discover -s tests -v 2>&1 | tee ci-unittest.log
 
       # only the failing tests and their tracebacks, on the run's summary page (scripts/ci-failures.mjs)
       - name: What failed
         if: failure() && steps.unittests.outcome == 'failure'
-        run: node scripts/ci-failures.mjs "corridor unit tests" ci-unittest.log >> "$GITHUB_STEP_SUMMARY"
+        run: node scripts/ci-failures.mjs "bake unit tests" ci-unittest.log >> "$GITHUB_STEP_SUMMARY"
       - uses: docker/build-push-action@v6
         with:
-          context: tools/corridor
+          context: bake
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

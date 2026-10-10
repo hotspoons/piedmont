@@ -17,11 +17,11 @@
 // .poly beside every extract, and it is EXACTLY the polygon the extract was cut with (maryland.poly
 // against the index geometry: symmetric difference 0.000000 of its area) — and an upstream that
 // holds several imported regions has several polygons. Kept on the editor's volume, seeded from the
-// deployment (WORLDEDITOR_OVERPASS_REGIONS), and grown by an `osm-import` run when a region is
+// deployment (PIEDMONT_EDITOR_OVERPASS_REGIONS), and grown by an `osm-import` run when a region is
 // added to an instance (runs.mjs).
 //
 // THE FILE IS ALSO THE BAKE'S. `<data>/overpass/coverage.json` is on the volume every bake Job
-// mounts, and `osm.py` reads it (CORRIDOR_OVERPASS_COVERAGE) to refuse — loudly, with a BakeFault
+// mounts, and `osm.py` reads it (PIEDMONT_OVERPASS_COVERAGE) to refuse — loudly, with a BakeFault
 // — to send a query to an upstream that does not hold the whole of the query's area. The editor
 // routes; the bake checks the routing. Either one alone has been wrong before.
 
@@ -318,7 +318,7 @@ export function parseRegions(raw) {
  *     added, run }] }] }
  *
  * `source` says where a region came from, and decides what may remove it:
- *   deploy  WORLDEDITOR_OVERPASS_REGIONS / the Settings value. Re-read at every load, so changing
+ *   deploy  PIEDMONT_EDITOR_OVERPASS_REGIONS / the Settings value. Re-read at every load, so changing
  *           the setting changes these — and only these.
  *   import  an `osm-import` run that succeeded. Kept until somebody removes it; a setting never does.
  *   fence   a `#s/w/n/e` box on the URL, for an upstream nobody has described any other way.

@@ -62,7 +62,7 @@ function bad(msg) {
  * one, and the same function validates a level an agent just wrote before it ever reaches disk.
  */
 /**
- * The drive profiles, by id. Mirrors `PROFILES` in `packages/engine/src/physics/profiles.ts`.
+ * The drive profiles, by id. Mirrors `PROFILES` in `vendor/arcade/packages/engine/src/physics/profiles.ts`.
  *
  * A COPY, and deliberately so: this module is validation with no filesystem and no bundler, and
  * importing the physics engine into it to read five strings would make the service depend on the

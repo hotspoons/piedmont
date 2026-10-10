@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// worldeditor — the pod that turns OSM into a corridor world.
+// worldeditor — the pod that turns OSM into a game world.
 //
 // One origin. The browser knows this service and nothing else: not Overpass, not the Kubernetes
 // API, not flux, not TRELLIS, not the bucket. That is the same constraint assetsvc exists to
@@ -11,14 +11,14 @@
 //                                   ├─► assetsvc (proxied; it reaches the GPUs, we never do)
 //                                   └─► the volume: sites, worlds, runs, authored files, catalog
 //
-// WHAT IT SERVES, AND WHY IT IS ALSO A STATIC SERVER. `apps/corridor` is three pages — the viewer,
+// WHAT IT SERVES, AND WHY IT IS ALSO A STATIC SERVER. `apps/game` is three pages — the viewer,
 // the editor and the world editor — and the editor SAVES by PUTing to `/sites/<slug>/<file>.json`.
-// In development that PUT is answered by a middleware inside `apps/corridor/vite.config.ts`, which
+// In development that PUT is answered by a middleware inside `apps/game/vite.config.ts`, which
 // does not exist in a pod. Serving the built app and the bake from the same origin here means the
 // editor's save path is the same path in both places, with no `?data=`, no CORS, and no second
 // implementation to drift (store.mjs putAuthored).
 //
-//   node tools/worldeditor/server.mjs --port 8780 --data tools/corridor/data
+//   node services/worldeditor/server.mjs --port 8780 --data data
 //
 // Configuration is environment, so the chart and a laptop run the same code. See README.md.
 
@@ -70,10 +70,10 @@ const arg = (name, dflt) => {
 }
 const env = process.env
 
-const PORT = Number(arg('port', env.WORLDEDITOR_PORT ?? 8780))
-const HOST = arg('host', env.WORLDEDITOR_HOST ?? '0.0.0.0')
-const DATA = path.resolve(arg('data', env.WORLDEDITOR_DATA ?? path.join(REPO, 'tools/corridor/data')))
-const APP = path.resolve(arg('app', env.WORLDEDITOR_APP ?? path.join(REPO, 'apps/corridor/dist')))
+const PORT = Number(arg('port', env.PIEDMONT_EDITOR_PORT ?? 8780))
+const HOST = arg('host', env.PIEDMONT_EDITOR_HOST ?? '0.0.0.0')
+const DATA = path.resolve(arg('data', env.PIEDMONT_EDITOR_DATA ?? path.join(REPO, 'data')))
+const APP = path.resolve(arg('app', env.PIEDMONT_EDITOR_APP ?? path.join(REPO, 'apps/game/dist')))
 /*
  * THE SETTINGS, before anything that reads one. Every external service this editor reaches is
  * settable from the environment AND from the UI, with a UI value winning and clearing back to the
@@ -118,28 +118,28 @@ const platform = new Platform(DATA)
  *
  * From the REQUEST's own host, not a configured one: in a cluster this service is reached by a
  * name only the cluster knows, and a hard-coded `localhost` would be a URL that works on a laptop
- * and resolves to the agent's own pod everywhere else. `WORLDEDITOR_PUBLIC_URL` overrides it for
+ * and resolves to the agent's own pod everywhere else. `PIEDMONT_EDITOR_PUBLIC_URL` overrides it for
  * the case where the agent comes in by a different route than the browser does.
  */
 /** the MCP URL as a client outside this page can open it — see publicurl.mjs for the forwarded headers */
 function mcpUrl(req) {
   return publicMcpUrl(req.headers, env, PORT)
 }
-store.catalogSeed = path.join(REPO, 'apps/corridor/public/assets/catalog.json')
+store.catalogSeed = path.join(REPO, 'apps/game/public/assets/catalog.json')
 await store.init()
 /*
  * SEEDING IS OPT-IN, AND IT DID NOT USED TO BE.
  *
- * This seeded from the repo's `tools/corridor/sites.json` whenever the volume was empty, which is
+ * This seeded from the repo's `bake/sites.json` whenever the volume was empty, which is
  * right for a laptop -- the sites you already have are the ones you want to open -- and wrong for
  * a deployment, where it means a fresh instance comes up carrying thirty of somebody else's
- * worlds (Rich, 2026-09-27). Set WORLDEDITOR_SEED_SITES to a path to seed from it, or to the word
+ * worlds (Rich, 2026-09-27). Set PIEDMONT_EDITOR_SEED_SITES to a path to seed from it, or to the word
  * `repo` for the checked-in list. Unset, a new volume starts empty, which is what a blank world
  * map should mean.
  */
-const seedFrom = env.WORLDEDITOR_SEED_SITES
+const seedFrom = env.PIEDMONT_EDITOR_SEED_SITES
 if (seedFrom) {
-  const r = await store.seedWorlds(seedFrom === 'repo' ? path.join(REPO, 'tools/corridor/sites.json') : seedFrom)
+  const r = await store.seedWorlds(seedFrom === 'repo' ? path.join(REPO, 'bake/sites.json') : seedFrom)
   if (r.seeded) console.log(`  seeded    ${r.seeded} world definitions from ${r.from}`)
   else console.log(`  seeded    nothing (${r.reason})`)
 }
@@ -150,7 +150,7 @@ if (seedFrom) {
 // query about the Alps came back empty after 240 s and the emptiness was cached. The guard for
 // that is a coverage box on the URL (`#south/west/north/east`) — so if you want ours in the list,
 // declare what it holds, and the rotation will use it where it helps and skip it where it lies.
-// When it holds the planet (docs/corridor/OVERPASS-PLANET.md) it needs no box and should be first.
+// When it holds the planet (docs/OVERPASS-PLANET.md) it needs no box and should be first.
 const overpassUpstreams = () => settings.get('overpass.url').split(',').map((s) => s.trim()).filter(Boolean)
 const configured = overpassUpstreams()
 for (const u of configured) {
@@ -190,16 +190,16 @@ const overpass = new Overpass(
     // Tunable because the right answer depends on the extract: ours on a warm database answers a
     // county in seconds, a public mirror under load took 79 s for the same query, and a laptop
     // testing the fallback wants neither.
-    timeoutMs: Number(env.WORLDEDITOR_OVERPASS_TIMEOUT ?? 120000),
-    deadlineMs: Number(env.WORLDEDITOR_OVERPASS_DEADLINE ?? 240000),
-    downForMs: Number(env.WORLDEDITOR_OVERPASS_DOWN_FOR ?? 60000),
+    timeoutMs: Number(env.PIEDMONT_EDITOR_OVERPASS_TIMEOUT ?? 120000),
+    deadlineMs: Number(env.PIEDMONT_EDITOR_OVERPASS_DEADLINE ?? 240000),
+    downForMs: Number(env.PIEDMONT_EDITOR_OVERPASS_DOWN_FOR ?? 60000),
   },
 )
 const tiles = new Tiles(store, overpass)
-const basemap = new Basemap(store, { enabled: env.WORLDEDITOR_BASEMAP !== 'off' })
+const basemap = new Basemap(store, { enabled: env.PIEDMONT_EDITOR_BASEMAP !== 'off' })
 const geocoder = new Geocoder(store, {
   url: settings.get('nominatim.url'),
-  minIntervalMs: Number(env.WORLDEDITOR_NOMINATIM_INTERVAL ?? 1100),
+  minIntervalMs: Number(env.PIEDMONT_EDITOR_NOMINATIM_INTERVAL ?? 1100),
 })
 const k8s = new K8s(env)
 // where flux, TRELLIS and qwen are TODAY: discovered through the cluster, never hard-coded
@@ -207,14 +207,14 @@ const k8s = new K8s(env)
 // const used above its own declaration throws on the first request rather than at startup.
 const models = new ModelResolver(k8s, env)
 const runs = new Runs(store, k8s, {
-  force: env.WORLDEDITOR_RUNNER ?? null,
+  force: env.PIEDMONT_EDITOR_RUNNER ?? null,
   image: settings.get('bake.image'),
-  claim: env.WORLDEDITOR_CLAIM ?? 'corridor-data',
-  secretName: env.WORLDEDITOR_S3_SECRET ?? 'corridor-r2',
-  bucket: env.WORLDEDITOR_S3_BUCKET ?? '',
-  endpoint: env.WORLDEDITOR_S3_ENDPOINT ?? '',
-  region: env.WORLDEDITOR_S3_REGION ?? 'auto',
-  prefix: env.WORLDEDITOR_S3_PREFIX ?? 'corridor',
+  claim: env.PIEDMONT_EDITOR_CLAIM ?? 'piedmont-data',
+  secretName: env.PIEDMONT_EDITOR_S3_SECRET ?? 'piedmont-r2',
+  bucket: env.PIEDMONT_EDITOR_S3_BUCKET ?? '',
+  endpoint: env.PIEDMONT_EDITOR_S3_ENDPOINT ?? '',
+  region: env.PIEDMONT_EDITOR_S3_REGION ?? 'auto',
+  prefix: env.PIEDMONT_EDITOR_S3_PREFIX ?? 'piedmont',
   overpassUrl: settings.get('overpass.url'),
   coverage,
   osmImportImage: settings.get('osm.importImage'),
@@ -224,19 +224,19 @@ const runs = new Runs(store, k8s, {
     if (!f) throw new Error(`${run.osm.region} is not in the Geofabrik index`)
     await coverage.addRegion(run.osm.upstream, f, { run: run.id })
   },
-  horizonM: Number(env.WORLDEDITOR_HORIZON_M ?? 30000),
+  horizonM: Number(env.PIEDMONT_EDITOR_HORIZON_M ?? 30000),
   // Auto-shard a world when its half-width exceeds this, in blocks of at most `shardSideM` a side.
   // ON BY DEFAULT since 2026-10-10 (Rich: "We should be defaulting to sharded, at least per 10 x 10
   // km grid or something like that"): a world more than 10 km across is cut into ≤ 10 km blocks.
-  // dc-metro has baked this way twice. `WORLDEDITOR_SHARD_ABOVE_M=0` turns it off; a request body
-  // `{"sharded": false}` opts one bake out. See docs/corridor/PLAN-SHARDED-BAKE.md.
-  shardAboveM: env.WORLDEDITOR_SHARD_ABOVE_M !== undefined ? Number(env.WORLDEDITOR_SHARD_ABOVE_M) : 5000,
-  shardSideM: Number(env.WORLDEDITOR_SHARD_SIDE_M ?? 10000),
+  // dc-metro has baked this way twice. `PIEDMONT_EDITOR_SHARD_ABOVE_M=0` turns it off; a request body
+  // `{"sharded": false}` opts one bake out. See docs/PLAN-SHARDED-BAKE.md.
+  shardAboveM: env.PIEDMONT_EDITOR_SHARD_ABOVE_M !== undefined ? Number(env.PIEDMONT_EDITOR_SHARD_ABOVE_M) : 5000,
+  shardSideM: Number(env.PIEDMONT_EDITOR_SHARD_SIDE_M ?? 10000),
   // enough blocks that the side, not the count, decides: 36 covers a 60 km square at 10 km
-  maxShards: Number(env.WORLDEDITOR_MAX_SHARDS ?? 36),
-  resources: JSON.parse(env.WORLDEDITOR_BAKE_RESOURCES ?? '{"requests":{"cpu":"8","memory":"32Gi"},"limits":{"cpu":"64","memory":"384Gi"}}'),
-  python: env.WORLDEDITOR_PYTHON ?? path.join(REPO, 'tools/corridor/.venv/bin/python'),
-  cwd: env.WORLDEDITOR_CORRIDOR ?? path.join(REPO, 'tools/corridor'),
+  maxShards: Number(env.PIEDMONT_EDITOR_MAX_SHARDS ?? 36),
+  resources: JSON.parse(env.PIEDMONT_EDITOR_BAKE_RESOURCES ?? '{"requests":{"cpu":"8","memory":"32Gi"},"limits":{"cpu":"64","memory":"384Gi"}}'),
+  python: env.PIEDMONT_EDITOR_PYTHON ?? path.join(REPO, 'bake/.venv/bin/python'),
+  cwd: env.PIEDMONT_EDITOR_BAKE_DIR ?? path.join(REPO, 'bake'),
 })
 const adopted = await runs.reconcile()
 
@@ -247,11 +247,11 @@ const adopted = await runs.reconcile()
  * through to the environment as before.
  */
 const SPLAT_ENV = {
-  WORLDEDITOR_SPLAT_IMAGE: 'splat.image',
-  WORLDEDITOR_SPLAT_COMMAND: 'splat.command',
-  WORLDEDITOR_SPLAT_ARGS: 'splat.args',
-  WORLDEDITOR_SPLAT_STORAGE_CLASS: 'splat.storageClass',
-  WORLDEDITOR_GPU_RESOURCE: 'splat.gpuResource',
+  PIEDMONT_EDITOR_SPLAT_IMAGE: 'splat.image',
+  PIEDMONT_EDITOR_SPLAT_COMMAND: 'splat.command',
+  PIEDMONT_EDITOR_SPLAT_ARGS: 'splat.args',
+  PIEDMONT_EDITOR_SPLAT_STORAGE_CLASS: 'splat.storageClass',
+  PIEDMONT_EDITOR_GPU_RESOURCE: 'splat.gpuResource',
 }
 training.useConfig((name) => (SPLAT_ENV[name] ? settings.get(SPLAT_ENV[name]) : env[name]))
 /** `auto` means ask the cluster; anything else pins a runner tier. */
@@ -298,7 +298,7 @@ const CORS = {
   // In the pod the app is served from this origin and this costs nothing. In development Vite is
   // on 5212 and proxies to here, which is also same-origin — so `*` is only ever reached by a
   // person poking at the API with curl.
-  'Access-Control-Allow-Origin': env.WORLDEDITOR_CORS ?? '*',
+  'Access-Control-Allow-Origin': env.PIEDMONT_EDITOR_CORS ?? '*',
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 }
@@ -437,7 +437,7 @@ async function sendFile(req, res, file, { cache = 'no-cache' } = {}) {
 /**
  * `/assetsvc/*` → assetsvc, unmodified.
  *
- * `apps/corridor/src/assetsvc.ts` already resolves to same-origin `/assetsvc` when it is served
+ * `apps/game/src/assetsvc.ts` already resolves to same-origin `/assetsvc` when it is served
  * from port 80/443, "which is how it looks in the cluster, behind one ingress". That sentence was
  * written before there was anything to be behind. This is it. Proxying rather than putting a
  * second hostname in the page keeps the browser's origin count at one, which is the property the
@@ -445,7 +445,7 @@ async function sendFile(req, res, file, { cache = 'no-cache' } = {}) {
  */
 async function proxyAssetsvc(req, res, rest) {
   const ASSETSVC = assetsvcUrl()
-  if (!ASSETSVC) return json(res, 503, { error: 'assetsvc is not configured', hint: 'Settings → Services, or set WORLDEDITOR_ASSETSVC' })
+  if (!ASSETSVC) return json(res, 503, { error: 'assetsvc is not configured', hint: 'Settings → Services, or set PIEDMONT_EDITOR_ASSETSVC' })
   const url = `${ASSETSVC}/${rest}${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`
   const init = { method: req.method, headers: {}, signal: AbortSignal.timeout(300000) }
   if (req.headers['content-type']) init.headers['content-type'] = req.headers['content-type']
@@ -566,8 +566,8 @@ async function api(req, res, seg, q) {
   /* ---- liveness, readiness, what this is pointed at ---- */
   if (seg[0] === 'health') {
     // WHICH BUILD, because a program that typechecks against one editor can fail in another: the
-    // image sha (WORLDEDITOR_BUILD, from the Dockerfile's GIT_SHA) and the program API's hash
-    return json(res, 200, { ok: true, data: store.root, build: process.env.WORLDEDITOR_BUILD ?? null, programApi: await programs.apiHash().catch(() => null), node: process.version, started: STARTED })
+    // image sha (PIEDMONT_EDITOR_BUILD, from the Dockerfile's GIT_SHA) and the program API's hash
+    return json(res, 200, { ok: true, data: store.root, build: process.env.PIEDMONT_EDITOR_BUILD ?? null, programApi: await programs.apiHash().catch(() => null), node: process.version, started: STARTED })
   }
   /*
    * How big a chunk may an upload send? THE SERVER SAYS, because only the server knows what is in
@@ -575,7 +575,7 @@ async function api(req, res, seg, q) {
    * hours into a capture, and the client has no way to find that out for itself.
    */
   if (seg[0] === 'uploads' && seg[1] === 'limits' && req.method === 'GET') {
-    return json(res, 200, { chunkBytes: Number(env.WORLDEDITOR_UPLOAD_CHUNK_MIB ?? 32) * 2 ** 20, why: 'the ingress in front of this service limits a single body; stay under it' })
+    return json(res, 200, { chunkBytes: Number(env.PIEDMONT_EDITOR_UPLOAD_CHUNK_MIB ?? 32) * 2 ** 20, why: 'the ingress in front of this service limits a single body; stay under it' })
   }
   /* which inference is reachable from this pod, and how it was found. `?live=1` asks each one. */
   if (seg[0] === 'models' && req.method === 'GET') {
@@ -911,9 +911,9 @@ async function api(req, res, seg, q) {
     const withLevels = q.get('levels') !== '0'
     const slugs = new Set(picked.map((w) => w.slug))
     const levels = withLevels ? (await store.listLevels()).filter((l) => slugs.has(l.world)) : []
-    const body = { kind: 'corridor-worlds', version: 1, exported: new Date().toISOString(), worlds: picked, levels }
+    const body = { kind: 'piedmont-worlds', version: 1, exported: new Date().toISOString(), worlds: picked, levels }
     const name = picked.length === 1 ? picked[0].slug : `worlds-${picked.length}`
-    res.writeHead(200, { ...CORS, 'content-type': 'application/json', 'content-disposition': `attachment; filename="${name}.corridor.json"` })
+    res.writeHead(200, { ...CORS, 'content-type': 'application/json', 'content-disposition': `attachment; filename="${name}.piedmont.json"` })
     return res.end(JSON.stringify(body, null, 1))
   }
   if (seg[0] === 'worlds' && seg[1] === 'import' && req.method === 'POST') {
@@ -981,7 +981,7 @@ async function api(req, res, seg, q) {
     // THE WHOLE ARCHIVE IS BUILT IN MEMORY, so the limit is stated rather than discovered. A
     // 1 GiB site would be 1 GiB of Buffer in a pod with a memory limit, and the failure mode of
     // finding that out during a download is a restarted service.
-    const cap = Number(env.WORLDEDITOR_ARCHIVE_MAX_MB ?? 1536) * 2 ** 20
+    const cap = Number(env.PIEDMONT_EDITOR_ARCHIVE_MAX_MB ?? 1536) * 2 ** 20
     // `describe=1` is what an agent asks: the url, the count and the size, not the zip. A zip
     // does not fit in a tool result, and building one just to say how big it is is the cost
     // this query exists to skip.
@@ -1010,7 +1010,7 @@ async function api(req, res, seg, q) {
      A JSON body `{ url }` is the same zip fetched from https, which is how an agent imports
      one: the bytes do not fit in a tool argument any more than they fit in a tool result. */
   if (seg[0] === 'sites' && seg[1] === 'import' && req.method === 'POST') {
-    const cap = Number(env.WORLDEDITOR_ARCHIVE_MAX_MB ?? 1536) * 2 ** 20
+    const cap = Number(env.PIEDMONT_EDITOR_ARCHIVE_MAX_MB ?? 1536) * 2 ** 20
     const jsonBody = /application\/json/i.test(req.headers['content-type'] ?? '')
     const spec = jsonBody ? await readJson(req) : null
     const body = spec ? await fetchArchive(spec.url, cap) : await readBody(req, cap)
@@ -1233,17 +1233,17 @@ async function api(req, res, seg, q) {
        * editor's own documents as tools, for an agent whose harness prefers tools to a filesystem
        * or which has no page attached. It is CONFIGURATION rather than a constant because the
        * command that bridges a stdio-only client to an HTTP server depends on what the agent's
-       * image has; `WORLDEDITOR_MCP_COMMAND` names it, and with nothing set nothing is injected.
+       * image has; `PIEDMONT_EDITOR_MCP_COMMAND` names it, and with nothing set nothing is injected.
        */
       if (seg[1] === 'mcp' && req.method === 'GET') {
-        const command = env.WORLDEDITOR_MCP_COMMAND
-        if (!command) return json(res, 200, { servers: [], url: mcpUrl(req), why: 'set WORLDEDITOR_MCP_COMMAND to inject this editor as an MCP server' })
+        const command = env.PIEDMONT_EDITOR_MCP_COMMAND
+        if (!command) return json(res, 200, { servers: [], url: mcpUrl(req), why: 'set PIEDMONT_EDITOR_MCP_COMMAND to inject this editor as an MCP server' })
         return json(res, 200, {
           url: mcpUrl(req),
           servers: [{
-            name: 'corridor-world-editor',
+            name: 'piedmont-world-editor',
             command,
-            args: (env.WORLDEDITOR_MCP_ARGS ?? mcpUrl(req)).split(' ').filter(Boolean),
+            args: (env.PIEDMONT_EDITOR_MCP_ARGS ?? mcpUrl(req)).split(' ').filter(Boolean),
           }],
         })
       }
@@ -1312,7 +1312,7 @@ async function api(req, res, seg, q) {
    * name it.
    *
    * THE SERVICE DOES NOT COMPILE IT, and deliberately does not try. The editor typechecks in the
-   * browser against generated declarations (apps/corridor/src/generated/program-types.json) and
+   * browser against generated declarations (apps/game/src/generated/program-types.json) and
    * shows the errors where they are, on the line they are on. A service that refused to save code
    * with a type error would be a service you could not save work in progress to — which is most
    * of the time you are writing any.
@@ -1384,7 +1384,7 @@ async function api(req, res, seg, q) {
    * forces the plain one, which is how you show the difference rather than describe it.
    */
   if (seg[0] === 'training' && seg[1] === 'plan' && req.method === 'GET') {
-    const p = await training.plan(k8s, { namespace: env.WORLDEDITOR_NAMESPACE ?? 'default' })
+    const p = await training.plan(k8s, { namespace: env.PIEDMONT_EDITOR_NAMESPACE ?? k8s.namespace })
     // what the cluster OFFERS and what the setting PINS are different facts, and a run uses the
     // second when it is set — so the plan reports both rather than letting one hide the other
     return json(res, 200, { ...p, pinned: splatRunner(), runner: settings.get('splat.runner'), runnerSource: settings.source('splat.runner') })
@@ -1428,7 +1428,7 @@ async function api(req, res, seg, q) {
   if (seg[0] === 'training' && seg[1] === 'preview' && req.method === 'POST') {
     // what WOULD be created, without creating it: the editor shows this before spending a GPU
     const body = await readJson(req)
-    return json(res, 200, await training.manifestFor(body, k8s, { namespace: env.WORLDEDITOR_NAMESPACE ?? 'default', force: q.get('as') ?? splatRunner() }))
+    return json(res, 200, await training.manifestFor(body, k8s, { namespace: env.PIEDMONT_EDITOR_NAMESPACE ?? k8s.namespace, force: q.get('as') ?? splatRunner() }))
   }
 
   /* ---- worlds ---- */
@@ -1648,7 +1648,7 @@ async function deployApi(req, res, seg, q) {
         if (m) baked.push({ slug: d.name, name: named.get(d.name) ?? m.ident?.name ?? d.name })
       }
       baked.sort((a, b) => a.slug.localeCompare(b.slug))
-      return json(res, 200, { token: cfTokens.describe(), worlds: baked, app: APP, defaults: { prefix: deploy.defaultPrefix(baked.slice(0, 1).map((w) => w.slug)), worker: 'corridor' } })
+      return json(res, 200, { token: cfTokens.describe(), worlds: baked, app: APP, defaults: { prefix: deploy.defaultPrefix(baked.slice(0, 1).map((w) => w.slug)), worker: 'piedmont' } })
     }
     if (seg[0] === 'token') {
       if (req.method === 'POST') {
@@ -1717,7 +1717,7 @@ async function deployApi(req, res, seg, q) {
       if (!worlds.length) return json(res, 400, { error: 'choose at least one world' })
       if (!body.account || !body.bucket) return json(res, 400, { error: 'an account and a bucket are required' })
       cfTokens.use() // fail now, not in the log
-      const name = deploy.workerName(body.worker?.name ?? `corridor-${worlds[0]}`)
+      const name = deploy.workerName(body.worker?.name ?? `piedmont-${worlds[0]}`)
       const prefix = body.prefix || deploy.defaultPrefix(worlds)
       const worker = { name, workersDev: body.worker?.workersDev !== false, hostname: body.worker?.hostname || null, zoneId: body.worker?.zoneId || null }
       const run = await runs.startTask({

@@ -1,4 +1,4 @@
-// Inset top-down map: where you are on the corridor, north-up, drawn on a 2D canvas the way
+// Inset top-down map: where you are on the road band, north-up, drawn on a 2D canvas the way
 // trailworks' MapModal does it — imagery underneath, vector linework on top, detail fading as you
 // pull out. Sources are the site's own web layers (the 1 m NAIP JPEG) and osm.geojson for the
 // roads, so it needs nothing the viewer does not already have.
@@ -31,7 +31,7 @@ const TILE_STEP = Math.SQRT2
 /** bitmaps kept; a full-screen map at 2560×1440 needs ~60 */
 const TILE_CACHE = 96
 
-const SIZE_KEY = 'apex-corridor-minimap-size'
+const SIZE_KEY = 'piedmont-minimap-size'
 const MIN = 160
 const DEFAULT = 240
 

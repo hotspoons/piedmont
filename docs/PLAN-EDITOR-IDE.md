@@ -1,8 +1,8 @@
 # The editor: a web IDE over the ECS, the assets, the map — and now physics
 
 **Status:** brief, 2026-09-28. The physics engine it plans against is **built and tested**
-(`packages/engine/src/physics/`, 117 headless assertions); the corridor wiring is not.
-**Audience:** the agent working on the corridor editor.
+(`vendor/arcade/packages/engine/src/physics/`, 117 headless assertions); the road band wiring is not.
+**Audience:** the agent working on the site editor.
 **Companion:** [`PLAN-PHYSICS.md`](PLAN-PHYSICS.md) — the same subject from the engine's side, and
 the place to read *why* the physics API looks the way it does before wrapping it in UI.
 
@@ -43,7 +43,7 @@ threads through stages 3, 4, 5 and 6.
 
 ## 1. The engine API you are wrapping
 
-Import from `@apex/engine/physics/*`. Nothing outside `packages/engine/src/physics/` may import
+Import from `@apex/engine/physics/*`. Nothing outside `vendor/arcade/packages/engine/src/physics/` may import
 `@dimforge/rapier3d-compat` — two copies of the wasm in one bundle is two heaps and handles from one
 that are garbage in the other.
 
@@ -311,5 +311,5 @@ can proceed in parallel.
 - `addUpdateRange` makes an upload **partial**, and never mix a ranged write with a full rewrite —
   which is the whole difficulty in pulling a broken sign out of its `InstancedMesh`.
 - `tune.set` followed by a manual render measures the **old** uniform; await two rAFs.
-- The seven silent Rapier traps are in `packages/engine/src/physics/README.md`. Read them before
+- The seven silent Rapier traps are in `vendor/arcade/packages/engine/src/physics/README.md`. Read them before
   debugging anything that "just does nothing".

@@ -4,7 +4,7 @@
 // which means every pan is a box nobody has ever asked for and therefore a miss. Quantising to a
 // fixed grid makes panning free after the first look, makes the cache bounded and inspectable
 // (`du -sh` per layer tells you what the world costs), and means two people looking at the same
-// place share the work. It is the same geographic quadtree as `packages/engine/src/geo/wgs84.ts`
+// place share the work. It is the same geographic quadtree as `vendor/arcade/packages/engine/src/geo/wgs84.ts`
 // and trailworks, so the ids mean the same thing across the project.
 //
 // The Overpass response cache (`overpass.mjs`) is still there and still keyed the way `osm.py`
@@ -37,7 +37,7 @@ export class Tiles {
      * Overpass is perfectly happy with a few concurrent queries against one extract; what it is
      * not happy with is a stampede, which is what the serialisation was really there to prevent.
      */
-    this.lanes = Math.max(1, Number(opts.lanes ?? process.env.WORLDEDITOR_TILE_LANES ?? 3))
+    this.lanes = Math.max(1, Number(opts.lanes ?? process.env.PIEDMONT_EDITOR_TILE_LANES ?? 3))
     this.queues = new Map()
   }
 

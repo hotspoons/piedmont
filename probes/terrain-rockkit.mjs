@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The rock kit: boulders and ledge blocks per lithology, flux.2-dev -> chroma key -> TRELLIS.2 ->
-// finished .glb into apps/corridor/public/assets/, and a `category: "rock"` catalog entry with
+// finished .glb into apps/game/public/assets/, and a `category: "rock"` catalog entry with
 // `rock_type` so rocks.ts picks the set that matches a cut face's geology.
 //
 //   node probes/terrain-rockkit.mjs                 # every spec not yet on disk
@@ -11,19 +11,19 @@
 // made the barn, diner, water tower and bridges): name the material and its real metres, say the
 // colour (a colourless subject on a green backdrop comes back green and the key eats it), no
 // ground shadow, no ground plane. A boulder is a WIDE subject, so flux's tall-subject crop does
-// not bite. Assets are lit (unlit: false) like the other corridor props.
+// not bite. Assets are lit (unlit: false) like the other game props.
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { keyChroma } from '../tools/assetgen/generate.mjs'
-import { finish } from '../tools/assetgen/finish.mjs'
+import { keyChroma } from '../pipelines/assetgen/generate.mjs'
+import { finish } from '../pipelines/assetgen/finish.mjs'
 
 const FLUX = process.env.FLUX_URL ?? 'https://high-brine.richard-siomporas.basedweights.com/v1/images/generations'
 const RECON = process.env.RECON_URL ?? 'https://recon.richard-siomporas.basedweights.com'
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
-const WORK = process.env.CORRIDOR_ASSET_WORK ?? '/tmp/claude-1000/-workspaces-apex-conduit/d80c2f1a-3a78-4555-bdcc-8e4f5d457599/scratchpad/rockkit'
-const DEST = path.join(ROOT, 'apps/corridor/public/assets')
+const WORK = process.env.PIEDMONT_ASSET_WORK ?? '/tmp/claude-1000/-workspaces-apex-conduit/d80c2f1a-3a78-4555-bdcc-8e4f5d457599/scratchpad/rockkit'
+const DEST = path.join(ROOT, 'apps/game/public/assets')
 const CATALOG = path.join(DEST, 'catalog.json')
 
 const BACKDROP =

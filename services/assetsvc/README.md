@@ -21,15 +21,15 @@ kubectl port-forward -n default svc/recon 8500:80
 
 ASSETSVC_URL_FLUX2_DEV=http://127.0.0.1:18090 \
 ASSETSVC_URL_TRELLIS2=http://127.0.0.1:8500 \
-  node tools/assetsvc/server.mjs --port 8770 --data ext/assetsvc
+  node services/assetsvc/server.mjs --port 8770 --data ext/assetsvc
 
 curl -s localhost:8770/models | jq            # what is configured, and what actually answers
-node tools/assetsvc/smoke.mjs                 # the whole loop, end to end, with numbers
+node services/assetsvc/smoke.mjs                 # the whole loop, end to end, with numbers
 ```
 
 ## Why a service and not a script
 
-`tools/assetgen` already does this chain from a laptop, and it works. What it cannot do is be used
+`pipelines/assetgen` already does this chain from a laptop, and it works. What it cannot do is be used
 by anyone who is not sitting at that laptop with two port-forwards open, because the model servers
 are `ClusterIP` — they have no route from outside the cluster, deliberately. Exposing them so a
 page could call them means publishing an endpoint that runs arbitrary inference on a GH200.
@@ -49,7 +49,7 @@ difference and does not have credentials for either.
 
 Nothing else in the service names a vendor. `OpenAIImagesModel` speaks the
 `/v1/images/generations` + `/v1/images/edits` API, which covers flux.2-dev, flux.2-klein and most
-local inference servers; `ReconMeshModel` speaks `tools/recon-service`. **Swapping a model is an
+local inference servers; `ReconMeshModel` speaks `services/recon`. **Swapping a model is an
 entry in `models.json` and one environment variable** — no route changes, no catalog changes,
 nothing in the editor.
 
@@ -77,7 +77,7 @@ nothing else.
 <data>/catalog/<id>/item.json            the spec, the state, and the provenance of every step
 <data>/catalog/<id>/views/*.png          generated views; `chosen` names the one to mesh
 <data>/catalog/<id>/mesh.glb             what the mesh model returned, raw
-<data>/catalog/<id>/mesh.finished.glb    after tools/assetgen/finish.mjs — what a game loads
+<data>/catalog/<id>/mesh.finished.glb    after pipelines/assetgen/finish.mjs — what a game loads
 ```
 
 A directory is the right size of database for a few hundred props, and it means a generated asset
@@ -91,7 +91,7 @@ style changes, and this pipeline exists to be re-run.
 ## Finishing is not reimplemented
 
 `mesh.glb` is what TRELLIS hands back: ~400k faces and two 2048px PBR maps, tens of megabytes.
-The service shells out to `tools/assetgen/finish.mjs`, which already knows the two things that
+The service shells out to `pipelines/assetgen/finish.mjs`, which already knows the two things that
 cost someone a week — that **meshoptimizer** must do the simplifying because a collapse decimator
 pulls UV seams apart and the texture rips along them, and that the **unlit transform must run
 before Draco** or it decompresses to do its work and undoes the compression. One copy of that
@@ -132,7 +132,7 @@ Environment only, so the same code runs in the chart and on a laptop.
 S3 is signed by hand (`s3.mjs`) rather than with `@aws-sdk/client-s3`: SigV4 is eighty lines of
 HMAC against a stable published spec, it works unchanged on AWS, R2, MinIO and Ceph RGW, and it
 keeps a 20 MB dependency out of a repo that accounts for every dependency in `CREDITS.md`.
-`tools/corridor/corridor/publish.py` does the same thing with boto3 because it is already Python.
+`bake/piedmont_bake/publish.py` does the same thing with boto3 because it is already Python.
 
 ## Traps, measured
 
@@ -157,11 +157,11 @@ would tell the editor the pipeline is available while a reconstruction would sti
 ## In the cluster
 
 ```bash
-helm upgrade --install assetsvc tools/assetsvc/chart -n default --set enabled=true
+helm upgrade --install assetsvc deploy/helm/assetsvc -n default --set enabled=true
 kubectl port-forward -n default svc/assetsvc 8770:80     # until a route is turned on
 ```
 
-`enabled: false` is the default and is the point: nothing in corridor requires this. The viewer and
+`enabled: false` is the default and is the point: nothing in the game requires this. The viewer and
 the editor work exactly as before without it, and the editor's asset panel reports "no service"
 rather than failing. Generation costs GPU time on a shared cluster, so it is something you turn on.
 
@@ -182,12 +182,12 @@ the Service would break the editor for a fault it could have worked around and r
 
 **The image is built by CI** (`.github/workflows/assetsvc-image.yml`) with the repository root as
 its context, because the Dockerfile also copies `finish.mjs` and the two modules it imports at load
-time out of `tools/assetgen`. It is a plain node image — no CUDA, no weights.
+time out of `pipelines/assetgen`. It is a plain node image — no CUDA, no weights.
 
 ### Which front door
 
 Both gateways on gh200-1 are Programmed. `central-gateway` is a ClusterIP (10.100.23.26), so an
-HTTPRoute there gets a DNS record nobody off-cluster can route to — the trap `tools/recon-service`
+HTTPRoute there gets a DNS record nobody off-cluster can route to — the trap `services/recon`
 documented after falling into it. The route here is written against `pai-managed-ext-gateway`
 (172.16.10.157), the address every public platform hostname resolves to, which recon's own comments
 call the road it should have taken. It is still off: turning it on means first working out how a

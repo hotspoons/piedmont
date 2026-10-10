@@ -1,6 +1,6 @@
-// Corridor coordinates: the frame every siting rule is actually written in.
+// Road-band coordinates: the frame every siting rule is actually written in.
 //
-// The site frame (x east, y north) is what gets stored; the corridor frame — along-track metre `s`
+// The site frame (x east, y north) is what gets stored; the road-band frame — along-track metre `s`
 // and signed lateral offset from the centreline — is what the rules mean. "30 m back from the
 // pavement", "face the road", "thin out past 800 m from a junction" are all statements about the
 // road, and converting them by hand at each call site is how signs get flipped.
@@ -38,7 +38,7 @@ export function leftOf(dir: THREE.Vector3, out = new THREE.Vector3()): THREE.Vec
 }
 
 /**
- * Nearest spine station to a site-frame point, and the point's corridor coordinates.
+ * Nearest spine station to a site-frame point, and the point's road-band coordinates.
  *
  * Coarse sweep then a local refine: the spine is a spline with no inverse, and a 20 m sweep over
  * six kilometres is 320 samples — nothing at authoring rates, and too much per building when
@@ -79,7 +79,7 @@ export function yawFacingRoad(site: Site, x: number, y: number): number {
 }
 
 /** Site-frame point at along-track `s`, `lat` metres left of the centreline. */
-export function atCorridor(site: Site, s: number, lat: number): [number, number] {
+export function atRoadBand(site: Site, s: number, lat: number): [number, number] {
   const at = site.spineAt(s)
   const left = leftOf(at.dir)
   return [at.pos.x + left.x * lat, -(at.pos.z + left.z * lat)]

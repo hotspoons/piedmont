@@ -1,20 +1,20 @@
-"""corridor — a strip of real road and everything the public record knows about it.
+"""piedmont_bake — a strip of real road and everything the public record knows about it.
 
-    python -m corridor sites                      # photos in ext/ref-driving -> sites.json
-    python -m corridor fetch <slug|all> [opts]    # build data/sites/<slug>/ for each site
-    python -m corridor report [slug]              # one-screen summary of what was found
-    python -m corridor areas <slug|all>           # seed data/sites/<slug>/adjustments.json
+    python -m piedmont_bake sites                      # photos in ext/ref-driving -> sites.json
+    python -m piedmont_bake fetch <slug|all> [opts]    # build data/sites/<slug>/ for each site
+    python -m piedmont_bake report [slug]              # one-screen summary of what was found
+    python -m piedmont_bake areas <slug|all>           # seed data/sites/<slug>/adjustments.json
 
 A site directory is the contract with the game side:
 
-    site.json          the photo fix(es), the frame (UTM EPSG + origin), the corridor bbox
+    site.json          the photo fix(es), the frame (UTM EPSG + origin), the road band bbox
     spine.geojson      the carriageway we drove, trimmed to ±half-length, WGS84 (game reads
                        spine_utm.json — same line, metres, plus per-way OSM tags by along-track m)
-    osm.geojson        every tagged feature in the corridor, raw tags
+    osm.geojson        every tagged feature in the road band, raw tags
     crossings.json     ways crossing the spine, with OSM's over/under guess
     dem_1m.tif         bare-earth DEM, 1 m, site frame
     naip.tif           30 cm imagery, site frame
-    lidar/             corridor.laz + dtm/dsm/chm/deck rasters at 1 m
+    lidar/             road_band.laz + dtm/dsm/chm/deck rasters at 1 m
     profile.json       along-track: road z, ground beside the road at 5 offsets, canopy at 5
                        offsets, and structures (bridge/overpass) measured from bridge-deck returns
     geology.json       Macrostrat units under the spine
@@ -42,9 +42,9 @@ from pathlib import Path
 # load average 0.01, 124 of 384 GiB used — a lock, not work, and 2.5 h of silence in `profile_many`.
 #
 # One thread here costs nothing: the parallelism the bake cares about is the PROCESS pool, and the
-# numeric stages are elementwise or KD-tree (not BLAS). `CORRIDOR_BLAS_THREADS` is the escape hatch
+# numeric stages are elementwise or KD-tree (not BLAS). `PIEDMONT_BLAS_THREADS` is the escape hatch
 # for a workstation that wants a threaded BLAS and does not fork.
-_blas = os.environ.get("CORRIDOR_BLAS_THREADS", "1").strip() or "1"
+_blas = os.environ.get("PIEDMONT_BLAS_THREADS", "1").strip() or "1"
 for _v in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "GDAL_NUM_THREADS"):
     os.environ.setdefault(_v, _blas)
 
@@ -53,11 +53,11 @@ import numpy as np  # noqa: E402  (must come after the thread pool is pinned)
 from . import BakeFault  # noqa: E402
 
 HERE = Path(__file__).resolve().parent.parent
-# In the container these point at the mounted volume; in the devcontainer at tools/corridor/data.
-DATA = Path(os.environ.get("CORRIDOR_DATA", HERE / "data"))
+# In the container these point at the mounted volume; in the devcontainer at data.
+DATA = Path(os.environ.get("PIEDMONT_DATA", HERE.parent / "data"))
 CACHE = DATA / "cache"
-SITES = Path(os.environ.get("CORRIDOR_SITES", HERE / "sites.json"))
-PHOTOS = Path(os.environ.get("CORRIDOR_PHOTOS", HERE.parent.parent / "ext" / "ref-driving"))
+SITES = Path(os.environ.get("PIEDMONT_SITES", HERE / "sites.json"))
+PHOTOS = Path(os.environ.get("PIEDMONT_PHOTOS", HERE.parent / "ext" / "ref-driving"))
 
 
 def cmd_sites(_: argparse.Namespace) -> None:
@@ -94,21 +94,21 @@ def fetch_site(site: dict, half_length: float, half_width: float, lidar_half_wid
     frame = geo.Frame.at(site["lon"], site["lat"])
     # a partial re-run (--skip ...) updates the manifest it finds rather than forgetting the rest
     manifest: dict = json.loads((out / "manifest.json").read_text()) if (out / "manifest.json").exists() else {}
-    manifest |= {"slug": slug, "frame": {"epsg": frame.epsg, "origin": frame.origin}, "fetched": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "params": {"half_length_m": half_length, "half_width_m": half_width, "lidar_half_width_m": lidar_half_width, "horizon_radius_m": float(os.environ.get("CORRIDOR_HORIZON_M", "30000"))}}
+    manifest |= {"slug": slug, "frame": {"epsg": frame.epsg, "origin": frame.origin}, "fetched": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "params": {"half_length_m": half_length, "half_width_m": half_width, "lidar_half_width_m": lidar_half_width, "horizon_radius_m": float(os.environ.get("PIEDMONT_HORIZON_M", "30000"))}}
 
     sp = osm.spine(site, frame, CACHE / "overpass", half_length, half_length + 800)
     line = sp["line"]
     print(f"  spine   {sp['ident']}  {sp['length_m']} m, photo at s={sp['photo_s']} (snap {sp['snap_distance_m']} m), {len(sp['segments'])} ways, {len(sp['siblings'])} sibling chains")
-    corridor = line.buffer(half_width, cap_style="flat")
-    lidar_corridor = line.buffer(lidar_half_width, cap_style="flat")
-    bbox = geo.snap_bbox(corridor.bounds)
+    road_band = line.buffer(half_width, cap_style="flat")
+    lidar_road_band = line.buffer(lidar_half_width, cap_style="flat")
+    bbox = geo.snap_bbox(road_band.bounds)
     xs, ys = np.array(line.coords)[:, 0], np.array(line.coords)[:, 1]
     lon, lat = frame.to_wgs(xs, ys)
     (out / "spine.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {**sp["ident"], "photo_s": sp["photo_s"]}, "geometry": {"type": "LineString", "coordinates": np.column_stack([lon, lat]).round(7).tolist()}}]}))
     (out / "spine_utm.json").write_text(json.dumps({"epsg": frame.epsg, "coords": np.array(line.coords).round(2).tolist(), "photo_s": sp["photo_s"], "segments": sp["segments"], "siblings": [{**s, "geometry": s["geometry"]} for s in sp["siblings"]]}))
     manifest["spine"] = {k: v for k, v in sp.items() if k not in ("line", "segments", "siblings")}
 
-    feats = osm.features(corridor, frame, CACHE / "overpass")
+    feats = osm.features(road_band, frame, CACHE / "overpass")
     (out / "osm.geojson").write_text(json.dumps(feats))
     osm.write_context(feats, out)
     cross = osm.crossings(line, feats, sp["ident"], frame, sp["segments"])
@@ -116,7 +116,7 @@ def fetch_site(site: dict, half_length: float, half_width: float, lidar_half_wid
     print(f"  osm     {len(feats['features'])} features, {len(cross)} crossings: " + ", ".join(f"{c['kind']}@{c['s']:.0f}m {c['relation']}" for c in cross[:12]))
     manifest["osm"] = {"features": len(feats["features"]), "crossings": len(cross)}
 
-    site_json = {**site, "frame": manifest["frame"], "bbox_utm": bbox, "corridor": mapping(corridor), "ident": sp["ident"]}
+    site_json = {**site, "frame": manifest["frame"], "bbox_utm": bbox, "road_band": mapping(road_band), "ident": sp["ident"]}
     (out / "site.json").write_text(json.dumps(site_json))
 
     if "dem" not in skip:
@@ -135,7 +135,7 @@ def fetch_site(site: dict, half_length: float, half_width: float, lidar_half_wid
     if "flora" not in skip:
         from . import flora as flora_mod
 
-        f = flora_mod.along_spine(line, frame, site, corridor, CACHE, out)
+        f = flora_mod.along_spine(line, frame, site, road_band, CACHE, out)
         top = ", ".join(f"{c['name']} {100 * c['share']:.0f}%" for c in f["evt"]["classes"][:3])
         sp = ", ".join(f"{f['canopy']['ref'][s['key']]['common']} {100 * s['weight']:.0f}%" for s in f["canopy"]["species"][:4])
         print(f"  flora   {len(f['evt']['classes'])} EVT classes: {top}")
@@ -146,25 +146,25 @@ def fetch_site(site: dict, half_length: float, half_width: float, lidar_half_wid
     if "lidar" not in skip:
         ldir = out / "lidar"
         ldir.mkdir(exist_ok=True)
-        lbbox = geo.snap_bbox(lidar_corridor.bounds)
-        pts, meta = lidar.fetch_points(frame, lbbox, CACHE, clip=lidar_corridor)
+        lbbox = geo.snap_bbox(lidar_road_band.bounds)
+        pts, meta = lidar.fetch_points(frame, lbbox, CACHE, clip=lidar_road_band)
         if (out / "dem_1m.tif").exists():
             f = lidar.check_units(pts, out / "dem_1m.tif")
             if f != 1.0:
                 pts["z"] = pts["z"] * f
             meta["z_factor"] = f
         meta["classification"] = lidar.classification_quality(pts)
-        r = lidar.rasters(pts, lbbox, frame, lidar_corridor, ldir)
+        r = lidar.rasters(pts, lbbox, frame, lidar_road_band, ldir)
         hw = {seg.get("tags", {}).get("highway", "") for seg in sp.get("segments", [])}
         major = bool(hw & {"motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link"})
         over_s = [c["s"] for c in cross if c.get("relation") == "over"]
         prof = lidar.profile(line, r["dtm"], r["chm"], r["transform"], r["pts"], major_road=major, crossings_over_s=over_s)
         (out / "profile.json").write_text(json.dumps(prof))
         cls = r["classes"]
-        print(f"  lidar   {r['points_in_corridor']:,} pts in corridor; ground {cls.get('ground', 0):,} veg {cls.get('veg_high', 0) + cls.get('veg_med', 0) + cls.get('veg_low', 0):,} building {cls.get('building', 0):,} bridge_deck {cls.get('bridge_deck', 0):,}")
+        print(f"  lidar   {r['points_in_road_band']:,} pts in road band; ground {cls.get('ground', 0):,} veg {cls.get('veg_high', 0) + cls.get('veg_med', 0) + cls.get('veg_low', 0):,} building {cls.get('building', 0):,} bridge_deck {cls.get('bridge_deck', 0):,}")
         for st in prof["structures"]:
             print(f"  struct  {st['kind']:8s} s={st['s_start']:.0f}..{st['s_end']:.0f} m ({st['length_m']} m)  clearance={st['clearance_m']}  above_ground={st['height_above_ground_m']}")
-        manifest["lidar"] = {**meta, "points_in_corridor": r["points_in_corridor"], "classes": cls, "rasters": r["rasters"], "structures": prof["structures"]}
+        manifest["lidar"] = {**meta, "points_in_road_band": r["points_in_road_band"], "classes": cls, "rasters": r["rasters"], "structures": prof["structures"]}
     try:
         from . import preview
 
@@ -206,7 +206,7 @@ def cmd_fetch(a: argparse.Namespace) -> None:
     sites = json.loads(SITES.read_text())
     wanted = sites if a.slug == "all" else [s for s in sites if s["slug"] == a.slug]
     if not wanted:
-        sys.exit(f"no site {a.slug!r}; run `python -m corridor sites` and pick from: {[s['slug'] for s in sites]}")
+        sys.exit(f"no site {a.slug!r}; run `python -m piedmont_bake sites` and pick from: {[s['slug'] for s in sites]}")
     skip = set(filter(None, a.skip.split(",")))
     for s in wanted:
         fetch_site(s, a.half_length, a.half_width, a.lidar_half_width, skip)
@@ -351,7 +351,7 @@ def cmd_finalize(a: argparse.Namespace) -> None:
     site_dir = DATA / "sites" / slug
     plan = shards.read_plan(site_dir)
     if plan is None:
-        sys.exit(f"no plan for {slug!r}; run `corridor plan {slug}` first")
+        sys.exit(f"no plan for {slug!r}; run `piedmont_bake plan {slug}` first")
     parts = [shards.shard_dir(site_dir, i) for i in range(plan["n"])]
     present = [p for p in parts if p.exists()]
     if not present:
@@ -456,7 +456,7 @@ def cmd_report(a: argparse.Namespace) -> None:
         j = json.loads(m.read_text())
         sp = j.get("spine", {})
         li = j.get("lidar", {})
-        print(f"{j['slug']:24s} {sp.get('ident')} {sp.get('length_m')} m  osm {j.get('osm', {}).get('features')}  lidar {li.get('points_in_corridor', 0):,} pts  structures {len(li.get('structures', []))}  geology {j.get('geology', {}).get('named_formations')}")
+        print(f"{j['slug']:24s} {sp.get('ident')} {sp.get('length_m')} m  osm {j.get('osm', {}).get('features')}  lidar {li.get('points_in_road_band', 0):,} pts  structures {len(li.get('structures', []))}  geology {j.get('geology', {}).get('named_formations')}")
 
 
 def _sites(slug: str):
@@ -472,7 +472,7 @@ def cmd_export(a: argparse.Namespace) -> None:
     By default this writes straight into the live tree, which is fine on a laptop and wrong for a
     pipeline something is serving from: a viewer that reloads mid-export gets a manifest that does
     not match the rasters beside it. `--staged` builds into `web.staging` instead and leaves the
-    served tree untouched until `corridor promote` swaps it in. `--promote` does both.
+    served tree untouched until `piedmont_bake promote` swaps it in. `--promote` does both.
     """
     from . import export, shards, surface, swap
 
@@ -502,7 +502,7 @@ def cmd_export(a: argparse.Namespace) -> None:
     if not staged or a.promote:
         print(export.write_index(DATA / "sites"))
     elif staged:
-        print(f"{len(touched)} staged, nothing live yet — `corridor promote {a.slug}` to swap")
+        print(f"{len(touched)} staged, nothing live yet — `piedmont_bake promote {a.slug}` to swap")
 
 
 def _promote(name: str, live: Path, staged: Path, allow_missing: bool) -> bool:
@@ -574,10 +574,10 @@ def cmd_flora(a: argparse.Namespace) -> None:
         site = json.loads((d / "site.json").read_text())
         frame = geo.Frame.at(site["lon"], site["lat"])
         t0 = time.time()
-        # `region` is the WORLD on a site baked with world: true, and is the road corridor on
+        # `region` is the WORLD on a site baked with world: true, and is the road road band on
         # every other site -- so vegetation covers whatever that site decided its world is, and
         # trees stop being a function of how near a road you are (PLAN-OPEN-WORLD.md).
-        f = flora_mod.along_spine(None, frame, site, shape(site.get("region") or site["corridor"]), CACHE, d)
+        f = flora_mod.along_spine(None, frame, site, shape(site.get("region") or site["road_band"]), CACHE, d)
         top = ", ".join(f"{c['name']} {100 * c['share']:.0f}%" for c in f["evt"]["classes"][:3])
         sp = ", ".join(f"{f['canopy']['ref'][s['key']]['common']} {100 * s['weight']:.0f}%" for s in f["canopy"]["species"][:4])
         print(f"{d.name:24s} {time.time() - t0:5.0f}s  {len(f['evt']['classes'])} classes; {top}")
@@ -605,14 +605,14 @@ def main() -> None:
     from . import progress
 
     progress.install_timestamps()  # every bake line gets a UTC clock, so "how long on this stage?" is answerable
-    p = argparse.ArgumentParser(prog="corridor")
+    p = argparse.ArgumentParser(prog="piedmont_bake")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("sites").set_defaults(fn=cmd_sites)
     f = sub.add_parser("fetch")
     f.add_argument("slug")
     f.add_argument("--half-length", type=float, default=3219.0, help="metres along the road each way from the photo (default 2 miles)")
-    f.add_argument("--half-width", type=float, default=300.0, help="OSM/DEM/NAIP corridor half-width, metres")
-    f.add_argument("--lidar-half-width", type=float, default=200.0, help="point-cloud corridor half-width, metres")
+    f.add_argument("--half-width", type=float, default=300.0, help="OSM/DEM/NAIP road band half-width, metres")
+    f.add_argument("--lidar-half-width", type=float, default=200.0, help="point-cloud road band half-width, metres")
     f.add_argument("--skip", default="", help="comma list of dem,naip,lidar,geology,horizon,surface")
     f.set_defaults(fn=cmd_fetch)
     sub.add_parser("report").set_defaults(fn=cmd_report)
@@ -646,22 +646,22 @@ def main() -> None:
     ar.add_argument("--overwrite", action="store_true", help="replace the file instead of appending missing ids")
     ar.add_argument("--dry-run", action="store_true")
     ar.set_defaults(fn=cmd_areas)
-    pub = sub.add_parser("publish", help="sync data/sites to an S3-compatible bucket (R2); env CORRIDOR_S3_* / AWS_*")
+    pub = sub.add_parser("publish", help="sync data/sites to an S3-compatible bucket (R2); env PIEDMONT_S3_* / AWS_*")
     pub.add_argument("slug", nargs="?", default="all")
-    pub.add_argument("--prefix", default=os.environ.get("CORRIDOR_S3_PREFIX", "corridor"))
+    pub.add_argument("--prefix", default=os.environ.get("PIEDMONT_S3_PREFIX", "piedmont"))
     pub.add_argument("--dry-run", action="store_true")
     pub.set_defaults(fn=cmd_publish)
     pl = sub.add_parser("plan", help="sharded bake step 1: one global plan (<= 8 km blocks) for a large world")
     pl.add_argument("slug", nargs="?", default="all")
-    pl.add_argument("--half-width", type=float, default=300.0, help="OSM/DEM/NAIP corridor half-width, metres")
+    pl.add_argument("--half-width", type=float, default=300.0, help="OSM/DEM/NAIP road band half-width, metres")
     pl.add_argument("--max-side", type=float, default=8000.0, help="maximum shard side, metres")
     pl.add_argument("--max-shards", type=int, default=16, help="cap on the number of shards")
     pl.set_defaults(fn=cmd_plan)
     sh = sub.add_parser("shard", help="sharded bake step 2: one block's area stages")
     sh.add_argument("slug")
     sh.add_argument("index", type=int)
-    sh.add_argument("--half-width", type=float, default=300.0, help="OSM/DEM/NAIP corridor half-width, metres")
-    sh.add_argument("--lidar-half-width", type=float, default=200.0, help="point-cloud corridor half-width, metres")
+    sh.add_argument("--half-width", type=float, default=300.0, help="OSM/DEM/NAIP road band half-width, metres")
+    sh.add_argument("--lidar-half-width", type=float, default=200.0, help="point-cloud road band half-width, metres")
     sh.add_argument("--skip", default="", help="comma list of dem,naip,lidar,geology,horizon")
     sh.set_defaults(fn=cmd_shard)
     fn = sub.add_parser("finalize", help="sharded bake step 3: union the shards and export the world")

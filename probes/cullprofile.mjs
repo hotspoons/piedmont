@@ -1,6 +1,6 @@
 // How much of the scene survives frustum culling from where you actually drive?
 //
-//   PORT=5185 SLUG=crofton-triangle node probes/corridor-cullprofile.mjs
+//   PORT=5185 SLUG=crofton-triangle node probes/cullprofile.mjs
 //
 // A merged mesh spanning the site has a site-sized bounding sphere and can never be culled, so it
 // is submitted in full from anywhere. This walks the scene, tests every mesh's world bounding
@@ -14,10 +14,10 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
 
 console.log(JSON.stringify(await page.evaluate(() => {
-  const c = window.corridor, site = c.site, T3 = c.THREE
+  const c = window.piedmont, site = c.site, T3 = c.THREE
   const st = site.spineAt(site.manifest.spine.length_m * 0.5)
   const gy = site.groundAt(st.pos.x, st.pos.z) ?? st.pos.y
   c.camera.position.set(st.pos.x, gy + 2, st.pos.z)

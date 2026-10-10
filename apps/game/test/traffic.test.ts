@@ -249,8 +249,8 @@ describe('the controller', () => {
   it('coordination is arithmetic: two junctions on one cycle with an offset stay in step', () => {
     const aw = new ActorWorld()
     const programs = new SignalPrograms()
-    const corridor: SignalProgram = { id: 'corridor', cycleS: 60, phases: [{ name: 'a', minGreenS: 25, maxGreenS: 25, yellowS: 4, allRedS: 1 }, { name: 'b', minGreenS: 25, maxGreenS: 25, yellowS: 4, allRedS: 1 }] }
-    const p = programs.add(corridor)
+    const arterial: SignalProgram = { id: 'arterial', cycleS: 60, phases: [{ name: 'a', minGreenS: 25, maxGreenS: 25, yellowS: 4, allRedS: 1 }, { name: 'b', minGreenS: 25, maxGreenS: 25, yellowS: 4, allRedS: 1 }] }
+    const p = programs.add(arterial)
     const a = buildSignals(aw.world, [{ x: 0, y: 0, yaw_deg: 180, travel_deg: 0, lanes: 2, junction: 1 }], programs)
     const b = buildSignals(aw.world, [{ x: 600, y: 0, yaw_deg: 180, travel_deg: 0, lanes: 2, junction: 1 }], programs)
     for (const g of [...a.groups, ...b.groups]) { SignalGroup.program[g] = p; SignalGroup.cycleS[g] = 60 }

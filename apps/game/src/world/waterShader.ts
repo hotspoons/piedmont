@@ -1,4 +1,4 @@
-// Water shading for corridor's streams, ponds and sea.
+// Water shading for the game's streams, ponds and sea.
 //
 // Ported from tuxalin/water-shader — https://github.com/tuxalin/water-shader —
 // MIT License, Copyright (c) 2017 tuxalin:
@@ -10,7 +10,7 @@
 //
 // No file, texture or shader source is used verbatim. The wave normal is
 // evaluated analytically here (GPU Gems 1, ch. 1 — the source tuxalin cites)
-// from a per-vertex (depth, flow direction) attribute corridor bakes at build
+// from a per-vertex (depth, flow direction) attribute road-band bakes at build
 // time; the extinction and foam are re-derived from that depth. The full MIT
 // permission text travels in NOTICE and CREDITS.md.
 //

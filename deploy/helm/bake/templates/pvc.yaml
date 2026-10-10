@@ -2,8 +2,8 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "corridor.fullname" . }}-data
-  labels: {{- include "corridor.labels" . | nindent 4 }}
+  name: {{ include "piedmont-bake.fullname" . }}-data
+  labels: {{- include "piedmont-bake.labels" . | nindent 4 }}
   annotations:
     # The bake's cache is the expensive part; do not let a `helm uninstall` throw it away.
     helm.sh/resource-policy: keep

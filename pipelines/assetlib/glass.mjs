@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Turn a reconstruction's glazing into actual glass.
 //
-//   node tools/assetlib/glass.mjs --id nsx-na1
-//   node tools/assetlib/glass.mjs --id nsx-na1 --debug   # paint the selection magenta instead
+//   node pipelines/assetlib/glass.mjs --id nsx-na1
+//   node pipelines/assetlib/glass.mjs --id nsx-na1 --debug   # paint the selection magenta instead
 //
 // WHY THIS AND NOT MORE HOLE-FILLING. fillholes.mjs stops TRELLIS inventing an interior, and it
 // works, but it can only ever produce an OPAQUE panel where the window should be. A car whose
@@ -31,7 +31,7 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions'
 import { KHRMaterialsTransmission, KHRMaterialsIOR, KHRMaterialsVolume } from '@gltf-transform/extensions'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const LIB = path.resolve(HERE, '..')
+const LIB = HERE
 
 const magick = (args) => execFileSync('magick', args, { encoding: 'utf8', maxBuffer: 1 << 28 })
 

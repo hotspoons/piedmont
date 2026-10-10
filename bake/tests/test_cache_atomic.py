@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import lidar, write_atomic  # noqa: E402
+from piedmont_bake import lidar, write_atomic  # noqa: E402
 
 
 class WriteAtomicTest(unittest.TestCase):

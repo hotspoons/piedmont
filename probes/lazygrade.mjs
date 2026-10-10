@@ -1,6 +1,6 @@
 // Lazy grading: does the site load without grading, and does the grading then arrive around the
 // eye — and is the ground the same surface whether or not its mesh exists yet?
-//   PORT=5185 node probes/corridor-lazygrade.mjs [slug] [stanceParam]
+//   PORT=5185 node probes/lazygrade.mjs [slug] [stanceParam]
 // Asserts the mechanism: (1) build profile carries no grading/building phase of any size, (2)
 // graded().built is 0 at ready and grows to cover everything within STREAM_BUILD_M of the eye,
 // (3) groundAt at 40 points near roads is bit-identical before and after the meshes exist,
@@ -16,12 +16,12 @@ page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 const t0 = Date.now()
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1${stance ? `&stance=${stance}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 const ready = (Date.now() - t0) / 1000
 let fails = 0
 const fail = (m) => { console.log('FAIL', m); fails++ }
 const first = await page.evaluate(() => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const prof = site.buildProfile
   const total = prof.reduce((a, p) => a + p.ms, 0)
   const grading = prof.filter((p) => p.ms >= 100).map((p) => [p.phase, p.ms])
@@ -48,7 +48,7 @@ for (const [ph, ms] of first.grading) if (/units listed/.test(ph) && ms > 300) f
 let last = -1, same = 0, snap
 for (let i = 0; i < 240; i++) {
   await page.waitForTimeout(500)
-  snap = await page.evaluate(() => window.corridor.site.graded())
+  snap = await page.evaluate(() => window.piedmont.site.graded())
   if (snap.pendingNear === 0 && snap.built > 0) break
   if (snap.built === last) { if (++same >= 20) break } else { same = 0; last = snap.built }
 }
@@ -57,7 +57,7 @@ if (snap.built === 0) fail('nothing was ever built')
 if (snap.strips === 0) fail('no strips built')
 if (snap.buildings === 0) fail('no buildings built')
 const after = await page.evaluate((pts) => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const g = pts.map(([x, z]) => site.groundAt(x, z))
   // a strip mesh vertex vs the formula, on a branch that has been built
   const road = site.layers.road

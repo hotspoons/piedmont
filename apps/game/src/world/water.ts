@@ -21,7 +21,7 @@
 //           the planar reflection down, so the scene is not rendered a second time — the switch for
 //           a machine (or a measurement) that cannot afford the water project.
 //
-// KNOWN GAP: within 0.6 m of any pavement the corridor strip sits at road height, so water under a
+// KNOWN GAP: within 0.6 m of any pavement the road-band strip sits at road height, so water under a
 // bridge we are on is hidden by the strip deck until the strip learns to open over decks (main's).
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
@@ -183,7 +183,7 @@ function waterMaterial(shared: WaterShared, look: WaterLook, opacityMul = 1): TH
   }
   // the mode is in the key, so flipping WATER_FANCY compiles a different program; the tick sets
   // needsUpdate on every water material when it changes
-  mat.customProgramCacheKey = () => `corridor-water-${look.colour}-${T.WATER_FANCY >= 0.5 ? 'gerstner' : 'noise'}`
+  mat.customProgramCacheKey = () => `piedmont-water-${look.colour}-${T.WATER_FANCY >= 0.5 ? 'gerstner' : 'noise'}`
   noteShiny(mat)
   // The reflection path is part of the switch. The Gerstner water takes the real planar reflection
   // (visuals/waterReflect.ts): one mirrored scene render, which is exactly the cost WATER_FANCY 0
@@ -220,7 +220,7 @@ function foamMaterial(uniforms: { uTime: { value: number } }): THREE.MeshBasicMa
         `,
       )
   }
-  mat.customProgramCacheKey = () => 'corridor-foam'
+  mat.customProgramCacheKey = () => 'piedmont-foam'
   return mat
 }
 

@@ -1,5 +1,5 @@
 // A look at a crop field, from the road beside it.
-//   PORT=5201 SLUG=bacon-ridge-rd SEASONS=1,2 node probes/corridor-cropshot.mjs out-
+//   PORT=5201 SLUG=bacon-ridge-rd SEASONS=1,2 node probes/cropshot.mjs out-
 import { chromium } from 'playwright'
 const PORT = process.env.PORT ?? '5201'
 const SLUG = process.env.SLUG ?? 'bacon-ridge-rd'
@@ -10,10 +10,10 @@ const page = await browser.newPage({ viewport: { width: 1200, height: 760 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 300000 })
 await page.keyboard.press('m')
 console.log(await page.evaluate(() => {
-  const c = window.corridor, site = c.site, L = site.layers
+  const c = window.piedmont, site = c.site, L = site.layers
   // the swiftshader cliff: grass and near trees both have to come down or no frame arrives
   if (L.trees) L.trees.visible = false
   if (site.grass) { c.tune.set('GRASS_RADIUS', 26); c.tune.set('GRASS_SPRITE_RADIUS', 90); c.tune.set('GRASS_MOWN_PER_M2', 25); c.tune.set('GRASS_ROUGH_PER_M2', 16) }
@@ -49,7 +49,7 @@ console.log(await page.evaluate(() => {
   return JSON.stringify({ field_area_ha: +(bestA / 1e4).toFixed(1), distance_to_field_m: +Math.sqrt(bd).toFixed(0), rows: site.cropRows })
 }))
 for (const s of SEASONS) {
-  await page.evaluate((s) => window.corridor.tune.set('SEASON', s), s)
+  await page.evaluate((s) => window.piedmont.tune.set('SEASON', s), s)
   await page.waitForTimeout(1500)
   const name = `${OUT}${['winter', 'spring', 'summer', 'autumn'][s]}.png`
   await page.screenshot({ path: name, timeout: 300000 })

@@ -4,7 +4,7 @@
 // arrowhead farms world where I live." This measures both halves of that: the trees actually
 // planted per km2 near a point, and the canopy the site's own CHM says is there — so the answer
 // is a ratio, not an impression.
-//   PORT=5185 node probes/corridor-treedensity.mjs <slug> [radius_m]
+//   PORT=5185 node probes/treedensity.mjs <slug> [radius_m]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const R = Number(process.argv[3] ?? 300)
@@ -14,15 +14,15 @@ const page = await browser.newPage({ viewport: { width: 700, height: 450 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await page.waitForTimeout(4000)
 const out = await page.evaluate((R) => {
-  const site = window.corridor.site, m = site.manifest
+  const site = window.piedmont.site, m = site.manifest
   // the measuring point: the middle of the spine. The trees are planted around the EYE, so put
   // the eye there first — exactly what driving does — and let the replant happen.
   const sp = m.spine.coords, mid = sp[Math.floor(sp.length / 2)]
   const [px, py] = [mid[0], mid[1]]
-  const THREE = window.corridor.THREE
+  const THREE = window.piedmont.THREE
   const eye = new THREE.Vector3(px, (site.groundAt(px, -py) ?? 0) + 2, -py)
   site.updateNear(eye, 0, new THREE.Vector3(1, 0, 0), 0)
   // trees planted within R

@@ -5,4 +5,5 @@
 enabled: true
 
 image:
-  tag: sha-a819756
+  # `latest` until piedmont's first image build lands; then `just deploy-bump gh200-1` pins a sha-.
+  tag: latest

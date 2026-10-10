@@ -106,18 +106,18 @@ test('objects: put with the content type, get back the same bytes, delete, and a
   const f = await fake()
   try {
     const cf = new Cloudflare('t', { base: f.base, objectsVia: 'rest' })
-    const key = 'corridor/alpha-1/assetsvc/catalog/my car/file/mesh.finished.glb'
+    const key = 'piedmont/alpha-1/assetsvc/catalog/my car/file/mesh.finished.glb'
     const n = await cf.putObject('acc1', 'games', key, Buffer.from('glb-bytes'), 'model/gltf-binary')
     assert.equal(n, 9)
     const put = f.reqs.at(-1)
-    assert.equal(put.url, '/accounts/acc1/r2/buckets/games/objects/corridor/alpha-1/assetsvc/catalog/my%20car/file/mesh.finished.glb')
+    assert.equal(put.url, '/accounts/acc1/r2/buckets/games/objects/piedmont/alpha-1/assetsvc/catalog/my%20car/file/mesh.finished.glb')
     assert.equal(put.headers['content-type'], 'model/gltf-binary')
     assert.equal(put.headers['content-length'], '9')
     assert.equal((await cf.getObject('acc1', 'games', key)).toString(), 'glb-bytes')
     assert.equal(await cf.getObject('acc1', 'games', 'nope'), null)
-    await cf.putObject('acc1', 'games', 'corridor/deployments.json', JSON.stringify({ a: 1 }), 'application/json')
-    assert.deepEqual(await cf.getJson('acc1', 'games', 'corridor/deployments.json'), { a: 1 })
-    assert.deepEqual((await cf.listObjects('acc1', 'games', 'corridor/alpha-1/')).map((o) => o.key), [key])
+    await cf.putObject('acc1', 'games', 'piedmont/deployments.json', JSON.stringify({ a: 1 }), 'application/json')
+    assert.deepEqual(await cf.getJson('acc1', 'games', 'piedmont/deployments.json'), { a: 1 })
+    assert.deepEqual((await cf.listObjects('acc1', 'games', 'piedmont/alpha-1/')).map((o) => o.key), [key])
     assert.equal(await cf.deleteObject('acc1', 'games', key), true)
     assert.equal(await cf.deleteObject('acc1', 'games', key), false)
   } finally {
@@ -270,14 +270,14 @@ test('a large object goes to R2 as a signed multipart upload, part by part, and 
     const data = Buffer.alloc(size)
     for (let i = 0; i < size; i++) data[i] = (i * 7) & 255
     const reads = []
-    const key = 'corridor/dc-1/sites/dc/osm.geojson'
+    const key = 'piedmont/dc-1/sites/dc/osm.geojson'
     const n = await cf.putObjectLarge('acc1', 'games', key, { size, read: async (off, len) => { reads.push([off, len]); return data.subarray(off, off + len) } }, 'application/geo+json', { partBytes: 2 * 1024 * 1024 })
     assert.equal(n, size)
     assert.deepEqual(reads, [[0, 2097152], [2097152, 2097152], [4194304, 1048699]], 'read a part at a time, never the whole file')
     assert.ok(s3.objects.get(key).body.equals(data), 'the parts reassemble to the original bytes')
     assert.equal(s3.objects.get(key).type, 'application/geo+json')
     assert.equal(s3.reqs.length, 5) // initiate, three parts, complete
-    assert.equal(s3.reqs[0].url, '/games/corridor/dc-1/sites/dc/osm.geojson?uploads=')
+    assert.equal(s3.reqs[0].url, '/games/piedmont/dc-1/sites/dc/osm.geojson?uploads=')
     assert.ok(s3.reqs.every((r) => r.headers.authorization.includes('Credential=t/')), 'the token id is the access key')
     assert.ok(s3.reqs.every((r) => !JSON.stringify(r.headers).includes('user-token')), 'the token itself is never sent to S3')
     assert.equal(s3.uploads.size, 0)
@@ -325,10 +325,10 @@ test('small objects go up through S3 by default, not the rate-limited REST API, 
   const s3 = await fakeS3({ token: 'user-token', tokenId: 't' })
   try {
     const cf = new Cloudflare('user-token', { base: f.base, s3: () => s3.base })
-    assert.equal(await cf.putObject('acc1', 'games', 'corridor/a/sites/x/web/tiles/0/0_0.pack', Buffer.from('tile'), 'application/octet-stream'), 4)
-    assert.equal(s3.objects.get('corridor/a/sites/x/web/tiles/0/0_0.pack').body.toString(), 'tile')
+    assert.equal(await cf.putObject('acc1', 'games', 'piedmont/a/sites/x/web/tiles/0/0_0.pack', Buffer.from('tile'), 'application/octet-stream'), 4)
+    assert.equal(s3.objects.get('piedmont/a/sites/x/web/tiles/0/0_0.pack').body.toString(), 'tile')
     assert.equal(f.reqs.filter((r) => r.url.includes('/r2/buckets/')).length, 0, 'not one object call went to the REST API')
-    assert.equal(await cf.deleteObject('acc1', 'games', 'corridor/a/sites/x/web/tiles/0/0_0.pack'), true)
+    assert.equal(await cf.deleteObject('acc1', 'games', 'piedmont/a/sites/x/web/tiles/0/0_0.pack'), true)
     assert.equal(s3.objects.size, 0)
   } finally {
     f.close()

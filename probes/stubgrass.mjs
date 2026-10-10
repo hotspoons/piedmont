@@ -1,5 +1,5 @@
 // Is a stub actually pavement all the way along, or does grass grow through the gaps?
-// node probes/corridor-stubgrass.mjs <slug>
+// node probes/stubgrass.mjs <slug>
 import { chromium } from 'playwright'
 const [,, slug] = process.argv
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
@@ -7,10 +7,10 @@ const page = await browser.newPage({ viewport: { width: 640, height: 400 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 120)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:5185/#${slug}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((s) => window.corridor?.site?.manifest?.slug === s, slug, { timeout: 240000 })
+await page.waitForFunction((s) => window.piedmont?.site?.manifest?.slug === s, slug, { timeout: 240000 })
 await page.waitForTimeout(1500)
 console.log(await page.evaluate(() => {
-  const s = window.corridor.site, m = s.manifest
+  const s = window.piedmont.site, m = s.manifest
   const walk = (list, label) => {
     let pts = 0, off = 0, worst = -99
     for (const r of list ?? []) {

@@ -2,7 +2,7 @@
 // heading, what does every layer say the ground is? edgeDistance (d, who), the ground formula,
 // the DEM, and raycasts down onto the road meshes, the strips and the terrain. Where terrain is
 // above the road, or grass sits on pavement, the numbers say which layer is wrong.
-//   PORT=5185 node probes/corridor-crosssection.mjs '<stance param>' <slug> [aheadList] [offsetList]
+//   PORT=5185 node probes/crosssection.mjs '<stance param>' <slug> [aheadList] [offsetList]
 import { chromium } from 'playwright'
 const [, , stance, slug, aheadArg = '0,10,20,35,50', offArg = '-12,-8,-5,-3,-1,0,1,3,5,8,12'] = process.argv
 const PORT = process.env.PORT ?? '5185'
@@ -11,11 +11,11 @@ const page = await browser.newPage({ viewport: { width: 800, height: 500 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1&stance=${stance}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
-await page.waitForFunction(() => { const g = window.corridor?.site?.graded?.(); return !g || (g.pendingNear === 0 && g.built > 0) }, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => { const g = window.piedmont?.site?.graded?.(); return !g || (g.pendingNear === 0 && g.built > 0) }, null, { timeout: 600000 })
 await page.waitForTimeout(6000)
 const rows = await page.evaluate(({ aheads, offs, stance }) => {
-  const site = window.corridor.site, THREE = window.corridor.THREE ?? window.THREE
+  const site = window.piedmont.site, THREE = window.piedmont.THREE ?? window.THREE
   const st = JSON.parse(atob(decodeURIComponent(stance)))
   const p = st.car?.p ?? st.cam?.p, yaw = st.car?.yaw ?? 0
   const fx = Math.cos(yaw), fz = Math.sin(yaw), rx = -fz, rz = fx

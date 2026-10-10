@@ -7,7 +7,7 @@
 //   point: an agent can load an asset, look at it, decide, and act on what it saw. Starting a
 //   fresh `blender --background script.py` per step throws the scene away every time.
 //
-//   THE RIGGERS are batch: `tools/rigging/rig_vehicle.py` and the character rigger each take a
+//   THE RIGGERS are batch: `pipelines/rigging/rig_vehicle.py` and the character rigger each take a
 //   file and produce a file. They run in their own Blender because they are deterministic and
 //   because a rig that half-finished inside the shared session would poison everything after it.
 //
@@ -15,7 +15,7 @@
 // fire, so the addon's interactive poll loop does nothing at all; there is a separate blocking
 // loop reached only through that CLI command. Start Blender in the background with the addon
 // enabled and expect a bridge and you get a running process with nothing listening — no error
-// anywhere. See `tools/rigging/bridge.py`, which speaks the same protocol.
+// anywhere. See `pipelines/rigging/bridge.py`, which speaks the same protocol.
 
 import { spawn } from 'node:child_process'
 import { createConnection } from 'node:net'
@@ -235,7 +235,7 @@ result = {"format": ${JSON.stringify(fmt)}, "bytes": os.path.getsize(F) if os.pa
  * The live session is for looking and deciding; these are for producing a file.
  */
 
-const REPO = process.env.WORLDEDITOR_REPO ?? path.resolve(process.cwd())
+const REPO = process.env.PIEDMONT_EDITOR_REPO ?? path.resolve(process.cwd())
 
 function run(args, { timeoutMs = 1_800_000 } = {}) {
   return new Promise((resolve, reject) => {
@@ -287,7 +287,7 @@ export async function rigVehicle(root, { src, out, length, outboard } = {}) {
   const dir = outDir(root)
   await mkdir(dir, { recursive: true })
   const dst = out ? path.join(dir, stamped(out, '.glb')) : path.join(dir, stamped(path.basename(src, '.glb') + '-rigged', '.glb'))
-  const args = ['--background', '--factory-startup', '--python', path.join(REPO, 'tools/rigging/rig_vehicle.py'),
+  const args = ['--background', '--factory-startup', '--python', path.join(REPO, 'pipelines/rigging/rig_vehicle.py'),
     '--', '--in', src, '--out', dst]
   if (length) args.push('--length', String(length))
   if (outboard) args.push('--outboard', String(outboard))
@@ -301,7 +301,7 @@ export async function rigCharacter(root, { src, out, height, noFace } = {}) {
   const dir = outDir(root)
   await mkdir(dir, { recursive: true })
   const dst = out ? path.join(dir, stamped(out, '.glb')) : path.join(dir, stamped(path.basename(src, '.glb') + '-rigged', '.glb'))
-  const args = ['--background', '--factory-startup', '--python', path.join(REPO, 'tools/sf2-probe/rigging/rig_character.py'),
+  const args = ['--background', '--factory-startup', '--python', path.join(REPO, 'pipelines/rigging/rig_character.py'),
     '--', '--in', src, '--out', dst, '--blrig', BLRIG]
   if (height) args.push('--height', String(height))
   if (noFace) args.push('--no-face')

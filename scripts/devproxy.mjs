@@ -18,7 +18,7 @@ const HOST = arg('host', '127.0.0.1')
 
 const waitPage = (path) => `<!doctype html><meta charset=utf-8><meta http-equiv=refresh content=3>
 <title>dev server restarting</title><body style="background:#0d0f12;color:#9aa0a6;font:15px system-ui;display:grid;place-items:center;height:100vh;margin:0">
-<div style="text-align:center"><div style="color:#ffdc00;letter-spacing:.1em">corridor</div><p>dev server on :${TARGET} is not answering — retrying every 3 s</p><p style="color:#555">${path}</p></div>`
+<div style="text-align:center"><div style="color:#ffdc00;letter-spacing:.1em">piedmont</div><p>dev server on :${TARGET} is not answering — retrying every 3 s</p><p style="color:#555">${path}</p></div>`
 
 const server = http.createServer((req, res) => {
   const up = http.request({ host: HOST, port: TARGET, method: req.method, path: req.url, headers: { ...req.headers, host: `${HOST}:${TARGET}` } }, (r) => {

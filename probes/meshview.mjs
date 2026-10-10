@@ -11,7 +11,7 @@
 // middle BEFORE it tries to drag: "the drag did nothing" and "nothing reached the canvas" are
 // different bugs and look identical from outside.
 //
-//   node probes/corridor-meshview.mjs
+//   node probes/meshview.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

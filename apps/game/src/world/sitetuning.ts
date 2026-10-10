@@ -1,6 +1,6 @@
-// Per-site knob overrides: tools/corridor/data/sites/<slug>/tuning.json.
+// Per-site knob overrides: data/sites/<slug>/tuning.json.
 //
-// A corridor is not one look. Sideling Hill is closed forest on a mountain grade; Bowie is a
+// A road band is not one look. Sideling Hill is closed forest on a mountain grade; Bowie is a
 // suburban arterial; Ecola is a coast. The same GRASS_RADIUS or TREE_NEAR_RADIUS cannot be right
 // for all of them, and the alternative to per-site numbers is one compromise that is wrong
 // everywhere.
@@ -109,7 +109,7 @@ export async function applySiteTuning(slug: string, tune: TuneAccess): Promise<{
  * what it was before the file was applied.
  *
  * "Where does it live and how do I clear it" (Rich, 2026-09-26) is a fair question about a file
- * nothing in the UI could remove. It lives at `tools/corridor/data/sites/<slug>/tuning.json` in
+ * nothing in the UI could remove. It lives at `data/sites/<slug>/tuning.json` in
  * dev (the world-editor volume in the cluster), it holds only the knobs that differ from the code
  * defaults, and `look` — the world's style, season and relief, written by the world editor — is
  * kept, because that belongs to the world and not to the tuning.

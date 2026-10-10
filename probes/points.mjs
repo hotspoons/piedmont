@@ -5,7 +5,7 @@
 // walking or flying". The editor's Points tab writes points.json; the viewer starts there.
 import { chromium } from 'playwright'
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
-const FILE = 'tools/corridor/data/sites/crofton-triangle/points.json'
+const FILE = 'data/sites/crofton-triangle/points.json'
 const before = existsSync(FILE) ? readFileSync(FILE, 'utf8') : null
 const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
 const stub = (p) => p.route('**/@vite/client', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: 'export const createHotContext = () => ({ accept(){}, acceptExports(){}, dispose(){}, prune(){}, invalidate(){}, on(){}, off(){}, send(){}, data:{} }); export const updateStyle = () => {}; export const removeStyle = () => {}; export const injectQuery = (u) => u; export const ErrorOverlay = class {}; export default {}' }))
@@ -17,9 +17,9 @@ try {
   e.on('pageerror', (x) => console.log('PAGEERROR', x.message.slice(0, 200)))
   await stub(e)
   await e.goto('http://127.0.0.1:5185/editor.html#crofton-triangle:points', { waitUntil: 'domcontentloaded', timeout: 120000 })
-  await e.waitForFunction(() => !!window.corridor?.site && !!window.corridor?.points, null, { timeout: 240000 })
+  await e.waitForFunction(() => !!window.piedmont?.site && !!window.piedmont?.points, null, { timeout: 240000 })
   const ed = await e.evaluate(async () => {
-    const c = window.corridor
+    const c = window.piedmont
     c.setMode('points')
     const tabs = [...document.querySelectorAll('.inspector-body .tab')].map((t) => t.textContent.trim())
     // a spot on the primary road: 300 m along the spine, in the site frame (x east, y north)
@@ -52,7 +52,7 @@ try {
   await v.waitForTimeout(1500)
   const vw = await v.evaluate(async () => {
     const ap = window.__apex
-    try { localStorage.removeItem('apex-corridor-resume') } catch {}
+    try { localStorage.removeItem('piedmont-resume') } catch {}
     // a world with a home opens DRIVING at it; Tab would toggle that off. Only press it when not.
     const openedDriving = !!ap.drive?.on
     if (!openedDriving) document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Tab', key: 'Tab', bubbles: true }))

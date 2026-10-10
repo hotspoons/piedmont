@@ -1,14 +1,14 @@
 """The far terrain: what fills the horizon when you look up from the road.
 
-A corridor is a few hundred metres wide; the thing Rich wants to feel is a piedmont ridge across
+A road band is a few hundred metres wide; the thing Rich wants to feel is a piedmont ridge across
 the whole windscreen, or Catoctin and South Mountain rising out of the ground ahead. That needs
 elevation for tens of kilometres around the site, at a resolution the eye cannot fault from 20 km
 away. USGS's seamless 3DEP service renders any bbox on request; 30 m pixels over a 60 km square
 is a 2000² float raster, one call, a few MB.
 
-This is the LOD-far layer. The 1 m corridor DEM is LOD-near. The game blends the two: the
-corridor's own terrain out to a few hundred metres, then this, then a skybox. Sourced from the
-same vertical datum as the corridor DEM (NAVD88 metres) so the seam is a resampling problem, not a
+This is the LOD-far layer. The 1 m road band DEM is LOD-near. The game blends the two: the
+road band's own terrain out to a few hundred metres, then this, then a skybox. Sourced from the
+same vertical datum as the road band DEM (NAVD88 metres) so the seam is a resampling problem, not a
 datum problem.
 
 Ported from trailworks `_fetch_10m` (which uses the same service at 10 m for tiles).
@@ -25,7 +25,7 @@ from . import rastercache
 SERVICE = "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage"
 RES = 30.0
 session = requests.Session()
-session.headers["User-Agent"] = "apex-conduit corridor (github.com/hotspoons)"
+session.headers["User-Agent"] = "piedmont (github.com/hotspoons)"
 
 
 def _get_with_retry(url: str, params: dict, timeout: int, tries: int = 9):
@@ -82,7 +82,7 @@ def fetch_horizon_naip(frame: Frame, out: Path, radius_m: float, res: float = 60
     """Colour for the far terrain: NAIP resampled to 60 m over the same square. Without it the
     horizon is a hypsometric ramp, which reads as beige from the road; with it the ridges are the
     forest-green and field-tan they actually are. From the Planetary Computer or the ImageServer —
-    `naip.fetch_horizon_image` chooses, as every NAIP read does (CORRIDOR_NAIP_SOURCE)."""
+    `naip.fetch_horizon_image` chooses, as every NAIP read does (PIEDMONT_NAIP_SOURCE)."""
     from . import naip
 
     if out.exists():

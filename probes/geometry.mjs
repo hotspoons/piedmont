@@ -1,6 +1,6 @@
 // Road geometry: what speed does the baked spine actually support, and does it have kinks?
 //
-//   node probes/corridor-geometry.mjs [site]
+//   node probes/geometry.mjs [site]
 //
 // Horizontal curvature κ = dθ/ds from the spine tangent, smoothed over a car length. A car holding
 // the line needs lateral acceleration v²κ; with CAR_GRIP_LATERAL m/s² available the road's own speed
@@ -10,16 +10,16 @@
 // number and not an impression.
 import { chromium } from 'playwright'
 const site = process.argv[2] ?? 'bowie-racetrack-rd'
-const PORT = process.env.CORRIDOR_PORT ?? '5202'
+const PORT = process.env.PIEDMONT_PORT ?? '5202'
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 900, height: 600 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite`, { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 240000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 240000 })
 
 console.log(JSON.stringify(await page.evaluate(() => {
-  const { site } = window.corridor
+  const { site } = window.piedmont
   const L = site.manifest.spine.length_m
   const STEP = 2
   const n = Math.floor(L / STEP)

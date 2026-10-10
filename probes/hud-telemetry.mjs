@@ -5,7 +5,7 @@
 //
 // Two things can be quietly wrong here and both would look plausible on screen:
 //
-//   1. The DATUM. World Y is only "height above sea level" because the corridor DEM is NAVD88
+//   1. The DATUM. World Y is only "height above sea level" because the road-band DEM is NAVD88
 //      metres and the bake anchors the frame at h = 0. If that ever stops being true the readout
 //      becomes a confident lie, so this asserts the number against `groundAt` AND against the
 //      site's own geodetic lattice rather than against a remembered convention.
@@ -14,7 +14,7 @@
 //      east: it reads that off the manifest's control lattice, which the bake wrote, and only
 //      then checks the heading.
 //
-//   PORT=5185 node probes/corridor-hud-telemetry.mjs [slug]
+//   PORT=5185 node probes/hud-telemetry.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -23,7 +23,7 @@ const page = await browser.newPage({ viewport: { width: 900, height: 600 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await page.waitForTimeout(3000)
 
 // WHICH WAY IS NORTH, derived rather than assumed, in two links:
@@ -33,7 +33,7 @@ await page.waitForTimeout(3000)
 //      how plan maps to world.
 // Compose them and you have the world's north with no convention taken on faith.
 const frame = await page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   const a = c.site.manifest.frame?.anchor
   if (!a || !c.project) return { error: 'no frame anchor, or no projector exposed' }
   const p0 = c.project(a.lon, a.lat)
@@ -62,7 +62,7 @@ await page.keyboard.up('ArrowUp')
 await page.waitForTimeout(500)
 
 const out = await page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   const car = c.car
   if (!car) return { error: 'not driving — no car' }
   const el = document.querySelector('#pos, .pos, [data-pos], #hud-pos, .hud-pos')

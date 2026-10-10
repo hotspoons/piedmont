@@ -10,7 +10,7 @@ import { chromium } from 'playwright'
 import { existsSync, readFileSync, unlinkSync } from 'node:fs'
 
 const SLUG = process.env.SLUG ?? 'bowie-racetrack-rd'
-const FILE = `/workspaces/apex-conduit/tools/corridor/data/sites/${SLUG}/courses.json`
+const FILE = `/workspaces/piedmont/data/sites/${SLUG}/courses.json`
 if (existsSync(FILE)) unlinkSync(FILE)
 
 const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
@@ -20,16 +20,16 @@ let bad = 0
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++ }
 
 await p.goto(`http://127.0.0.1:5185/editor.html#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 240000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 240000 })
 await p.waitForTimeout(7000)
 await p.keyboard.press('7')
 await p.waitForTimeout(1200)
-check(await p.evaluate(() => !!window.corridor.races), 'the races mode is mounted')
+check(await p.evaluate(() => !!window.piedmont.races), 'the races mode is mounted')
 
 const built = await p.evaluate(async () => {
   const { crossing, FORWARD, gateForward, gateWidth, Run, validateCourse } = await import('/src/races.ts')
-  const r = window.corridor.races
-  const site = window.corridor.site
+  const r = window.piedmont.races
+  const site = window.piedmont.site
   const len = site.manifest.spine.length_m
   r.newCourse('stage')
 
@@ -82,7 +82,7 @@ check(built.events.includes('started'), 'driving it crosses the start line')
 check(built.finished, 'and the finish line')
 check(built.missed === 0, `taking every checkpoint on the way (${built.missed} missed)`)
 
-const saved = await p.evaluate(() => window.corridor.races.save().then(() => 'ok', (e) => 'ERROR ' + e.message))
+const saved = await p.evaluate(() => window.piedmont.races.save().then(() => 'ok', (e) => 'ERROR ' + e.message))
 check(saved === 'ok', `it saved (${saved})`)
 check(existsSync(FILE), 'courses.json is on disk')
 if (existsSync(FILE)) {

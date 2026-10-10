@@ -17,11 +17,11 @@
 //   a sibling's path  ui/codeeditor.ts provides these: TS cannot, having no directory to list
 //   its exports       every file on the volume is in the compilation, not just the open ones
 //
-//   node probes/corridor-completions.mjs
+//   node probes/completions.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'
-const API = process.env.WORLDEDITOR ?? 'http://localhost:8780'
+const API = process.env.PIEDMONT_EDITOR ?? 'http://localhost:8780'
 const LIB = 'zzprobe/helpers.ts'
 const MAIN = 'zzprobe-main.ts'
 

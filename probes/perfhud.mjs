@@ -83,7 +83,7 @@ console.log('settings:', JSON.stringify(toggled))
 check(toggled.foundRow, 'Settings → Display offers the stats panel')
 check(toggled.clicked && !(await shown()).hidden, 'and the switch really shows it')
 // and it is remembered, which is what the key and the switch both write
-check(await p.evaluate(() => localStorage.getItem('corridor.perf') === '1'), 'and it is remembered for next time')
+check(await p.evaluate(() => localStorage.getItem('piedmont.perf') === '1'), 'and it is remembered for next time')
 
 console.log(bad ? `FAILED (${bad})` : 'OK')
 await b.close()

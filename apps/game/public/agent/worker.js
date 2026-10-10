@@ -3,7 +3,7 @@
 // same files.
 //
 // PORTED FROM ZIP-TIES, where Rich built it first (zip-ties-ui/static/js/lib/computer/worker.js)
-// and told us to copy it rather than invent a second one. What changed for corridor is the two
+// and told us to copy it rather than invent a second one. What changed for the game is the two
 // vendor paths and what /workspace holds: there it is a conversation's attachments, here it is the
 // editor's own documents — the worlds, the levels, the programs, the presets — projected in by
 // src/agent/projection.ts and written back through the editor's API.

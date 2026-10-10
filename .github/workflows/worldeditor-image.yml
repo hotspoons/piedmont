@@ -1,10 +1,11 @@
-# Build and publish the worldeditor image, both architectures, from one runner.
+# Build and publish the worldeditor image, both architectures, each on its own native runner.
 #
-# THE CONTEXT IS THE REPOSITORY ROOT. The Dockerfile builds `apps/corridor` — which needs
-# packages/engine, the workspace lockfile and every workspace manifest — and then copies the
-# service beside the built pages, so a context of tools/worldeditor can see none of it.
+# THE CONTEXT IS THE REPOSITORY ROOT. The Dockerfile builds `apps/game` — which needs the arcade
+# packages at the ref arcade.json pins (fetched by the Dockerfile's own `arcade` stage), the
+# workspace lockfile and every workspace manifest — and then copies the service beside the built
+# pages, so a context of services/worldeditor can see none of it.
 #
-# A change to apps/corridor changes this image, because the image CONTAINS the app. That is the
+# A change to apps/game changes this image, because the image CONTAINS the app. That is the
 # trade for the browser knowing one origin, and it is written down here so nobody is surprised
 # when an editor change rebuilds a backend.
 name: Worldeditor image
@@ -13,27 +14,22 @@ on:
   push:
     branches: [main]
     paths:
-      - 'tools/worldeditor/**'
-      - '!tools/worldeditor/README.md'
-      - '!tools/worldeditor/chart/**'
-      - 'apps/corridor/**'
-      - 'packages/engine/**'
-      # corridor imports @apex/stunt-pieces too; any workspace package it uses is in the image
-      - 'packages/stunt-pieces/**'
-      # The Dockerfile COPIES this in (apps/corridor imports @apex/enginesim for the engine
-      # audio), so a change here changes the image. Left out, an enginesim-only commit publishes
-      # nothing and the deployed editor quietly keeps the old copy — which is the worst shape a
-      # staleness bug can take, because every run is green.
-      - 'packages/enginesim/**'
+      - 'services/worldeditor/**'
+      - '!services/worldeditor/README.md'
+      - 'apps/game/**'
+      # the engine packages come from the arcade at the pinned ref: moving the pin changes the image
+      - 'arcade.json'
+      - 'scripts/setup.mjs'
+      - 'package.json'
       - 'package-lock.json'
+      - 'pipelines/assetlib/specs/**'
+      # the image CONTAINS the rigging pipeline, so a change to it changes the image
+      - 'pipelines/rigging/**'
       - '.github/workflows/worldeditor-image.yml'
-      # the image now CONTAINS the rigging pipeline, so a change to it changes the image
-      - 'tools/rigging/**'
-      - 'tools/sf2-probe/rigging/**'
   workflow_dispatch:
 
 env:
-  IMAGE: ghcr.io/hotspoons/worldeditor
+  IMAGE: ghcr.io/hotspoons/piedmont-worldeditor
 
 concurrency:
   group: worldeditor-image-${{ github.ref }}
@@ -75,7 +71,7 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: tools/worldeditor/Dockerfile
+          file: services/worldeditor/Dockerfile
           platforms: ${{ matrix.platform }}
           load: true
           tags: worldeditor:smoke
@@ -104,7 +100,7 @@ jobs:
           curl -sf localhost:8780/api/worlds \
             | node -e 'const b=JSON.parse(require("fs").readFileSync(0,"utf8")); if (b.worlds?.length !== 0) { console.error("a fresh image came up with", b.worlds?.length, "worlds"); process.exit(1) } console.log("fresh image: 0 worlds")'
           curl -sf -X POST -H 'content-type: application/json' \
-            -d '{"kind":"corridor-worlds","worlds":[{"slug":"smoke-world","lat":39.02,"lon":-76.68,"radius_m":900}],"levels":[{"id":"smoke-level","world":"smoke-world","mode":"drive"}]}' \
+            -d '{"kind":"piedmont-worlds","worlds":[{"slug":"smoke-world","lat":39.02,"lon":-76.68,"radius_m":900}],"levels":[{"id":"smoke-level","world":"smoke-world","mode":"drive"}]}' \
             localhost:8780/api/worlds/import \
             | node -e 'const b=JSON.parse(require("fs").readFileSync(0,"utf8")); if (!b.imported?.includes("smoke-world")) { console.error("import did not take:", JSON.stringify(b)); process.exit(1) } console.log("imported a world")'
           docker rm -f worldeditor
@@ -113,7 +109,7 @@ jobs:
       # it lands back on the environment — the order the whole feature is built on.
       - name: smoke — settings, env and UI
         run: |
-          docker run -d --name we-settings -p 8782:8780 -e WORLDEDITOR_ASSETSVC=http://from-env worldeditor:smoke
+          docker run -d --name we-settings -p 8782:8780 -e PIEDMONT_EDITOR_ASSETSVC=http://from-env worldeditor:smoke
           for i in $(seq 1 30); do curl -sf localhost:8782/api/health >/dev/null && break || sleep 1; done
           get() { curl -sf localhost:8782/api/settings | node -e 'const k=process.argv[1]; const r=JSON.parse(require("fs").readFileSync(0,"utf8")).settings.find(s=>s.key===k); console.log(r.value+" "+r.source)' "$1"; }
           [ "$(get assetsvc.url)" = "http://from-env env" ] || { echo "env not read: $(get assetsvc.url)"; exit 1; }
@@ -145,7 +141,7 @@ jobs:
           assert n > 1000, "a render that small is not a picture"
           ' 2>&1 | tee /tmp/render.log | tail -3
           grep -q RENDERED /tmp/render.log || { echo "Workbench did not render — is Mesa EGL in the image?"; exit 1; }
-          docker run -d --name we-blender -p 8783:8780 -e WORLDEDITOR_BLENDER_AUTOSTART=true worldeditor:smoke
+          docker run -d --name we-blender -p 8783:8780 -e PIEDMONT_EDITOR_BLENDER_AUTOSTART=true worldeditor:smoke
           for i in $(seq 1 90); do
             up=$(curl -sf localhost:8783/api/blender/status | node -e 'try{console.log(JSON.parse(require("fs").readFileSync(0,"utf8")).up)}catch{console.log(false)}')
             [ "$up" = "true" ] && break || sleep 2
@@ -159,7 +155,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: tools/worldeditor/Dockerfile
+          file: services/worldeditor/Dockerfile
           platforms: ${{ matrix.platform }}
           build-args: |
             GIT_SHA=${{ github.sha }}

@@ -2,7 +2,7 @@
 # The road not taken so far, kept because it is the intended one. `pai-managed-ext-gateway`
 # (172.16.10.157) is the address every public platform hostname resolves to; `central-gateway` is a
 # ClusterIP, so an HTTPRoute there gets a DNS record nobody off-cluster can route to — the trap
-# tools/recon-service documented after falling into it. This stays off until someone works out how
+# services/recon documented after falling into it. This stays off until someone works out how
 # a non-platform hostname gets its certificate there. Exactly one of this and ingress may be on.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

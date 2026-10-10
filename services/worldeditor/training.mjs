@@ -80,7 +80,7 @@ export function normalise(run = {}) {
     world: run.world ?? null,
     nodes: Math.max(1, Number(run.nodes ?? 1)),
     gpusPerNode: Math.max(1, Number(run.gpusPerNode ?? 1)),
-    image: run.image ?? cfg('WORLDEDITOR_SPLAT_IMAGE') ?? 'ghcr.io/hotspoons/gaussworks:latest',
+    image: run.image ?? cfg('PIEDMONT_EDITOR_SPLAT_IMAGE') ?? 'ghcr.io/hotspoons/gaussworks:latest',
     /*
      * THE ENTRYPOINT, answered by the splats lane (gaussworks 5071e04):
      *
@@ -99,8 +99,8 @@ export function normalise(run = {}) {
      * property that makes this safe to hand to a scheduler. The leader works the queue too once
      * it has chunked, so a one-pod run is still the whole pipeline.
      */
-    command: run.command ?? (cfg('WORLDEDITOR_SPLAT_COMMAND') ? JSON.parse(cfg('WORLDEDITOR_SPLAT_COMMAND')) : ['splatpipe']),
-    args: run.args ?? (cfg('WORLDEDITOR_SPLAT_ARGS') ? JSON.parse(cfg('WORLDEDITOR_SPLAT_ARGS')) : null),
+    command: run.command ?? (cfg('PIEDMONT_EDITOR_SPLAT_COMMAND') ? JSON.parse(cfg('PIEDMONT_EDITOR_SPLAT_COMMAND')) : ['splatpipe']),
+    args: run.args ?? (cfg('PIEDMONT_EDITOR_SPLAT_ARGS') ? JSON.parse(cfg('PIEDMONT_EDITOR_SPLAT_ARGS')) : null),
     /** extra workers beside the leader. 0 is a complete run on one pod. */
     workers: Math.max(0, Number(run.workers ?? 0)),
     /*
@@ -109,7 +109,7 @@ export function normalise(run = {}) {
      * point the cameras see (gaussworks SCALING-JOURNAL entry 5). The order, the prior and the
      * cut rules are all config keys, so a new lesson lands here as a config change.
      */
-    config: run.config ?? cfg('WORLDEDITOR_SPLAT_CONFIG') ?? null,
+    config: run.config ?? cfg('PIEDMONT_EDITOR_SPLAT_CONFIG') ?? null,
     /*
      * THE COMMIT THIS RUN EXPECTS TO FIND ON THE VOLUME.
      *
@@ -121,7 +121,7 @@ export function normalise(run = {}) {
      *
      * Recorded on the object too, so a result can be traced to the code that produced it.
      */
-    codeSha: run.codeSha ?? cfg('WORLDEDITOR_SPLAT_CODE_SHA') ?? null,
+    codeSha: run.codeSha ?? cfg('PIEDMONT_EDITOR_SPLAT_CODE_SHA') ?? null,
     /*
      * THE SEAM THRESHOLD, in metres. Neighbouring chunks are levelled independently against their
      * own GPS priors, so they can disagree about the height of the same road — a step a driver
@@ -134,23 +134,23 @@ export function normalise(run = {}) {
      * the pipeline records it as advisory ("advisory": true in seam-gate.json) rather than
      * gating on it; a global world is judged by its residual against the GPS instead.
      */
-    seamFailOver: run.seamFailOver == null ? Number(cfg('WORLDEDITOR_SPLAT_SEAM_MAX') ?? 3.0) : Number(run.seamFailOver),
-    claim: run.claim ?? cfg('WORLDEDITOR_CLAIM') ?? 'worldeditor-data',
+    seamFailOver: run.seamFailOver == null ? Number(cfg('PIEDMONT_EDITOR_SPLAT_SEAM_MAX') ?? 3.0) : Number(run.seamFailOver),
+    claim: run.claim ?? cfg('PIEDMONT_EDITOR_CLAIM') ?? 'worldeditor-data',
     /*
      * NO DEFAULT STORAGE CLASS. `ceph-filesystem` was one cluster's name for it; on anybody
      * else's it does not exist and the PVC stays Pending forever with a message nobody reads.
      * Omitted, Kubernetes uses the cluster's own default StorageClass, which is the right answer
      * everywhere and is what a cluster admin has already decided.
      */
-    storageClass: run.storageClass ?? cfg('WORLDEDITOR_SPLAT_STORAGE_CLASS') ?? null,
-    outputSize: run.outputSize ?? cfg('WORLDEDITOR_SPLAT_OUTPUT_SIZE') ?? '500Gi',
+    storageClass: run.storageClass ?? cfg('PIEDMONT_EDITOR_SPLAT_STORAGE_CLASS') ?? null,
+    outputSize: run.outputSize ?? cfg('PIEDMONT_EDITOR_SPLAT_OUTPUT_SIZE') ?? '500Gi',
     /* null means "discover it" — see `gpuResources`. NVIDIA is the common case, not the only one. */
-    gpuResource: run.gpuResource ?? cfg('WORLDEDITOR_GPU_RESOURCE') ?? null,
+    gpuResource: run.gpuResource ?? cfg('PIEDMONT_EDITOR_GPU_RESOURCE') ?? null,
     // extra container limits (memory, cpu) as a plain map; the GPU count is `gpusPerNode`
     limits: run.limits ?? null,
     /** the RWX claim the pods share as /out; the CRD provisions its own, a bare JobSet does not */
     outClaim: run.outClaim ?? null,
-    ttlSeconds: Number(run.ttlSeconds ?? cfg('WORLDEDITOR_SPLAT_TTL') ?? 604800),
+    ttlSeconds: Number(run.ttlSeconds ?? cfg('PIEDMONT_EDITOR_SPLAT_TTL') ?? 604800),
   }
 }
 
@@ -215,6 +215,7 @@ function assertCodeInit(r) {
   return [{
     name: 'assert-code',
     image: r.image,
+    imagePullPolicy: 'Always',
     command: ['/workspace/gaussworks/scripts/assert-code.sh'],
     args: [r.codeSha],
     volumeMounts: [{ name: 'out', mountPath: '/out' }],
@@ -250,13 +251,13 @@ export function trainingDeployment(run, apiVersion = `${GROUP}/${FALLBACK_VERSIO
     kind: 'TrainingDeployment',
     metadata: {
       name: r.name,
-      labels: { 'app.kubernetes.io/managed-by': 'worldeditor', 'corridor.capture': r.capture, ...(r.world ? { 'corridor.world': r.world } : {}) },
+      labels: { 'app.kubernetes.io/managed-by': 'worldeditor', 'piedmont.capture': r.capture, ...(r.world ? { 'piedmont.world': r.world } : {}) },
       // What this run was asked to accept and which code it expects. Annotations rather than
       // labels: both can exceed what a label value may hold, and neither is selected on.
       annotations: {
-        'corridor.seam-fail-over': String(r.seamFailOver),
-        ...(r.codeSha ? { 'corridor.code-sha': r.codeSha } : {}),
-        ...(r.config ? { 'corridor.config': r.config } : {}),
+        'piedmont.seam-fail-over': String(r.seamFailOver),
+        ...(r.codeSha ? { 'piedmont.code-sha': r.codeSha } : {}),
+        ...(r.config ? { 'piedmont.config': r.config } : {}),
       },
     },
     spec: {
@@ -323,6 +324,7 @@ export function jobSet(run) {
   const container = (role) => ({
     name: 'gaussworks',
     image: r.image,
+    imagePullPolicy: 'Always',
     command: r.command,
     args: roleArgs(r, role),
     env: [...env(r), { name: 'PAI_PATH_0', value: '/out' }, { name: 'SPLAT_ROLE', value: role }],
@@ -369,13 +371,13 @@ export function jobSet(run) {
     kind: 'JobSet',
     metadata: {
       name: r.name,
-      labels: { 'app.kubernetes.io/managed-by': 'worldeditor', 'corridor.capture': r.capture, ...(r.world ? { 'corridor.world': r.world } : {}) },
+      labels: { 'app.kubernetes.io/managed-by': 'worldeditor', 'piedmont.capture': r.capture, ...(r.world ? { 'piedmont.world': r.world } : {}) },
       // What this run was asked to accept and which code it expects. Annotations rather than
       // labels: both can exceed what a label value may hold, and neither is selected on.
       annotations: {
-        'corridor.seam-fail-over': String(r.seamFailOver),
-        ...(r.codeSha ? { 'corridor.code-sha': r.codeSha } : {}),
-        ...(r.config ? { 'corridor.config': r.config } : {}),
+        'piedmont.seam-fail-over': String(r.seamFailOver),
+        ...(r.codeSha ? { 'piedmont.code-sha': r.codeSha } : {}),
+        ...(r.config ? { 'piedmont.config': r.config } : {}),
       },
     },
     spec: {
@@ -412,27 +414,27 @@ export function batchJobs(run) {
   const outClaim = r.outClaim ?? `${r.name}-out`
   const common = {
     'app.kubernetes.io/managed-by': 'worldeditor',
-    'corridor.capture': r.capture,
+    'piedmont.capture': r.capture,
     // what ties the pair together in the absence of an object that owns both
-    'corridor.run': r.name,
-    ...(r.world ? { 'corridor.world': r.world } : {}),
+    'piedmont.run': r.name,
+    ...(r.world ? { 'piedmont.world': r.world } : {}),
   }
   const fromReplicated = (rj) => ({
     apiVersion: 'batch/v1',
     kind: 'Job',
-    metadata: { name: `${r.name}-${rj.name}`, labels: { ...common, 'corridor.role': rj.name } },
+    metadata: { name: `${r.name}-${rj.name}`, labels: { ...common, 'piedmont.role': rj.name } },
     spec: {
       ...rj.template.spec,
       ttlSecondsAfterFinished: r.ttlSeconds,
       template: {
-        metadata: { labels: { ...common, 'corridor.role': rj.name } },
+        metadata: { labels: { ...common, 'piedmont.role': rj.name } },
         spec: rj.template.spec.template.spec,
       },
     },
   })
   return {
     // A LIST, because there is no single object. The caller creates each and treats the set as
-    // the run; `corridor.run` is how they are found again.
+    // the run; `piedmont.run` is how they are found again.
     kind: 'List',
     run: r.name,
     items: js.spec.replicatedJobs.map(fromReplicated),
@@ -641,13 +643,13 @@ function pathFor(via, apiVersion, namespace, name = '') {
   return name ? `${base}/${encodeURIComponent(name)}` : base
 }
 
-/** The batch tier's run is a pair of Jobs sharing `corridor.run`; roll them into one row. */
+/** The batch tier's run is a pair of Jobs sharing `piedmont.run`; roll them into one row. */
 function foldBatch(items) {
   const byRun = new Map()
   for (const j of items) {
-    const run = j.metadata?.labels?.['corridor.run']
+    const run = j.metadata?.labels?.['piedmont.run']
     if (!run) continue
-    const prev = byRun.get(run) ?? { name: run, jobs: [], failed: 0, active: 0, succeeded: 0, createdAt: j.metadata.creationTimestamp, capture: j.metadata?.labels?.['corridor.capture'] ?? null, world: j.metadata?.labels?.['corridor.world'] ?? null }
+    const prev = byRun.get(run) ?? { name: run, jobs: [], failed: 0, active: 0, succeeded: 0, createdAt: j.metadata.creationTimestamp, capture: j.metadata?.labels?.['piedmont.capture'] ?? null, world: j.metadata?.labels?.['piedmont.world'] ?? null }
     prev.jobs.push(j.metadata.name)
     prev.failed += j.status?.failed ?? 0
     prev.active += j.status?.active ?? 0
@@ -692,7 +694,7 @@ export function outputClaim(r) {
     kind: 'PersistentVolumeClaim',
     metadata: {
       name: r.outClaim ?? `${r.name}-out`,
-      labels: { 'corridor.run': r.name, 'corridor.role': 'splat-output', ...(r.world ? { 'corridor.world': r.world } : {}) },
+      labels: { 'piedmont.run': r.name, 'piedmont.role': 'splat-output', ...(r.world ? { 'piedmont.world': r.world } : {}) },
     },
     spec: {
       accessModes: ['ReadWriteMany'],
@@ -757,7 +759,7 @@ export async function runStatus(name, k8s, { namespace = 'default' } = {}) {
   if (!p.available) return { state: 'unknown', why: p.why }
   const gv = p.apiVersion ?? (await apiVersionFor(k8s))
   if (p.via === 'batch') {
-    const list = await k8s.raw('GET', `${pathFor(p.via, gv, namespace)}?labelSelector=${encodeURIComponent(`corridor.run=${name}`)}`).catch(() => ({ items: [] }))
+    const list = await k8s.raw('GET', `${pathFor(p.via, gv, namespace)}?labelSelector=${encodeURIComponent(`piedmont.run=${name}`)}`).catch(() => ({ items: [] }))
     const folded = foldBatch(list.items ?? [])
     return folded[0] ?? { state: 'gone', name }
   }
@@ -784,8 +786,8 @@ export async function listRuns(k8s, { namespace = 'default' } = {}) {
     .map((o) => ({
       name: o.metadata.name,
       createdAt: o.metadata.creationTimestamp,
-      capture: o.metadata?.labels?.['corridor.capture'] ?? null,
-      world: o.metadata?.labels?.['corridor.world'] ?? null,
+      capture: o.metadata?.labels?.['piedmont.capture'] ?? null,
+      world: o.metadata?.labels?.['piedmont.world'] ?? null,
       ...readStatus({ kind: p.kind, ...o }),
     }))
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
@@ -798,7 +800,7 @@ export async function deleteRun(name, k8s, { namespace = 'default' } = {}) {
   const gv = p.apiVersion ?? (await apiVersionFor(k8s))
   if (p.via === 'batch') {
     // a collection delete by label, since the pair has no owner to cascade from
-    await k8s.raw('DELETE', `${pathFor(p.via, gv, namespace)}?labelSelector=${encodeURIComponent(`corridor.run=${name}`)}&propagationPolicy=Background`)
+    await k8s.raw('DELETE', `${pathFor(p.via, gv, namespace)}?labelSelector=${encodeURIComponent(`piedmont.run=${name}`)}&propagationPolicy=Background`)
     return { deleted: name, via: 'batch' }
   }
   await k8s.raw('DELETE', `${pathFor(p.via, gv, namespace, name)}?propagationPolicy=Background`)

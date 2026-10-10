@@ -6,12 +6,12 @@ Arlington. The instance holds a Geofabrik MARYLAND extract. Asked for highways o
 answered HTTP 200 with 0 ways (overpass-na: 4,346), over downtown Washington 0 (6,418), and the
 bake shipped a world with 108,816 roads in Maryland and none across the river, reporting success.
 
-So the bake now reads what each instance holds (CORRIDOR_OVERPASS_COVERAGE, written by the world
+So the bake now reads what each instance holds (PIEDMONT_OVERPASS_COVERAGE, written by the world
 editor) and checks every query's area against it before sending it anywhere. These use the REAL
-polygons — Geofabrik's maryland and north-america, vendored in tools/worldeditor/geofabrik-seed.json
+polygons — Geofabrik's maryland and north-america, vendored in services/worldeditor/geofabrik-seed.json
 — and the REAL query the bake builds for dc-metro-take-2, through the real `Frame`.
 
-    tools/corridor/.venv/bin/python -m unittest tools/corridor/tests/test_osm_coverage.py
+    bake/.venv/bin/python -m unittest bake/tests/test_osm_coverage.py
 """
 from __future__ import annotations
 
@@ -22,15 +22,15 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import BakeFault, osm  # noqa: E402
-from corridor.geo import Frame  # noqa: E402
+from piedmont_bake import BakeFault, osm  # noqa: E402
+from piedmont_bake.geo import Frame  # noqa: E402
 
-# A copy of tools/worldeditor/geofabrik-seed.json, beside the tests: the corridor image's CI mounts
-# only tools/corridor/tests into the image, so a path into tools/worldeditor is not there (CI,
+# A copy of services/worldeditor/geofabrik-seed.json, beside the tests: the bake image's CI mounts
+# only bake/tests into the image, so a path into services/worldeditor is not there (CI,
 # 2026-10-10: seven ERRORs, all "No such file"). `SeedCopyTest` holds the copy to the original
 # wherever both exist, so the two cannot drift.
 SEED = Path(__file__).resolve().parent / "fixtures" / "geofabrik-seed.json"
-ORIGINAL_SEED = Path(__file__).resolve().parents[2] / "worldeditor" / "geofabrik-seed.json"
+ORIGINAL_SEED = Path(__file__).resolve().parents[2] / "services" / "worldeditor" / "geofabrik-seed.json"
 MD = "http://overpass/api/interpreter"
 NA = "http://overpass-na/api/interpreter"
 EU = "http://overpass-eu/api/interpreter"
@@ -129,7 +129,7 @@ class Coverage(unittest.TestCase):
         # ...and the same answer from the instance that holds it is a hit
         hit.with_name("abc.json.upstream").write_text(json.dumps({"url": NA, "host": "overpass-na"}))
         self.assertEqual(osm._cache_hit(hit, DC_METRO)["elements"][0]["id"], 1)
-        # CORRIDOR_OSM_REFRESH asks again whoever answered
+        # PIEDMONT_OSM_REFRESH asks again whoever answered
         osm._REFRESH = True
         self.assertIsNone(osm._cache_hit(hit, DC_METRO))
 
@@ -213,6 +213,6 @@ if __name__ == "__main__":
 class SeedCopyTest(unittest.TestCase):
     def test_the_fixture_is_the_world_editors_seed(self):
         if not ORIGINAL_SEED.exists():
-            self.skipTest("tools/worldeditor is not here (the image's CI): nothing to compare against")
+            self.skipTest("services/worldeditor is not here (the image's CI): nothing to compare against")
         self.assertEqual(json.loads(SEED.read_text()), json.loads(ORIGINAL_SEED.read_text()),
-                         "tests/fixtures/geofabrik-seed.json has drifted from tools/worldeditor/geofabrik-seed.json — copy it again")
+                         "tests/fixtures/geofabrik-seed.json has drifted from services/worldeditor/geofabrik-seed.json — copy it again")

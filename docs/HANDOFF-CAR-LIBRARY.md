@@ -23,7 +23,7 @@ blocker in §5, which matters more for cars than for anything else this pipeline
 
 ## 2. The tools
 
-Everything lives in `tools/assetgen/`. It was **built for vehicles** — cars are its original
+Everything lives in `pipelines/assetgen/`. It was **built for vehicles** — cars are its original
 purpose, not an adaptation of it.
 
 | file | what it is |
@@ -39,20 +39,20 @@ purpose, not an adaptation of it.
 The commands you will actually use:
 
 ```bash
-node tools/assetgen/proportion.mjs --id <id> --annotate      # check the proportions first
-node tools/assetgen/generate.mjs --class vehicle --dry-run   # prompts only, nothing spent
-node tools/assetgen/generate.mjs --id <id>                   # end to end
-node tools/assetgen/generate.mjs --recon --class vehicle     # cut-outs already on disk
-node tools/assetgen/generate.mjs --audit                     # exits 1 on a paint/backdrop clash
-node tools/assetgen/finish.mjs --id <id> --out <game>/public/assets/generated
-node tools/assetgen/slim.mjs --check
+node pipelines/assetgen/proportion.mjs --id <id> --annotate      # check the proportions first
+node pipelines/assetgen/generate.mjs --class vehicle --dry-run   # prompts only, nothing spent
+node pipelines/assetgen/generate.mjs --id <id>                   # end to end
+node pipelines/assetgen/generate.mjs --recon --class vehicle     # cut-outs already on disk
+node pipelines/assetgen/generate.mjs --audit                     # exits 1 on a paint/backdrop clash
+node pipelines/assetgen/finish.mjs --id <id> --out <game>/public/assets/generated
+node pipelines/assetgen/slim.mjs --check
 ```
 
 Output lands in `ext/assetgen/<id>/` (gitignored): the proportion sheet, each view, each keyed
 cut-out, the raw glb, the finished glb, and `meta.json`. **Nothing writes into a game.** Promoting
 an asset is a deliberate copy, and that is on purpose.
 
-There is also `tools/assetsvc/`, the same chain as a service with a job queue and a catalog. It is
+There is also `services/assetsvc/`, the same chain as a service with a job queue and a catalog. It is
 built and published but **not deployed**. Use `generate.mjs` directly unless you have a reason.
 
 The closest working templates for a batch of related assets are `probes/editor-assets.mjs` and
@@ -161,7 +161,7 @@ Three things every consumer must handle:
 - **A `DRACOLoader` is mandatory and there is no way to skip it.** A `GLTFLoader` without one does
   not warn, it rejects — so any `.catch(() => fallback)` quietly turns a real model into a box.
 - **No scale and no units.** TRELLIS normalises to about a 1m box. The consumer rescales.
-- **No canonical facing.** The model faces wherever reconstruction left it. Corridor corrects it
+- **No canonical facing.** The model faces wherever reconstruction left it. The game corrects it
   per asset with `yaw_offset_deg`; coast calls the same thing `spin`, where `spin: 0` means seen
   from behind — right for a car driving away, wrong for a roadside object.
 
@@ -173,14 +173,14 @@ width tables accumulated here and every one was wrong, some by a factor of sixte
 
 ## 7. Read these two before you touch anything
 
-- **`tools/assetgen/README.md`** — the approach. Why a spec describes a design language rather
+- **`pipelines/assetgen/README.md`** — the approach. Why a spec describes a design language rather
   than a specific car, what the proportion reference is for, and why the two servers have
   opposite strengths.
-- **`tools/assetgen/HANDOFF.md`** — the state of the world, what has been measured, and what each
+- **`pipelines/assetgen/HANDOFF.md`** — the state of the world, what has been measured, and what each
   finding cost to learn.
 
-Then: `docs/corridor/PIPELINE.md` §Part 3 for where props slot into corridor, and
-`tools/recon-service/README.md` for the service itself.
+Then: `docs/PIPELINE.md` §Part 3 for where props slot into the game, and
+`services/recon/README.md` for the service itself.
 
 ---
 
@@ -192,17 +192,17 @@ This is **not decided**, and it is worth asking Rich rather than assuming.
   a hero prototype in four liveries, a formula single-seater, and eight traffic bodies. Cars there
   bake to a **sprite atlas** at twelve yaws by four pitches (sixteen for the hero) and the game
   downloads no glb at runtime.
-- **Corridor**, the driving world, has a **procedural** car — `apps/corridor/src/car.ts` builds a
+- **The game**, the driving world, has a **procedural** car — `apps/game/src/car.ts` builds a
   4.4m silhouette in code. No generated car is loaded there, and the catalog at
-  `apps/corridor/public/assets/catalog.json` has **no `car` or `vehicle` category** yet. Corridor
-  is also about to grow a traffic system (`docs/corridor/PLAN-TRAFFIC-AND-RAGE.md`), which wants
+  `apps/game/public/assets/catalog.json` has **no `car` or `vehicle` category** yet. The game
+  is also about to grow a traffic system (`docs/PLAN-TRAFFIC-AND-RAGE.md`), which wants
   many cheap car bodies and one detailed player car.
 
-The two targets want different things: coast wants sprite-bakeable models at many yaws, corridor
+The two targets want different things: coast wants sprite-bakeable models at many yaws, the game
 wants low-cost instanced bodies plus a catalog category. Find out which before you set a face
 budget.
 
-Corridor's catalog entry format, for reference:
+The game's catalog entry format, for reference:
 
 ```json
 { "id": "overpass-01", "name": "Concrete overpass span", "category": "bridge",
@@ -218,7 +218,7 @@ of the models** — a useful way to agree the roster with Rich before spending G
 ## 9. Suggested first moves
 
 1. Read the two documents in §7.
-2. `node tools/assetgen/generate.mjs --class vehicle --dry-run` and read the prompts it builds for
+2. `node pipelines/assetgen/generate.mjs --class vehicle --dry-run` and read the prompts it builds for
    the fourteen vehicle specs that already exist.
 3. Settle the attachment-field question (§3.3) with one cheap edit request.
 4. Take **one** existing vehicle spec all the way through to a finished glb and look at it —

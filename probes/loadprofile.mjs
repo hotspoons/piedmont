@@ -1,6 +1,6 @@
 // Where does a big network site's load time and jank actually go?
 //
-//   PORT=5185 SLUG=crofton-triangle node probes/corridor-loadprofile.mjs
+//   PORT=5185 SLUG=crofton-triangle node probes/loadprofile.mjs
 //
 // Three separate costs get blamed on each other:
 //   BUILD    buildSite() on the main thread — geometry, stations, furniture. A freeze.
@@ -24,12 +24,12 @@ await page.addInitScript(() => {
 })
 const t0 = Date.now()
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
 const built = Date.now() - t0
 await page.waitForTimeout(25000)
 
 console.log(JSON.stringify(await page.evaluate(({ built }) => {
-  const c = window.corridor, site = c.site
+  const c = window.piedmont, site = c.site
   const f = window.__frames
   const r1 = (v) => Math.round(v * 10) / 10
   const pct = (a, p) => { const s = [...a].sort((x, y) => x - y); return r1(s[Math.min(s.length - 1, Math.floor(s.length * p))] ?? -1) }

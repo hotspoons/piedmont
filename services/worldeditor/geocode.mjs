@@ -17,7 +17,7 @@ import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
-const UA = 'apex-conduit corridor world editor (github.com/hotspoons; road-corridor extraction for a driving game)'
+const UA = 'piedmont world editor (github.com/hotspoons/piedmont; road-band extraction for a driving game)'
 
 export class Geocoder {
   constructor(store, { url = 'https://nominatim.openstreetmap.org', minIntervalMs = 1100 } = {}) {

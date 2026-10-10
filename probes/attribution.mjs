@@ -10,7 +10,7 @@
 //
 // So this asserts what a person sees: the rendered HEIGHT of the list, not the attribute.
 //
-//   PORT=5185 node probes/corridor-attribution.mjs [slug]
+//   PORT=5185 node probes/attribution.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'

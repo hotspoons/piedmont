@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import export  # noqa: E402
+from piedmont_bake import export  # noqa: E402
 
 
 class VectorTilesTest(unittest.TestCase):

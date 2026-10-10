@@ -6,20 +6,22 @@ import { defineConfig, type Plugin } from 'vite'
 import { devBridge } from '@apex/engine/dev/bridge-plugin'
 
 // The viewer reads the SAME layout the Worker will serve from R2: /sites/index.json and
-// /sites/<slug>/web/*. In dev those come straight off tools/corridor/data, so nothing is copied
+// /sites/<slug>/web/*. In dev those come straight off data, so nothing is copied
 // into the app and a fresh bake is visible on reload. The photos are served beside them so the
 // info panel can show what was actually seen at each site.
 const here = fileURLToPath(new URL('.', import.meta.url))
+// $PIEDMONT_DATA, relative to the repository root unless absolute; `data/` by default.
+const DATA = resolve(here, '../..', process.env.PIEDMONT_DATA ?? 'data')
 const roots: Record<string, string> = {
-  '/sites/': resolve(here, '../../tools/corridor/data/sites'),
+  '/sites/': resolve(DATA, 'sites'),
   '/photos/': resolve(here, '../../ext/ref-driving/small'),
   // gaussian splat worlds: a capture is not part of a site's bake, it is attached to one
-  // (docs/corridor/PLAN-SPLAT-CORRIDORS.md)
-  '/splats/': resolve(here, '../../tools/corridor/data/splats'),
+  // (docs/PLAN-SPLAT-ROUTES.md)
+  '/splats/': resolve(DATA, 'splats'),
   // levels: a world dressed and given something to do. The world editor writes these to its
   // volume; in dev they are beside the sites, and without this line a fetch for one gets the
   // SPA fallback -- HTTP 200 and index.html -- which is not a missing file, it is a worse one.
-  '/levels/': resolve(here, '../../tools/corridor/data/levels'),
+  '/levels/': resolve(DATA, 'levels'),
 }
 const types: Record<string, string> = {
   '.json': 'application/json',
@@ -46,17 +48,17 @@ function localOrigin(url: string): boolean {
 /**
  * What Vite forwards.
  *
- * Local `WORLDEDITOR` (the service on :8780) gets the editor's own state: worlds, runs, the bake,
- * levels, and the placeable catalog. A remote `WORLDEDITOR` is the cluster, and the only thing
+ * Local `PIEDMONT_EDITOR` (the service on :8780) gets the editor's own state: worlds, runs, the bake,
+ * levels, and the placeable catalog. A remote `PIEDMONT_EDITOR` is the cluster, and the only thing
  * forwarded there is `/assetsvc` — drawing and reconstruction. `/api` still goes to the local
  * service.
  *
- * `WORLDEDITOR_REMOTE` is the third shape, and it is the one to reach for when profiling: the
+ * `PIEDMONT_EDITOR_REMOTE` is the third shape, and it is the one to reach for when profiling: the
  * local page against a deployed cluster as if it were the pod. Everything the pod serves from one
  * origin — the bake (`/sites`), levels, photos, splats, the asset service and its catalogue — goes
  * to that host. `/assets/` stays local: the Draco decoder and the shipped kit live in this tree
  * and there is no reason to pull them over the wire. Nothing local answers for a bake, so what the
- * page shows is exactly what the cluster holds. See `just corridor-remote`.
+ * page shows is exactly what the cluster holds. See `just remote`.
  */
 function proxyFor(worldeditor: string | undefined, remote: string | undefined): { proxy?: Record<string, { target: string; ws?: boolean; changeOrigin: boolean }> } {
   if (remote) {
@@ -96,7 +98,7 @@ function proxyFor(worldeditor: string | undefined, remote: string | undefined): 
 
 function serveBake(): Plugin {
   return {
-    name: 'corridor-serve-bake',
+    name: 'piedmont-serve-bake',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = (req.url ?? '').split('?')[0]
@@ -131,7 +133,7 @@ function serveBake(): Plugin {
         // `adjustments.json` although it is the same polygon: an adjustment says the bake got it
         // wrong and is true for every game played on that ground, while a traffic zone belongs to
         // one level, and a rally stage and a delivery game want different answers in the same
-        // field. The pod-side twin of this list is `AUTHORED` in tools/worldeditor/store.mjs.
+        // field. The pod-side twin of this list is `AUTHORED` in services/worldeditor/store.mjs.
         if (req.method === 'PUT' && prefix === '/sites/' && /^[a-z0-9-]+\/(adjustments|placements|structures|dead_ends|tuning|presets|zones|stunts|courses|fixtures|surfaces|points)\.json$/.test(rel.replaceAll('\\', '/'))) {
           const chunks: Buffer[] = []
           req.on('data', (c) => chunks.push(c))
@@ -153,9 +155,9 @@ function serveBake(): Plugin {
         if (!file.startsWith(roots[prefix])) return next()
         if (!existsSync(file) || !statSync(file).isFile()) {
           // A local world editor owns the bake. Let that proxy answer a file this middleware
-          // does not have. A remote WORLDEDITOR is the cluster, and falling through to it is how
+          // does not have. A remote PIEDMONT_EDITOR is the cluster, and falling through to it is how
           // a missing local file was replaced by the cluster's bake of the same slug.
-          if (process.env.WORLDEDITOR && localOrigin(process.env.WORLDEDITOR)) return next()
+          if (process.env.PIEDMONT_EDITOR && localOrigin(process.env.PIEDMONT_EDITOR)) return next()
           // never fall through to Vite's SPA fallback: an optional JSON that does not exist yet must
           // be a 404, not index.html with a 200 (both agents lost time to `r.json()` on '<!doctype')
           res.statusCode = 404
@@ -183,13 +185,17 @@ function serveBake(): Plugin {
 
 export default defineConfig({
   // devBridge is inert unless APEX_BRIDGE is set, and can never reach a build — see
-  // packages/engine/src/dev/bridge-plugin.ts. `just bridge-dev corridor` turns it on.
-  plugins: [...(process.env.WORLDEDITOR_REMOTE ? [] : [serveBake()]), devBridge()],
+  // vendor/arcade/packages/engine/src/dev/bridge-plugin.ts. `just bridge-dev` turns it on.
+  plugins: [...(process.env.PIEDMONT_EDITOR_REMOTE ? [] : [serveBake()]), devBridge()],
+  // The arcade packages are linked in (vendor/arcade -> ext/siomporas-arcade or .cache/arcade/<ref>),
+  // so their imports resolve from wherever the link points. If that checkout has a node_modules of
+  // its own, `three` would load twice and every instanceof across the seam would fail. One copy.
+  resolve: { dedupe: ['three', 'postprocessing', '@dimforge/rapier3d-compat'] },
   server: {
-    // Keep in sync with the justfile (corridor viewer = 5185). CORRIDOR_PORT lets a second dev
+    // Keep in sync with the justfile (game viewer = 5185). PIEDMONT_PORT lets a second dev
     // server run this same app on another port — the world-editor lane runs it on 5212 against a
     // worldeditor service — without either of them having to edit this file again.
-    port: Number(process.env.CORRIDOR_PORT ?? 5185),
+    port: Number(process.env.PIEDMONT_PORT ?? 5185),
     strictPort: true,
     host: true,
     allowedHosts: true,
@@ -198,7 +204,7 @@ export default defineConfig({
     // sampled call-stack profile of Rich's tab instead of wrapping functions one at a time
     // (2026-10-08). Dev and bridge only; a build never sees it.
     ...(process.env.APEX_BRIDGE ? { headers: { 'Document-Policy': 'js-profiling' } } : {}),
-    // DEV ONLY, and only when WORLDEDITOR is set. `tools/worldeditor` serves these paths in the
+    // DEV ONLY, and only when PIEDMONT_EDITOR is set. `services/worldeditor` serves these paths in the
     // pod, from the same origin as the app; this makes development identical to that, so the
     // world editor's fetches are relative in both places and there is no CORS anywhere.
     /*
@@ -212,21 +218,21 @@ export default defineConfig({
      * editor serves the page and the socket from one origin — so this is a development-only hole,
      * which is the kind that stays open longest.
      *
-     * A REMOTE WORLDEDITOR IS ASSETSVC ONLY.
+     * A REMOTE PIEDMONT_EDITOR IS ASSETSVC ONLY.
      *
      * Worlds, runs, levels and the bake are this machine's. Pointing `/api` and `/sites` at the
      * cluster listed the cluster's worlds and then drew them with this machine's bake of the same
      * slug — two crofton-triangles, one map. Image generation and reconstruction stay on that
-     * host, because those GPUs are not here. `WORLDEDITOR=http://localhost:8780` is the local
+     * host, because those GPUs are not here. `PIEDMONT_EDITOR=http://localhost:8780` is the local
      * service and still receives the whole set.
      */
-    ...proxyFor(process.env.WORLDEDITOR, process.env.WORLDEDITOR_REMOTE),
+    ...proxyFor(process.env.PIEDMONT_EDITOR, process.env.PIEDMONT_EDITOR_REMOTE),
   },
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 1500,
-    // three pages: the viewer, the editor (apps/corridor/editor.html, owned by the editor agent)
-    // and the world editor (world.html) — which is the one `tools/worldeditor` serves at `/`.
+    // three pages: the viewer, the editor (apps/game/editor.html, owned by the editor agent)
+    // and the world editor (world.html) — which is the one `services/worldeditor` serves at `/`.
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL('index.html', import.meta.url)),

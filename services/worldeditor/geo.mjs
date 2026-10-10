@@ -155,13 +155,13 @@ export function slugify(s) {
 }
 
 /* ---- WGS84 → a baked site's metres --------------------------------------------------------- */
-// The SAME two projectors the viewer draws with (apps/corridor/src/minimap.ts), so a point an
+// The SAME two projectors the viewer draws with (apps/game/src/minimap.ts), so a point an
 // agent projects here and the blue dot on the map cannot disagree. Ported rather than imported:
 // the service has no bundler and the app has no node.
 
 /**
  * East/north metres on a local tangent plane about an anchor — the render frame of every bake
- * since the frame went geodetic (docs/corridor/FRAME.md). Good to a few centimetres over a bake.
+ * since the frame went geodetic (docs/FRAME.md). Good to a few centimetres over a bake.
  */
 export function enuProjector(lon0, lat0, h0 = 0) {
   const A = 6378137, F = 1 / 298.257223563, E2 = F * (2 - F)

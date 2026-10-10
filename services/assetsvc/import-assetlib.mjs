@@ -21,8 +21,8 @@
 // tree will not be present. A symlink that dangles is reported rather than left to be discovered
 // as a 404 in the panel.
 //
-//   node tools/assetsvc/import-assetlib.mjs --from ext/assetlib --to <data-dir>
-//   node tools/assetsvc/import-assetlib.mjs --from ext/assetlib --to <data-dir> --copy --dry-run
+//   node services/assetsvc/import-assetlib.mjs --from ext/assetlib --to <data-dir>
+//   node services/assetsvc/import-assetlib.mjs --from ext/assetlib --to <data-dir> --copy --dry-run
 
 import { copyFile, mkdir, readdir, readFile, symlink, writeFile, stat, rm } from 'node:fs/promises'
 import { existsSync } from 'node:fs'

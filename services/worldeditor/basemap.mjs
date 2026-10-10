@@ -137,5 +137,5 @@ export class Basemap {
   }
 }
 
-const UA = 'apex-conduit corridor world editor (github.com/hotspoons)'
+const UA = 'piedmont world editor (github.com/hotspoons/piedmont)'
 const round4 = (v) => Math.round(v * 1e4) / 1e4

@@ -15,7 +15,7 @@
 //                   globals, so a script could otherwise call the editor's API with the page's own
 //                   credentials — and on a dev box that is admin.
 //
-//   node probes/corridor-shell.mjs
+//   node probes/shell.mjs
 import { chromium } from 'playwright'
 
 const url = process.env.PROBE_URL ?? 'http://localhost:5185/world.html'

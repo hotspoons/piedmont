@@ -11,7 +11,7 @@
 //
 // Rich, 2026-09-29: *"Can you make a closed simulation of the loop and iterate on it until you can
 // get a car to actually drive around the loop?"* Yes, and it should have been the first thing built.
-// Every measurement so far has cost a two-minute browser run over a real corridor with terrain,
+// Every measurement so far has cost a two-minute browser run over a real road band with terrain,
 // trees and streaming — which is why it took six rounds to notice that two of the trees were inside
 // the fixture. This runs in about a second and contains exactly two things: the loop's own surface,
 // and a vehicle.
@@ -134,7 +134,7 @@ const ARG = (name, dflt) => {
 }
 const FLAG = (name) => process.argv.includes(`--${name}`)
 
-/** The stunts profile's numbers, as `packages/engine/src/physics/profiles.ts` has them. */
+/** The stunts profile's numbers, as `vendor/arcade/packages/engine/src/physics/profiles.ts` has them. */
 const PROFILE = {
   massKg: 1400,
   halfLength: 2.2,

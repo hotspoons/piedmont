@@ -17,25 +17,25 @@ test('the default, when nothing says otherwise, and it says it is a default', as
 })
 
 test('the environment beats the default', async () => {
-  const s = await fresh({ WORLDEDITOR_ASSETSVC: 'http://assetsvc.default.svc' })
+  const s = await fresh({ PIEDMONT_EDITOR_ASSETSVC: 'http://assetsvc.default.svc' })
   assert.equal(s.get('assetsvc.url'), 'http://assetsvc.default.svc')
   assert.equal(s.source('assetsvc.url'), 'env')
 })
 
 test('the UI beats the environment, and is kept on the volume', async () => {
-  const s = await fresh({ WORLDEDITOR_ASSETSVC: 'http://from-env' })
+  const s = await fresh({ PIEDMONT_EDITOR_ASSETSVC: 'http://from-env' })
   await s.set({ 'assetsvc.url': 'http://from-ui' })
   assert.equal(s.get('assetsvc.url'), 'http://from-ui')
   assert.equal(s.source('assetsvc.url'), 'ui')
   // and a new process reading the same volume sees it
-  const again = await new Settings(path.dirname(s.file), { WORLDEDITOR_ASSETSVC: 'http://from-env' }).load()
+  const again = await new Settings(path.dirname(s.file), { PIEDMONT_EDITOR_ASSETSVC: 'http://from-env' }).load()
   assert.equal(again.get('assetsvc.url'), 'http://from-ui')
 })
 
 test('CLEARING a UI value falls back to the ENVIRONMENT, not to the default', async () => {
   // The failure this pins: a reset that jumps past the deployment's own value to the built-in
   // default would silently point the editor at nothing while the chart plainly said somewhere.
-  const s = await fresh({ WORLDEDITOR_ASSETSVC: 'http://from-env' })
+  const s = await fresh({ PIEDMONT_EDITOR_ASSETSVC: 'http://from-env' })
   await s.set({ 'assetsvc.url': 'http://from-ui' })
   await s.set({ 'assetsvc.url': null })
   assert.equal(s.get('assetsvc.url'), 'http://from-env')
@@ -43,7 +43,7 @@ test('CLEARING a UI value falls back to the ENVIRONMENT, not to the default', as
 })
 
 test('the environment is never written to the file', async () => {
-  const s = await fresh({ WORLDEDITOR_SPLAT_IMAGE: 'ghcr.io/x/y:1' })
+  const s = await fresh({ PIEDMONT_EDITOR_SPLAT_IMAGE: 'ghcr.io/x/y:1' })
   await s.set({ 'splat.runner': 'jobset' })
   const doc = JSON.parse(readFileSync(s.file, 'utf8'))
   assert.deepEqual(Object.keys(doc.values), ['splat.runner'])
@@ -74,7 +74,7 @@ test('an unknown key is refused rather than stored', async () => {
 })
 
 test('listeners hear exactly the keys whose EFFECTIVE value changed', async () => {
-  const s = await fresh({ WORLDEDITOR_ASSETSVC: 'http://same' })
+  const s = await fresh({ PIEDMONT_EDITOR_ASSETSVC: 'http://same' })
   const heard = []
   s.onChange((keys) => heard.push(keys))
   // setting the UI value to what the env already says changes nothing a consumer would see
@@ -84,7 +84,7 @@ test('listeners hear exactly the keys whose EFFECTIVE value changed', async () =
 })
 
 test('describe() says where every value came from, and what a reset would land on', async () => {
-  const s = await fresh({ WORLDEDITOR_ASSETSVC: 'http://from-env' })
+  const s = await fresh({ PIEDMONT_EDITOR_ASSETSVC: 'http://from-env' })
   await s.set({ 'assetsvc.url': 'http://from-ui' })
   const row = s.describe().find((r) => r.key === 'assetsvc.url')
   assert.equal(row.source, 'ui')

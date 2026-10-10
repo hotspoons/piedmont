@@ -13,7 +13,7 @@ import { chromium } from 'playwright'
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 
 const SLUG = process.env.SLUG ?? 'bowie-racetrack-rd'
-const FILE = `/workspaces/apex-conduit/tools/corridor/data/sites/${SLUG}/courses.json`
+const FILE = `/workspaces/piedmont/data/sites/${SLUG}/courses.json`
 if (existsSync(FILE)) unlinkSync(FILE)
 
 const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
@@ -24,14 +24,14 @@ const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if
 
 /* ---- author it in the editor ---------------------------------------------------------------- */
 await p.goto(`http://127.0.0.1:5185/editor.html#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 240000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 240000 })
 await p.waitForTimeout(7000)
 await p.keyboard.press('7')
 await p.waitForTimeout(1000)
 
 const authored = await p.evaluate(() => {
-  const r = window.corridor.races
-  const site = window.corridor.site
+  const r = window.piedmont.races
+  const site = window.piedmont.site
   const len = site.manifest.spine.length_m
   const at = (s) => { const q = site.spineAt(s).pos; return { x: q.x, y: -q.z } }
   r.doc.courses.length = 0
@@ -49,7 +49,7 @@ const authored = await p.evaluate(() => {
 })
 console.log('authored', JSON.stringify(authored))
 check(authored.gates === 4 && !!authored.entry, 'a stage with four gates and an entry marker')
-const saved = await p.evaluate(() => window.corridor.races.save().then(() => 'ok', (e) => 'ERROR ' + e.message))
+const saved = await p.evaluate(() => window.piedmont.races.save().then(() => 'ok', (e) => 'ERROR ' + e.message))
 check(saved === 'ok', `saved (${saved})`)
 check(existsSync(FILE), 'courses.json is on disk')
 

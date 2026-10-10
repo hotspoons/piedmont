@@ -6,8 +6,8 @@
 // top of the season. So a ground-cover class is a set of multipliers over the season palette and
 // the tuning knobs, not a table of hand-picked colours nobody can keep consistent.
 //
-// SELECTION comes from the bake. `tools/corridor/corridor/flora.py` reads LANDFIRE's Existing
-// Vegetation Type over the corridor and files every class under one of eighteen ground classes
+// SELECTION comes from the bake. `bake/piedmont_bake/flora.py` reads LANDFIRE's Existing
+// Vegetation Type over the road band and files every class under one of eighteen ground classes
 // using LANDFIRE's OWN lifeform and subclass fields — `Herb` + "Annual Graminoid/Forb" is annual
 // grassland, `Shrub` + "Evergreen shrubland" is chaparral, `Tree` + "Evergreen closed tree canopy"
 // over a Conifer physiognomy is needle duff — and hands over the area share of each. Nothing in
@@ -195,13 +195,13 @@ export function grassTypeFor(manifest: Manifest): GrassType {
   // up the California coast.
   if (ll && (ll.lat < 36 || (ll.lon < -114 && ll.lat < 38.5))) return 'bermuda'
 
-  // farmland (or its farmyards) taking a real share of the corridor: a crop verge, gone to seed
+  // farmland (or its farmyards) taking a real share of the road band: a crop verge, gone to seed
   if (area('farmland') + area('farmyard') > 0.3 * Math.max(1, total)) return 'wheat'
   return 'common'
 }
 
 export interface SiteCover {
-  /** the commonest OPEN-GROUND class in the corridor: what the verge is */
+  /** the commonest OPEN-GROUND class in the road band: what the verge is */
   open: GroundClass
   /** the commonest class UNDER CANOPY: what the forest floor is painted with */
   under: GroundClass
@@ -216,11 +216,11 @@ const UNDER: GroundClass[] = ['conifer_duff', 'hardwood_litter', 'broadleaf_ever
 /**
  * What this site's verge and forest floor are.
  *
- * Two answers, not one, because the corridor has two grounds: the open verge beside the pavement
+ * Two answers, not one, because the road band has two grounds: the open verge beside the pavement
  * and the floor under the canopy that starts ten metres further out. The verge is the heaviest
  * OPEN class by area and the floor is the heaviest TREE class — `mown` is excluded from the verge
  * vote when anything else is available, because "Developed-Roads" is by construction a large share
- * of every corridor we bake and it would win everywhere.
+ * of every road band we bake and it would win everywhere.
  */
 export function siteCover(manifest: Manifest, flora: Flora | null): SiteCover {
   if (flora) {
@@ -251,7 +251,7 @@ export function siteCover(manifest: Manifest, flora: Flora | null): SiteCover {
 //
 // STILL PLACEHOLDERS, and deliberately cheap ones, exactly as the single oak-hickory canvas they
 // replace was. Main's brief (inbox 002) is that the real ground sets come out of flux.2 through
-// `tools/surfaces/gen.py`, one per class per region, with colour, normal and height and three
+// `pipelines/surfaces/gen.py`, one per class per region, with colour, normal and height and three
 // variants each. What has changed is that there is now a CLASS to generate for, named by the data:
 // Acadia asks for spruce duff and granite-and-lichen, Big Sur for chaparral litter and straw
 // thatch, Chesterfield for the oak-hickory litter that used to be painted everywhere. Swap the

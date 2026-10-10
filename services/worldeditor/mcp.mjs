@@ -6,7 +6,7 @@
 // tools to files, has no page to ask; MCP is the surface it does have.
 //
 // THE SAME DOCUMENTS AND THE SAME RULES. The paths are the projection's paths
-// (apps/corridor/src/agent/projection.ts), so `worlds/crofton-triangle.json` means the same thing
+// (apps/game/src/agent/projection.ts), so `worlds/crofton-triangle.json` means the same thing
 // at a prompt, in the shell and here — and a write through any of them is the same live edit. Two
 // vocabularies for one set of documents is how an agent ends up told two different things about
 // what exists.
@@ -151,7 +151,7 @@ export const TOOLS = [
 ]
 
 /*
- * What an attached page is expected to offer (apps/corridor/src/agent/bridge.ts). This list exists
+ * What an attached page is expected to offer (apps/game/src/agent/bridge.ts). This list exists
  * ONLY to turn "no such tool" into "no editor is attached" — the page is still the authority on
  * what it actually provides, and a name here that no page offers is refused exactly the same way.
  */
@@ -256,7 +256,7 @@ export async function handle(message, ctx) {
     return reply({
       protocolVersion: PROTOCOL_VERSION,
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: 'corridor-world-editor', version: '1' },
+      serverInfo: { name: 'piedmont-world-editor', version: '1' },
     })
   }
   if (method === 'notifications/initialized' || id === undefined) return null // a notification wants no reply

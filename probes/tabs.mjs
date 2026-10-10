@@ -6,7 +6,7 @@
 // capture. This reads the DOM instead of looking at pixels, so it answers in seconds and cannot
 // be fooled by a slow compositor.
 //
-//   node probes/corridor-tabs.mjs [port]
+//   node probes/tabs.mjs [port]
 import { chromium } from 'playwright'
 
 const port = process.argv[2] ?? '5211'

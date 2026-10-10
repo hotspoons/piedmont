@@ -1,8 +1,8 @@
 // The world editor's client. ONE origin, and it is this page's own.
 //
-// Every path here is relative. In the pod `tools/worldeditor` serves the built app, `/api`,
+// Every path here is relative. In the pod `services/worldeditor` serves the built app, `/api`,
 // `/sites` and `/assetsvc` from the same host; in development Vite serves the app and proxies
-// those three prefixes to the same service (`WORLDEDITOR=http://localhost:8780 npm run dev`). So
+// those three prefixes to the same service (`PIEDMONT_EDITOR=http://localhost:8780 npm run dev`). So
 // there is no base URL to configure, no CORS, and — the part that matters — no Overpass URL, no
 // Kubernetes API URL and no GPU service URL anywhere in the bundle. If you find yourself wanting
 // to add one, the backend is missing an endpoint.
@@ -17,7 +17,7 @@ export interface Way {
   highway: string
   lanes: string | null
   oneway: string | null
-  /** WGS84 [lon, lat]. Nothing in this app is ever site metres — see tools/worldeditor/geo.mjs. */
+  /** WGS84 [lon, lat]. Nothing in this app is ever site metres — see services/worldeditor/geo.mjs. */
   line: [number, number][]
 }
 
@@ -93,7 +93,7 @@ export interface IndexedPlace {
   world?: string | null
 }
 
-/** The surface roles a world can override. Mirrors SURFACE_ROLES in tools/worldeditor/worlds.mjs. */
+/** The surface roles a world can override. Mirrors SURFACE_ROLES in services/worldeditor/worlds.mjs. */
 export const SURFACE_ROLES = ['road', 'shoulder', 'sidewalk', 'paving', 'ground_cover', 'verge'] as const
 export type SurfaceRole = (typeof SURFACE_ROLES)[number]
 
@@ -399,7 +399,7 @@ export interface CaptureManifest {
   bytes: number
 }
 
-/** where an inference model is, and how the resolver found it (tools/worldeditor/models.mjs) */
+/** where an inference model is, and how the resolver found it (services/worldeditor/models.mjs) */
 export interface ModelTarget {
   url: string | null
   via: 'env' | 'crd' | 'crd-gateway' | 'service' | 'public' | 'none'
@@ -636,10 +636,10 @@ export const api = {
   deleteRun: (id: string) => call<{ deleted: string }>(`/api/runs/${id}`, { method: 'DELETE' }),
   /** Drop every finished run. Ones still going stay. */
   clearRuns: () => call<{ deleted: number; kept: number }>('/api/runs', { method: 'DELETE' }),
-  /** Bytes from `offset`. The whole streaming protocol — see tools/worldeditor/runs.mjs. */
+  /** Bytes from `offset`. The whole streaming protocol — see services/worldeditor/runs.mjs. */
   log: (id: string, offset: number) => call<{ text: string; offset: number; size: number; truncated: boolean }>(`/api/runs/${id}/log?offset=${offset}`),
 
-  /* ---- levels: a world dressed and given something to do (tools/worldeditor/levels.mjs) ---- */
+  /* ---- levels: a world dressed and given something to do (services/worldeditor/levels.mjs) ---- */
   levels: () => call<{ levels: Level[]; facts: Record<string, string>; actions: Record<string, string>; modes: string[] }>('/api/levels'),
   level: (id: string) => call<{ level: Level; ok: boolean; errors: string[]; warnings: string[] }>(`/api/levels/${id}`),
   createLevel: (body: Partial<Level>) => call<{ level: Level; warnings: string[] }>('/api/levels', { method: 'POST', body: JSON.stringify(body) }),
@@ -666,7 +666,7 @@ export const api = {
   /** and everything under it. The asking happens in the panel, not here. */
   deleteProgramDir: (id: string) => call<{ deleted: string }>(`/api/programs/${progPath(id)}?dir=1`, { method: 'DELETE' }),
 
-  /* ---- the agent: the platform's deployments, and a tunnel to one (tools/worldeditor/platform.mjs) ---- */
+  /* ---- the agent: the platform's deployments, and a tunnel to one (services/worldeditor/platform.mjs) ---- */
   agentPlatform: () => call<{ set: boolean; base: string | null; user: string | null }>('/api/agent'),
   agentDeployments: () => call<{ agents: { name: string; namespace?: string; phase?: string }[] }>('/api/agent/agents'),
   /** the editor as an MCP server, if the service is configured to offer itself as one */
@@ -693,7 +693,7 @@ export const api = {
     call<{ set: boolean; base: string | null }>('/api/agent/credential', { method: 'PUT', body: JSON.stringify(body) }),
   clearAgentCredential: () => call<{ set: boolean }>('/api/agent/credential', { method: 'DELETE' }),
 
-  /* ---- git: the volume as a repository (tools/worldeditor/gitrepo.mjs) ---- */
+  /* ---- git: the volume as a repository (services/worldeditor/gitrepo.mjs) ---- */
   gitStatus: () => call<GitStatus>('/api/git'),
   gitScan: () => call<GitScan>('/api/git/scan'),
   gitInit: (body: { remote?: string; branch?: string; bakes?: boolean }) => call<GitStatus & { scan: GitScan }>('/api/git/init', { method: 'POST', body: JSON.stringify(body) }),

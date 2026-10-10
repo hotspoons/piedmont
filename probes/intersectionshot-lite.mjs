@@ -1,8 +1,8 @@
 // A LOOK at the intersection furniture on a box with no GPU.
 //
-//   PORT=5210 SLUG=crofton-triangle node probes/corridor-intersectionshot-lite.mjs /tmp/x-
+//   PORT=5210 SLUG=crofton-triangle node probes/intersectionshot-lite.mjs /tmp/x-
 //
-// `corridor-intersectionshot.mjs` is the real one and it needs a real GPU: a full crofton-triangle
+// `intersectionshot.mjs` is the real one and it needs a real GPU: a full crofton-triangle
 // frame is past swiftshader's cliff and `page.screenshot` times out at 30 s. This one strips the
 // scene to the things this lane builds — the road, the masts, the lenses, the bars, the blades —
 // and shoots small. It is not a pretty picture and it is not meant to be. It is here to answer the
@@ -17,13 +17,13 @@ const page = await browser.newPage({ viewport: { width: 640, height: 420 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction((slug) => window.corridor?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
+await page.waitForFunction((slug) => window.piedmont?.site?.manifest?.slug === slug, SLUG, { timeout: 600000 })
 await page.keyboard.press('m')
 
 // everything this lane did not build, off. 240 km of sidewalk and 12 000 parking stalls are what
 // put the frame past the cliff, and none of it is what I need to look at.
 console.log(await page.evaluate(() => {
-  const site = window.corridor.site, L = site.layers
+  const site = window.piedmont.site, L = site.layers
   for (const k of ['trees', 'grass', 'crops', 'buildings', 'parking', 'barriers', 'sidewalks', 'power', 'rocks', 'water', 'horizon', 'structures', 'placements', 'markers', 'spine']) {
     if (L[k]) L[k].visible = false
   }
@@ -45,7 +45,7 @@ const shoot = async (name, fn) => {
 
 // 1. the busiest signalised junction, close in on the mast heads
 await shoot('signal', () => {
-  const c = window.corridor, site = c.site
+  const c = window.piedmont, site = c.site
   const X = site.manifest.intersections.list.filter((q) => q.control === 'signals').sort((a, b) => b.arms - a.arms)[0]
   if (!X) return null
   const gy = site.groundAt(X.x, -X.y) ?? 0
@@ -56,9 +56,9 @@ await shoot('signal', () => {
 })
 
 // 2. the same junction a whole cycle later, so the aspects differ
-await page.evaluate(() => window.corridor.tune.set('SIGNAL_RATE', 12))
+await page.evaluate(() => window.piedmont.tune.set('SIGNAL_RATE', 12))
 await shoot('signal-later', () => {
-  const L = window.corridor.site.layers.signals.children[0]
+  const L = window.piedmont.site.layers.signals.children[0]
   if (!L?.instanceColor) return null
   const a = L.instanceColor.array
   let red = 0, amber = 0, green = 0
@@ -72,7 +72,7 @@ await shoot('signal-later', () => {
 
 // 3. a residential crossroads with a stop bar and two blades, from a driver's eye
 await shoot('approach', () => {
-  const c = window.corridor, site = c.site
+  const c = window.piedmont, site = c.site
   const model = site.manifest.intersections.list
   const X = model.find((q) => q.control !== 'signals' && (q.blades ?? []).length >= 2 && q.arms >= 4 && q.approaches.some((a) => a.stop)) ?? model.find((q) => (q.blades ?? []).length >= 2)
   if (!X) return null
@@ -89,7 +89,7 @@ await shoot('approach', () => {
 
 // 4. straight down on the same crossroads: is the bar ACROSS the lane?
 await shoot('plan', () => {
-  const c = window.corridor, site = c.site
+  const c = window.piedmont, site = c.site
   const model = site.manifest.intersections.list
   const X = model.find((q) => q.control !== 'signals' && (q.blades ?? []).length >= 2 && q.arms >= 4 && q.approaches.some((a) => a.stop)) ?? model.find((q) => (q.blades ?? []).length >= 2)
   if (!X) return null

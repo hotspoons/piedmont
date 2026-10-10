@@ -967,7 +967,7 @@ export class MapNav {
   }
 }
 
-const POSE_KEY = 'corridor.editor.pose.'
+const POSE_KEY = 'piedmont.editor.pose.'
 const NAV_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyF', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
 const MODE_CODE: Record<GestureMode, number> = { pan: 1, orbit: 2, heli: 3, zoom: 4, touch: 5 }
 /** PointerEvent.button → the PointerEvent.buttons bit that says it is still held */

@@ -1,31 +1,31 @@
 // Tiled terrain: does a network site built from 1 km tiles come up with real heights everywhere,
 // and does the imagery stream follow the eye?
 //
-//   node probes/corridor-tiles.mjs [slug] [out.png]        (?data=/testdata by default)
+//   node probes/tiles.mjs [slug] [out.png]        (?data=/testdata by default)
 //
 // Checks, in order:
 //  1. the mosaic covers the hull and its heights match the source site's single-image DEM where
-//     tiles exist (the whole point: a tiled bake must sample identically to a corridor bake);
+//     tiles exist (the whole point: a tiled bake must sample identically to a road-band bake);
 //  2. terrain meshes exist one per tile and share their edge vertices (no LOD cracks);
 //  3. imagery streams in within loadWithin of the eye and is released beyond keepWithin.
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-crownsville'
 const out = process.argv[3] ?? null
-const PORT = process.env.CORRIDOR_PORT ?? '5202'
-const DATA = process.env.CORRIDOR_DATA ?? ''
-// CORRIDOR_STREAM=budgetBytes:33554432,loadWithin:1500 — sweep the ring and the ceiling
-// CORRIDOR_NOKTX2=1 — force the jpg path, for the compressed/uncompressed comparison
-const streamOpts = Object.fromEntries((process.env.CORRIDOR_STREAM ?? '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, Number(v)] }))
+const PORT = process.env.PIEDMONT_PORT ?? '5202'
+const DATA = process.env.PIEDMONT_DATA ?? ''
+// PIEDMONT_STREAM=budgetBytes:33554432,loadWithin:1500 — sweep the ring and the ceiling
+// PIEDMONT_NOKTX2=1 — force the jpg path, for the compressed/uncompressed comparison
+const streamOpts = Object.fromEntries((process.env.PIEDMONT_STREAM ?? '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, Number(v)] }))
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 700, height: 460 } })
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 page.on('console', (m) => { if (m.type() === 'error') console.log('console.error', m.text().slice(0, 200)) })
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://127.0.0.1:${PORT}/#${slug}?lite${DATA ? `&data=${DATA}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 180000 })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor?.site, null, { timeout: 300000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont?.site, null, { timeout: 300000 })
 
 console.log(JSON.stringify(await page.evaluate(() => {
-  const c = window.corridor, site = c.site
+  const c = window.piedmont, site = c.site
   const T = site.manifest.layers.tiles
   const o = { slug: site.manifest.slug, tiles_listed: T?.list.length ?? 0, size_m: T?.size_m, res: T?.res }
   // terrain meshes: the overview is site.terrain, the tiles are their own group in site.group
@@ -46,7 +46,7 @@ console.log(JSON.stringify(await page.evaluate(() => {
     zs.push(site.heightAt(p.pos.x, -p.pos.z))
   }
   o.spine_height = { n: zs.length, nan: zs.filter((z) => !Number.isFinite(z)).length, min: +Math.min(...zs).toFixed(2), max: +Math.max(...zs).toFixed(2) }
-  // off-corridor: inside the hull but (probably) outside any tile — must still have a height from
+  // off-road-band: inside the hull but (probably) outside any tile — must still have a height from
   // the horizon seed, never 0 and never NaN
   // Heights: the tiles are 2 m and the overview 8 m over the same ground, so they must AGREE to
   // within the coarser cell's relief. A gross disagreement means a tile is being placed or sampled
@@ -80,26 +80,26 @@ console.log(JSON.stringify(await page.evaluate(() => {
 // mips, so all 125 resident would be ~666 MB and would not fit. The ring is what keeps that
 // bounded, so measure the worst it ever holds while driving the whole primary, not the total.
 const at = async (s) => page.evaluate((s) => {
-  const c = window.corridor
+  const c = window.piedmont
   const p = c.site.spineAt(Math.max(0, Math.min(c.site.manifest.spine.length_m, s)))
   c.camera.position.set(p.pos.x, p.pos.y + 60, p.pos.z)
   c.orbit?.target.set(p.pos.x, p.pos.y, p.pos.z)
   c.site.updateNear(c.camera.position, performance.now() / 1000)
 }, s)
 const counts = () => page.evaluate(() => {
-  const c = window.corridor
+  const c = window.piedmont
   const t = c.site.tiles?.() ?? null
   const r = window.__apex?.renderer
   return { ...t, gpu_textures: r?.info?.memory?.textures ?? null, gpu_geometries: r?.info?.memory?.geometries ?? null }
 })
 await page.evaluate(({ o, noktx2 }) => {
-  const st = window.corridor.site.tileStream
+  const st = window.piedmont.site.tileStream
   if (!st) return
   // the twin is chosen inside fetch(); blanking the name is the only honest way to force the jpg
   if (noktx2) st.textureKtx2 = null
   Object.assign(st, o)
-}, { o: streamOpts, noktx2: !!process.env.CORRIDOR_NOKTX2 })
-const L = await page.evaluate(() => window.corridor.site.manifest.spine.length_m)
+}, { o: streamOpts, noktx2: !!process.env.PIEDMONT_NOKTX2 })
+const L = await page.evaluate(() => window.piedmont.site.manifest.spine.length_m)
 let peak = { resident: 0 }
 const samples = []
 for (let s = 0; s <= L; s += 250) {
@@ -112,7 +112,7 @@ for (let s = 0; s <= L; s += 250) {
 const end = await counts()
 console.log(JSON.stringify({
   stream_opts: streamOpts,
-  forced_jpg: !!process.env.CORRIDOR_NOKTX2,
+  forced_jpg: !!process.env.PIEDMONT_NOKTX2,
   drive_stations: samples.length,
   peak_resident_tiles: peak.resident,
   peak_MB: peak.MB,

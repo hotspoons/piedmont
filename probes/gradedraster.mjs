@@ -1,8 +1,8 @@
 // Does the ground the BAKE graded agree with the ground the viewer grades at run time?
 //
-//   node probes/corridor-gradedraster.mjs <site> [--port 5191] [--compare] [--dump out.json]
+//   node probes/gradedraster.mjs <site> [--port 5191] [--compare] [--dump out.json]
 //
-// The pyramid's fine levels can carry the road grading folded in (tools/corridor/corridor/grade.py
+// The pyramid's fine levels can carry the road grading folded in (bake/piedmont_bake/grade.py
 // is scene.ts's `gradedHeight`, ported). On such a bake `physGroundAt` is one bilinear read of the
 // raster instead of ~4 µs of station walk and spline per sample. That is only a saving if it is the
 // SAME ANSWER, so this measures the difference, per class of ground, over a grid of points on and
@@ -17,7 +17,7 @@
 //               viewer on a bake that was never graded — the cross-check that does not depend on the
 //               bake's intermediates matching its served manifest.
 //
-// THE CONTROL IS THE POINT, as in corridor-physground.mjs: the two loads must also DISAGREE on a
+// THE CONTROL IS THE POINT, as in physground.mjs: the two loads must also DISAGREE on a
 // deliberately shifted sample, or the transect is flat and the agreement is not evidence. Every
 // point is sampled only once its leaf tile is resident (the pyramid stream is driven to each region
 // and polled for `levelAt === zmax`), because a coarse tile answering would be measuring the LOD,
@@ -32,7 +32,7 @@ import { writeFileSync } from 'node:fs'
 const args = process.argv.slice(2)
 const site = args.find((a) => !a.startsWith('--')) ?? 'crofton-triangle'
 const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt }
-const PORT = opt('--port', process.env.CORRIDOR_PORT ?? '5191')
+const PORT = opt('--port', process.env.PIEDMONT_PORT ?? '5191')
 const COMPARE = args.includes('--compare')
 const DUMP = opt('--dump', null)
 const SHIFT = 12 // m: the control offset
@@ -51,10 +51,10 @@ async function open(query) {
   // times out looking booted-but-slow. Measured 2026-10-09; the client is harmless here.
   // the knob store: every tab's file is applied by name, so one tab is enough (ui/tune.ts restore)
   await page.addInitScript(() => {
-    try { localStorage.setItem('apex-corridor-visuals.tune.v1', JSON.stringify({ v: 2, values: { STREAM_LOCAL: 0 }, touched: ['STREAM_LOCAL'] })) } catch {}
+    try { localStorage.setItem('piedmont-visuals.tune.v1', JSON.stringify({ v: 2, values: { STREAM_LOCAL: 0 }, touched: ['STREAM_LOCAL'] })) } catch {}
   })
   await page.goto(`http://127.0.0.1:${PORT}/#${site}?lite${query}`, { waitUntil: 'load' })
-  await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 1500000 })
+  await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 1500000 })
   if (errors.length) throw new Error(`page errors during boot: ${errors.join(' | ')}`)
   return page
 }
@@ -66,7 +66,7 @@ async function open(query) {
  * (x, north); world frame for `physGroundAt` (x, z = -north).
  */
 const buildPoints = (quick) => {
-  const site = window.corridor.site
+  const site = window.piedmont.site
   const pts = []
   const offs = [0, 1.5, -1.5, 3, -3] // on the pavement, plus the lateral steps past its edge below
   const edgeSteps = [0.3, 1, 2, 3.5, 5, 6.5, 8, 11, 15, 25, 38] // metres past the edge: blend, verge
@@ -101,7 +101,7 @@ const buildPoints = (quick) => {
 /** Drive the pyramid to each region and sample once the leaf answers under every point there. */
 const sampleAll = async (page, pts) => {
   return await page.evaluate(async (pts) => {
-    const site = window.corridor.site
+    const site = window.piedmont.site
     const pyr = site.pyramidStream
     const set = site.pyramidSet
     const zmax = site.manifest.layers.pyramid.zmax
@@ -114,7 +114,7 @@ const sampleAll = async (page, pts) => {
     }
     const out = []
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-    try { window.corridor.tune.set('PYR_CONE_DEG', 180) } catch {}
+    try { window.piedmont.tune.set('PYR_CONE_DEG', 180) } catch {}
     let coarse = 0
     for (const [k, g] of groups) {
       const [cx, cz] = k.split(',').map(Number)
@@ -126,7 +126,7 @@ const sampleAll = async (page, pts) => {
       // At a driver's height, not from above: a top-down view over a suburb is the draw load
       // that takes swiftshader's tab down (reference-headless-probe-traps), and the stream's own
       // cone is held at its full 180 so the whole half-space ahead is wanted; the camera faces each cell.
-      const { camera, orbit } = window.corridor
+      const { camera, orbit } = window.piedmont
       const gy = site.heightAt(ex, -ez)
       camera.position.set(ex, gy + 2.5, ez + 12)
       if (orbit) { orbit.target.set(ex, gy + 1, ez); orbit.update?.() }

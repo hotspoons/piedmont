@@ -9,7 +9,7 @@
 // listing in the right, nor no assets we can reference from the library in case we want to spawn
 // something at a point for a given condition."* So: points, sounds, the level's builds and the
 // spawnable library too, each row with code that uses it. Whether that code COMPILES is held in
-// tools/worldeditor/programrefs.test.mjs, against the declaration bundle the editor checks with.
+// services/worldeditor/programrefs.test.mjs, against the declaration bundle the editor checks with.
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { countByKind, identOf, KIND_ORDER, levelBuilds, thingMatches, worldThings, type WorldDocs } from '../src/game/world/worldthings'
 import { POINT_RADIUS_M } from '../src/game/session/program'
@@ -116,7 +116,7 @@ describe('what a program can name in this world', () => {
 /*
  * WHAT THE LIST OFFERS IS WHAT A SPAWN FINDS. The viewer resolves `api.models.spawn` through
  * `loadSpawnCatalog` (catalogmerge.ts); the MCP server lists through `spawnables`
- * (tools/worldeditor/programrefs.mjs), over its own routes. Same literals in, same ids out — or an
+ * (services/worldeditor/programrefs.mjs), over its own routes. Same literals in, same ids out — or an
  * agent is told it can spawn something the game cannot find.
  */
 describe('the spawn catalog and the MCP library agree', () => {
@@ -127,7 +127,7 @@ describe('the spawn catalog and the MCP library agree', () => {
     const { shippedEntries, libraryEntries, mergeCatalog, buildEntries } = await import('../src/assets/catalogmerge')
     const { typeOf } = await import('../src/assets/classes')
     // @ts-expect-error -- a plain .mjs with no declarations; the test only needs it to run
-    const { spawnables } = await import('../../../tools/worldeditor/programrefs.mjs')
+    const { spawnables } = await import('../../../services/worldeditor/programrefs.mjs')
     const kit = [{ id: 'barn-01', name: 'Barn', category: 'barn', glb: 'assets/barn-01.glb', footprint_m: [30, 14] as [number, number], height_m: 11 }, { id: 'ghost', name: 'No model', category: 'x', footprint_m: [1, 1] as [number, number], height_m: 1 }]
     const items = [
       { id: 'fc-rx-7', subject: 'RX-7', kind: 'hero-car', finished: 2, mesh: 1 },

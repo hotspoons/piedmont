@@ -1,6 +1,6 @@
 // Does the world actually sit on the ellipsoid, and does the road still sit on the ground?
 //
-//   PORT=5185 SLUG=bacon-ridge-rd node probes/corridor-geodetic.mjs
+//   PORT=5185 SLUG=bacon-ridge-rd node probes/geodetic.mjs
 //
 // Two things can go wrong with the frame change and neither shows up as an error:
 //   * the terrain draws FLAT — the lattice was ignored and we are still on a plane

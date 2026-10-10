@@ -28,7 +28,7 @@ this sits beside is in `PLAN-WORLD-SCALE.md`'s orbit and already built (`world/o
   portal itself is not built.
 - **The ground under an overpass** — not furniture, but the reason the rest is visible: an elevated
   carriageway is a deck, never the ground (`world/overpass.ts isDeck`, physics `physGroundAt` +
-  streamed trimesh `decksNear`). See the commit and `probes/corridor-overpass.mjs`.
+  streamed trimesh `decksNear`). See the commit and `probes/overpass.mjs`.
 - **The one bug underneath all of it (fixed, `f7cf98b`)** — a branch was tiled by its first vertex, so
   a road that bridges a tile it does not start in streamed no spline there and the deck had nothing to
   carry. `_vector_tiles` now writes a way into every tile its vertices fall in (`_WAY_COORDS`), and the
@@ -293,7 +293,7 @@ pass. Needs a rebake.
 
 Nothing here raises `MAX_M` or touches the sharded bake; every item is per-tile or resident-small.
 
-**Promoted live 2026-10-07 04:01Z** (job `corridor-reexport-dc-furniture`, `--allow-missing`; the
+**Promoted live 2026-10-07 04:01Z** (job `piedmont-reexport-dc-furniture`, `--allow-missing`; the
 earlier water-only re-export had REFUSED to promote against 21 stale tiles). Screen-checked against
 the live remote through `probes/vtproxy.mjs`: the school sign paints (yellow-green diamond,
 pedestrians), and `signals.signs` carries `school` 85 / `school_end` 80 / `exit` 650; the trail
@@ -306,9 +306,9 @@ side-hint and tunnel portals need the shared `scene.ts`, which another agent is 
 uncommitted (HEAD `6e7d0bb`).
 
 **Two re-exports for the freeway stop-sign fix (2026-10-07).** Commit `60bf53a`
-(job `corridor-reexport-dc-stopsign`) promoted the freeway fixes; a screen-check against Rich's own
+(job `piedmont-reexport-dc-stopsign`) promoted the freeway fixes; a screen-check against Rich's own
 stance then showed one sign left — the **ramp's**, drawn on the Beltway shoulder — so `6c4d229`
-(job `corridor-reexport-dc-merge`) added the merge rule and promoted. Verified live: junction
+(job `piedmont-reexport-dc-merge`) added the merge rule and promoted. Verified live: junction
 `x50220992` is `uncontrolled`, no stop sign stands within 60 m, and Rich's stance now shows the
 Beltway shoulder clear. Live counts moved `16345 two-way + 3222 all-way (31598 signs)` →
 `16305 + 3220 (31553 signs)`. The other agent committed and stopped, so these pushes also carried
@@ -321,7 +321,7 @@ their `6e7d0bb` and `3d4a60f` (spine).
 A branch is tiled by its **first point** (`_TILE_KEY` in `export.py`), and the viewer streams a
 branch only when the eye reaches that tile. A long road whose first point is far from part of its
 own length is therefore missing exactly where you are — which is how the dc-metro overpass ramp was
-absent from the grid under its own deck (`probes/corridor-overpass.mjs` documents this). Every
+absent from the grid under its own deck (`probes/overpass.mjs` documents this). Every
 "furniture missing at spot X" report can be this rather than a builder bug.
 
 **Fixed, `f7cf98b`.** `_vector_tiles` keys a polyline to every tile its vertices fall in; the viewer

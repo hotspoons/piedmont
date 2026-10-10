@@ -14,9 +14,9 @@ import { builtinFacades } from './facades.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 /** the engine-sound catalog, committed with the wasm it belongs to */
-const ENGINES = path.resolve(HERE, '../../packages/enginesim/wasm/engines.json')
-/** the sampled effects bank, written by tools/sounds/build.py; its slots are what a document's `sounds` may name */
-const SOUND_BANK = path.resolve(HERE, '../../apps/corridor/public/sounds/bank.json')
+const ENGINES = path.resolve(HERE, '../../vendor/arcade/packages/enginesim/wasm/engines.json')
+/** the sampled effects bank, written by pipelines/sounds/build.py; its slots are what a document's `sounds` may name */
+const SOUND_BANK = path.resolve(HERE, '../../apps/game/public/sounds/bank.json')
 
 export const WEATHERS = ['clear', 'rain', 'sleet', 'snow', 'ice']
 export const SEASONS = ['winter', 'spring', 'summer', 'autumn']

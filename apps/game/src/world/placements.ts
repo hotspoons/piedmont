@@ -37,7 +37,7 @@ export interface CatalogEntry {
   rock_type?: string
 }
 
-// tools/assetgen/finish.mjs always Draco-compresses; without a decoder GLTFLoader rejects silently
+// pipelines/assetgen/finish.mjs always Draco-compresses; without a decoder GLTFLoader rejects silently
 // and every real model would fall back to a box. The decoder is vendored by the editor agent.
 const draco = new DRACOLoader()
 draco.setDecoderPath('/assets/vendor/draco/')

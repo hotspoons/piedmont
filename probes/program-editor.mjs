@@ -14,7 +14,7 @@
 // So this drives the real page: write a correct program and a wrong one, and check that the
 // service says so about the right one.
 //
-//   node probes/corridor-program-editor.mjs
+//   node probes/program-editor.mjs
 import { chromium } from 'playwright'
 
 const url = process.env.PROBE_URL ?? 'http://localhost:5185/world.html'

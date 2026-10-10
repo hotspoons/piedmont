@@ -5,21 +5,21 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.log(m.type(), m.text().slice(0, 200)) })
 await page.goto(`http://127.0.0.1:5185/#${slug}?season=summer`, { waitUntil: 'load' })
-await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.corridor, null, { timeout: 180000 })
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === '' && window.piedmont, null, { timeout: 180000 })
 await page.waitForTimeout(2000)
 await page.screenshot({ path: `${outDir}/iso-0-default.png`, timeout: 120000 })
 const layers = await page.evaluate(() => {
-  const s = window.corridor.site
+  const s = window.piedmont.site
   const names = {}
   s.group.children.forEach((c) => { names[c.name || c.type] = c.children?.length ?? 0 })
   const road = s.layers.road.children.map((c) => `${c.name || c.type}:${c.children?.length ?? ''}`)
   return { top: names, road, treesChildren: s.layers.trees?.children.map((c) => c.name) }
 })
 console.log(JSON.stringify(layers))
-const steps = [['strip', () => window.corridor.site.layers.road.getObjectByName('strip')], ['road-surface', () => window.corridor.site.layers.road.children.filter((c) => c.name !== 'strip')], ['trees', () => window.corridor.site.layers.trees], ['terrain', () => window.corridor.site.terrain]]
+const steps = [['strip', () => window.piedmont.site.layers.road.getObjectByName('strip')], ['road-surface', () => window.piedmont.site.layers.road.children.filter((c) => c.name !== 'strip')], ['trees', () => window.piedmont.site.layers.trees], ['terrain', () => window.piedmont.site.terrain]]
 for (const [name] of steps) {
   await page.evaluate((n) => {
-    const s = window.corridor.site
+    const s = window.piedmont.site
     const target = n === 'strip' ? [s.layers.road.getObjectByName('strip')] : n === 'road-surface' ? s.layers.road.children.filter((c) => c.name !== 'strip') : n === 'trees' ? [s.layers.trees] : [s.terrain]
     window.__hidden = target.filter(Boolean)
     for (const o of window.__hidden) o.visible = false

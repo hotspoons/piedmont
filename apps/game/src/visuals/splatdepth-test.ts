@@ -1,8 +1,8 @@
 // Does a gaussian splat obey the depth buffer in THIS renderer?
 //
-// The corridor viewer builds its renderer with `logarithmicDepthBuffer: true`, and a splat
+// The viewer builds its renderer with `logarithmicDepthBuffer: true`, and a splat
 // renderer that writes ordinary depth would z-fight or draw straight over the world. Everything in
-// docs/corridor/PLAN-SPLAT-CORRIDORS.md rests on the answer, so it deserves a test that answers it
+// docs/PLAN-SPLAT-ROUTES.md rests on the answer, so it deserves a test that answers it
 // and nothing else.
 //
 // Measuring it inside the viewer was the wrong instrument: differencing two frames of a living

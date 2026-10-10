@@ -9,7 +9,7 @@
 // lie. Both are checked here, because both are the kind of thing that works when you build it and
 // is broken by the next change.
 //
-//   PORT=5185 node probes/corridor-clock.mjs [slug]
+//   PORT=5185 node probes/clock.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -19,7 +19,7 @@ const errors = []
 page.on('pageerror', (e) => { errors.push(e.message.slice(0, 160)); console.log('pageerror', e.message.slice(0, 200)) })
 await page.route('**/@vite/client', (r) => r.abort())
 await page.goto(`http://localhost:${PORT}/#${slug}?lite=1`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await page.waitForFunction(() => !!window.corridor?.site, null, { timeout: 900000 })
+await page.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 900000 })
 await page.keyboard.press('F6')
 await page.waitForTimeout(800)
 // the clock lives in environment -> time of day
@@ -37,7 +37,7 @@ const found = await page.evaluate(() => ({
 }))
 
 // 1. SETTING a date and time must move the sun
-await page.evaluate(() => window.corridor.tune.set('TIME_RATE', 0))
+await page.evaluate(() => window.piedmont.tune.set('TIME_RATE', 0))
 const setTo = async (d, t) => {
   await page.evaluate(
     ({ d, t }) => {
@@ -50,7 +50,7 @@ const setTo = async (d, t) => {
     { d, t },
   )
   await page.waitForTimeout(500)
-  return page.evaluate(() => ({ sunEl: +window.corridor.time.sun().el.toFixed(1), parts: window.corridor.time.parts() }))
+  return page.evaluate(() => ({ sunEl: +window.piedmont.time.sun().el.toFixed(1), parts: window.piedmont.time.parts() }))
 }
 const noon = await setTo('2026-06-21', '12:00')
 const midnight = await setTo('2026-06-21', '00:00')
@@ -67,7 +67,7 @@ await page.evaluate(() => {
   dd.value = '2026-06-21'
   tt.value = '06:00'
   tt.dispatchEvent(new Event('change', { bubbles: true }))
-  window.corridor.tune.set('TIME_RATE', 3600)
+  window.piedmont.tune.set('TIME_RATE', 3600)
 })
 const field = () => page.evaluate(() => document.querySelector('.timectl input[type=time]').value)
 /** poll until `want(v)`, up to ms; returns the last value seen either way */
@@ -92,7 +92,7 @@ const t1 = ran.v
 // the field is watched across it.
 await page.focus('.timectl input[type=time]')
 const f0 = await field()
-const simAt = () => page.evaluate(() => window.corridor.time.ms)
+const simAt = () => page.evaluate(() => window.piedmont.time.ms)
 const simStart = await simAt()
 let held = { changed: false, simMoved: 0, samples: 0 }
 for (let i = 0; i < 240; i++) {

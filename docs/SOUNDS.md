@@ -12,8 +12,8 @@ vehicle, actor, etc. and feature it in the code editor."*
 
 ## The bank
 
-`apps/corridor/public/sounds/` — `bank.json` and a folder per slot, written by
-`tools/sounds/build.py` from the CC0 sources listed in `tools/sounds/sources.json` (Kenney's
+`apps/game/public/sounds/` — `bank.json` and a folder per slot, written by
+`pipelines/sounds/build.py` from the CC0 sources listed in `pipelines/sounds/sources.json` (Kenney's
 Impact and Sci-fi packs, BigSoundBank's per-file CC0 recordings, two OpenGameArt CC0 packs).
 `CREDITS.md` beside it is generated from the same list. Nothing in the CC0 part needs attribution;
 it is given anyway. The tyres are Rich's own recordings and are not free (below). The cuts are mono 44.1 kHz, trimmed to their onset, peak-normalised, as `.ogg`
@@ -21,13 +21,13 @@ with an `.mp3` twin for browsers that cannot decode Vorbis (Safari); the game pi
 `canPlayType`. 150 clips, 2.9 MB for both formats.
 
 ```
-tools/sounds/.venv/bin/python -I tools/sounds/build.py          # everything, into public/sounds
-tools/sounds/.venv/bin/python -I tools/sounds/build.py gun.fire # one slot
-tools/sounds/.venv/bin/python -I tools/sounds/build.py --list
+pipelines/sounds/.venv/bin/python -I pipelines/sounds/build.py          # everything, into public/sounds
+pipelines/sounds/.venv/bin/python -I pipelines/sounds/build.py gun.fire # one slot
+pipelines/sounds/.venv/bin/python -I pipelines/sounds/build.py --list
 ```
 
-(`python3 -m venv tools/sounds/.venv && tools/sounds/.venv/bin/pip install soundfile numpy`
-first; the sources download into `tools/sounds/.cache/`, which is ignored.)
+(`python3 -m venv pipelines/sounds/.venv && pipelines/sounds/.venv/bin/pip install soundfile numpy`
+first; the sources download into `pipelines/sounds/.cache/`, which is ignored.)
 
 ### The slots
 
@@ -56,7 +56,7 @@ a contact every step), a wreck always.
 
 The BigSoundBank squeal was, in Rich's words, a mouse. The tyre slots are now cut from his own
 recordings — the Lotus pirouette at an autocross, the Subaru scrubbing and squealing — kept in
-`tools/sounds/own/` (his rights, with permission, **not CC0**; README.md there has the videos and
+`pipelines/sounds/own/` (his rights, with permission, **not CC0**; README.md there has the videos and
 timestamps, and how to re-cut with yt-dlp + the venv's ffmpeg). `isolate_squeal` in build.py
 takes the engine out: a 650 Hz–9 kHz band-pass under the boxer, then a spectral gate learned from
 each clip's own run-in. `build.py --spectrograms` writes a PNG per slot into `.cache/` so the cuts

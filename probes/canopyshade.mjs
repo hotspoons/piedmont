@@ -1,6 +1,6 @@
 // Under the trees it is darker — and how much darker depends on the season and on what the trees
 // are. Measured by moving the eye between open ground and closed canopy at the same instant.
-//   PORT=5185 node probes/corridor-canopyshade.mjs [slug]
+//   PORT=5185 node probes/canopyshade.mjs [slug]
 import { chromium } from 'playwright'
 const slug = process.argv[2] ?? 'crofton-triangle'
 const PORT = process.env.PORT ?? '5185'
@@ -9,13 +9,13 @@ const p = await b.newPage({ viewport: { width: 700, height: 450 } })
 p.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 200)))
 await p.route('**/@vite/client', (r) => r.abort())
 await p.goto(`http://localhost:${PORT}/#${slug}?lite=1&fresh`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-await p.waitForFunction(() => !!window.corridor?.site, null, { timeout: 600000 })
+await p.waitForFunction(() => !!window.piedmont?.site, null, { timeout: 600000 })
 await p.waitForTimeout(4000)
 let fails = 0
 const ok = (what, cond, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++ }
 // find one spot under heavy canopy and one in the open, both near the spine
 const spots = await p.evaluate(() => {
-  const site = window.corridor.site, m = site.manifest
+  const site = window.piedmont.site, m = site.manifest
   let wood = null, open = null
   for (const c of m.spine.coords) {
     for (const off of [-30, -20, 20, 30]) {
@@ -33,7 +33,7 @@ const spots = await p.evaluate(() => {
 })
 ok('the site has both closed canopy and open ground near the road', !!(spots.wood && spots.open), JSON.stringify(spots))
 const lightAt = async (spot) => p.evaluate(async (s) => {
-  const c = window.corridor
+  const c = window.piedmont
   c.camera.position.set(s.x, (c.site.groundAt(s.x, s.z) ?? 0) + 2, s.z)
   c.orbit.target.set(s.x + 5, (c.site.groundAt(s.x, s.z) ?? 0) + 2, s.z)
   c.orbit.update()
@@ -45,7 +45,7 @@ const lightAt = async (spot) => p.evaluate(async (s) => {
   const canopy = +c.site.canopyAt(c.camera.position.x, -c.camera.position.z).toFixed(1)
   return { amb: +amb.intensity.toFixed(3), env: +c.scene.environmentIntensity.toFixed(3), canopy, at: [+c.camera.position.x.toFixed(1), +c.camera.position.z.toFixed(1)], ...c.light() }
 }, spot)
-const setSeason = (s) => p.evaluate((s) => window.corridor.tune.set('SEASON', s), s)
+const setSeason = (s) => p.evaluate((s) => window.piedmont.tune.set('SEASON', s), s)
 for (const [name, idx, expect] of [['summer', 2, 'much darker'], ['winter', 0, 'barely darker']]) {
   await setSeason(idx)
   await p.waitForTimeout(1500)
@@ -63,10 +63,10 @@ for (const [name, idx, expect] of [['summer', 2, 'much darker'], ['winter', 0, '
 await setSeason(2)
 await p.waitForTimeout(800)
 const before = await lightAt(spots.open)
-await p.evaluate(() => window.corridor.tune.set('AMBIENT_GAIN', 2))
+await p.evaluate(() => window.piedmont.tune.set('AMBIENT_GAIN', 2))
 const after = await lightAt(spots.open)
 ok('AMBIENT_GAIN doubles the ambient', Math.abs(after.amb / before.amb - 2) < 0.15 && Math.abs(after.env / before.env - 2) < 0.15, `${before.amb}/${before.env} -> ${after.amb}/${after.env}`)
-await p.evaluate(() => { window.corridor.tune.set('AMBIENT_GAIN', 1); window.corridor.tune.set('SEASON', -1) })
+await p.evaluate(() => { window.piedmont.tune.set('AMBIENT_GAIN', 1); window.piedmont.tune.set('SEASON', -1) })
 console.log(fails ? `FAIL ${fails}` : 'PASS')
 await b.close()
 process.exit(fails ? 1 : 0)

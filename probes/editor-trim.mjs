@@ -20,11 +20,11 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { NodeIO } from '@gltf-transform/core'
-import { finish } from '../tools/assetgen/finish.mjs'
+import { finish } from '../pipelines/assetgen/finish.mjs'
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
-const WORK = process.env.CORRIDOR_ASSET_WORK ?? '/tmp/corridor-assets'
-const DEST = path.join(ROOT, 'apps/corridor/public/assets')
+const WORK = process.env.PIEDMONT_ASSET_WORK ?? '/tmp/piedmont-assets'
+const DEST = path.join(ROOT, 'apps/game/public/assets')
 
 const argv = process.argv.slice(2)
 const id = argv.find((a) => !a.startsWith('--'))

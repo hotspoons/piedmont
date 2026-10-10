@@ -45,7 +45,7 @@ export interface DocSources {
 /** The authored documents beside a bake. The same list gitrepo.mjs commits, deliberately. */
 export const SITE_DOCS = ['tuning.json', 'presets.json', 'placements.json', 'adjustments.json', 'structures.json', 'dead_ends.json']
 
-/** Matches PROGRAM_EXT in tools/worldeditor/store.mjs, which is the authority. */
+/** Matches PROGRAM_EXT in services/worldeditor/store.mjs, which is the authority. */
 const PROGRAM_EXT = ['.ts', '.tsx', '.js', '.mjs', '.json', '.md', '.txt', '.glsl', '.frag', '.vert', '.css', '.yaml', '.yml']
 
 const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/

@@ -1,6 +1,6 @@
 """One request per tile: the trailworks tile-pack container, baked rather than assembled.
 
-Corridor writes three loose files per tile (`<x>_<y>.dem.png`, `.chm.png`, `.naip.jpg`), so
+The bake writes three loose files per tile (`<x>_<y>.dem.png`, `.chm.png`, `.naip.jpg`), so
 crofton-triangle's 59 tiles are 177 objects and crofton-crownsville's 125 are 375. trailworks
 profiled exactly this and found every LOD tier **fetch-bound** — ~300 ms a tile, decode 5–15 ms
 and mesh build 1–11 ms being noise, and ~1.1 s an asset over a Cloudflare tunnel. Their fix was to
@@ -18,7 +18,7 @@ A tile that legitimately lacks a file just omits the key.
 
 ## Two deliberate differences from trailworks
 
-**Baked, not assembled.** trailworks builds packs on the fly in `prominence-rs`. Corridor is
+**Baked, not assembled.** trailworks builds packs on the fly in `prominence-rs`. This bake is
 heading for R2 behind a Worker, which serves static objects and has nowhere to run assembly logic,
 so the pack is a file the bake writes. Same bytes either way — a reader ported in either direction
 just works.

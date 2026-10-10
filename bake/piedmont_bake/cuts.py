@@ -298,7 +298,7 @@ def _summarize(faces: list[dict], roads: int | None = None) -> dict:
 
 
 def measure(site_dir: Path, line: LineString | None = None, prof: dict | None = None, prefix: str = "") -> dict | None:
-    """Faces beside one road for a small (single-corridor) site. `line`/`prof` default to the
+    """Faces beside one road for a small (single-road) site. `line`/`prof` default to the
     site's spine. A network uses `measure_network`, which shares the per-region reads instead."""
     if not _has_rasters(site_dir):
         return None

@@ -5,7 +5,7 @@
 // 96 GB of HBM, so the interesting answers are all on a cluster I do not have. This fabricates
 // one, and a few ways of getting it wrong, and checks what preflight says.
 //
-//   node tools/worldeditor/preflight.test.mjs
+//   node services/worldeditor/preflight.test.mjs
 import { checks, PROFILES, qty } from './preflight.mjs'
 
 let failed = 0

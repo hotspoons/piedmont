@@ -1,4 +1,4 @@
-"""`corridor vectors` — split the heavy spatial arrays out of an already-exported manifest.
+"""`piedmont_bake vectors` — split the heavy spatial arrays out of an already-exported manifest.
 
 A world exported before vector tiling existed still carries its footprints and street furniture
 inline; `cmd_vectors` rewrites the manifest to the tiled shape so the viewer stops parsing them at
@@ -17,8 +17,8 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from corridor import __main__ as cli  # noqa: E402
-from corridor import export  # noqa: E402
+from piedmont_bake import __main__ as cli  # noqa: E402
+from piedmont_bake import export  # noqa: E402
 
 
 def _footprint(x: float, y: float) -> dict:

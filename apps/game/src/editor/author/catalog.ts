@@ -43,7 +43,7 @@ export interface Catalog {
 
 /**
  * Category tints, so a plan view of a whole town reads without labels. The vocabulary is the one
- * `autogen.ts` classifies into, so a generated corridor is colour-coded by what the rules decided:
+ * `autogen.ts` classifies into, so a generated road band is colour-coded by what the rules decided:
  * residential greens, commercial oranges, industrial violets, civic greys.
  */
 const TINT: Record<string, number> = {
@@ -134,7 +134,7 @@ export function proxyOf(entry: CatalogEntry): THREE.Object3D {
 }
 
 /**
- * The catalog's models come out of `tools/assetgen/finish.mjs`, which always Draco-compresses —
+ * The catalog's models come out of `pipelines/assetgen/finish.mjs`, which always Draco-compresses —
  * there is no option not to. A GLTFLoader with no DRACOLoader registered does not warn about
  * that; it rejects, and the caller falls back to a box. Three real models rendered as three
  * labelled boxes for a whole probe cycle over this.

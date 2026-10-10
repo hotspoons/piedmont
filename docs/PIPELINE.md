@@ -1,19 +1,19 @@
-# Corridor pipeline — from a photo to a drivable road
+# Pipeline — from a photo to a drivable road
 
-*Written from the code as it stands on 2026-09-21 (`tools/corridor/corridor/*.py`,
-`apps/corridor/src/*.ts`). Every file, threshold and default named here was read out of the
+*Written from the code as it stands on 2026-09-21 (`bake/piedmont_bake/*.py`,
+`apps/game/src/*.ts`). Every file, threshold and default named here was read out of the
 source, not remembered. When the code moves, move this.*
 
-There are two halves. The **bake** (`tools/corridor`, Python, runs once per site on the cluster
+There are two halves. The **bake** (`bake`, Python, runs once per site on the cluster
 or in the devcontainer) pulls the public record for a stretch of road and writes one directory
-of measured data. The **viewer** (`apps/corridor`, three.js, runs in the browser) turns that
+of measured data. The **viewer** (`apps/game`, three.js, runs in the browser) turns that
 directory into terrain, pavement, trees, grass, structures and props every time it loads. Nothing
 is generated in the browser that could have been computed in the bake; nothing in the bake knows
 what a three.js mesh is.
 
 ```
 photo (EXIF fix)  or  lat/lon ──► sites.json
-                                      │  python -m corridor fetch <slug>
+                                      │  python -m piedmont_bake fetch <slug>
                                       ▼
    OSM ─► spine + siblings + features + crossings
    3DEP ─► dem_1m.tif                    Macrostrat ─► geology.json
@@ -22,10 +22,10 @@ photo (EXIF fix)  or  lat/lon ──► sites.json
                                       │
                                       ├─► surface.json          (pavement class every 20 m)
                                       ├─► web/manifest.json + web/*.png|jpg   (the viewer's contract)
-                                      ├─► adjustments.json      (python -m corridor areas — proposals)
-                                      └─► publish               (R2, python -m corridor publish)
+                                      ├─► adjustments.json      (python -m piedmont_bake areas — proposals)
+                                      └─► publish               (R2, python -m piedmont_bake publish)
                                       │
-                                      ▼   apps/corridor  (vite dev :5185, /editor.html)
+                                      ▼   apps/game  (vite dev :5185, /editor.html)
    terrain ─ strip ─ road + paint ─ trees ─ impostors ─ grass ─ structures ─ placements ─ car
 ```
 
@@ -38,20 +38,20 @@ is dynamic — in one table. Parts 1 and 2 below are the detail.
 
 | tier | when | where it lives | what |
 |---|---|---|---|
-| **A · pipeline bake** | `python -m corridor fetch <slug>`, minutes per site, re-run only when data or a rule changes | `tools/corridor/data/sites/<slug>/` on disk (later an R2 bucket); the viewer reads only `web/` | OSM spine, lane tags, siblings, crossings, buildings/landuse/POIs · 3DEP 1 m DEM → `dem_2m.png` · NAIP 0.3 m → `naip_1m.jpg` · lidar → DTM/DSM/CHM/deck rasters, along-track profile, detected structures (deck planarity, class-17 demotion) · pavement class per 20 m · Macrostrat geology · 60 km horizon DEM + NAIP · canopy zeroed under carriageways and building footprints · `manifest.json`. Also offline, not per site: flux.2 surface textures (`tools/surfaces/gen.py`), TRELLIS.2 prop GLBs (`public/assets/`). |
-| **B · viewer boot** | `buildSite()` in `scene.ts`, once per site load, a few seconds, all in memory | GPU buffers and closures on the `Site` object | authored `adjustments.json` / `structures.json` applied (flatten rewrites the grade before the spline exists) · terrain mesh from the DEM, horizon mesh with the near footprint cut out · the carriageway Catmull-Rom spline — the one height function · station grid for `edgeDistance` · asphalt + paint meshes · corridor strip · tree records from the CHM (position, height, species) · impostor atlas baked with the renderer for the season · hex-tiled surface material sets · catalog GLBs placed · minimap layers · car placed at the photo. A knob in the `road` tab or a season change re-runs the affected part of this tier (`retune`, `setSeason`). |
+| **A · pipeline bake** | `python -m piedmont_bake fetch <slug>`, minutes per site, re-run only when data or a rule changes | `data/sites/<slug>/` on disk (later an R2 bucket); the viewer reads only `web/` | OSM spine, lane tags, siblings, crossings, buildings/landuse/POIs · 3DEP 1 m DEM → `dem_2m.png` · NAIP 0.3 m → `naip_1m.jpg` · lidar → DTM/DSM/CHM/deck rasters, along-track profile, detected structures (deck planarity, class-17 demotion) · pavement class per 20 m · Macrostrat geology · 60 km horizon DEM + NAIP · canopy zeroed under carriageways and building footprints · `manifest.json`. Also offline, not per site: flux.2 surface textures (`pipelines/surfaces/gen.py`), TRELLIS.2 prop GLBs (`public/assets/`). |
+| **B · viewer boot** | `buildSite()` in `scene.ts`, once per site load, a few seconds, all in memory | GPU buffers and closures on the `Site` object | authored `adjustments.json` / `structures.json` applied (flatten rewrites the grade before the spline exists) · terrain mesh from the DEM, horizon mesh with the near footprint cut out · the carriageway Catmull-Rom spline — the one height function · station grid for `edgeDistance` · asphalt + paint meshes · road-band strip · tree records from the CHM (position, height, species) · impostor atlas baked with the renderer for the season · hex-tiled surface material sets · catalog GLBs placed · minimap layers · car placed at the photo. A knob in the `road` tab or a season change re-runs the affected part of this tier (`retune`, `setSeason`). |
 | **C · dynamic** | every frame | `updateNear()`, `Car.tick()`, controls | grass tiles generated a few per frame as the eye moves and cached (blades near, sprite cards far) · which tree records get full ez-tree models inside `TREE_NEAR_RADIUS` and which stay impostors · impostor and grass wind/colour uniforms · the LOD footprint (stretched behind the view, circular when pitched down) · car physics, chase/cockpit camera, fly controls · minimap redraw. |
 
-## Part 1 · The bake (`tools/corridor`)
+## Part 1 · The bake (`bake`)
 
-Entry point: `corridor/__main__.py`. Commands: `sites`, `fetch`, `report`, `export`, `areas`,
-`publish`. Paths come from `CORRIDOR_DATA` (default `tools/corridor/data`), `CORRIDOR_SITES`
-(`sites.json`), `CORRIDOR_PHOTOS` (`ext/ref-driving`). The `just corridor-*` recipes wrap these
-with the venv at `tools/corridor/.venv`.
+Entry point: `piedmont_bake/__main__.py`. Commands: `sites`, `fetch`, `report`, `export`, `areas`,
+`publish`. Paths come from `PIEDMONT_DATA` (default `data`), `PIEDMONT_SITES`
+(`sites.json`), `PIEDMONT_PHOTOS` (`ext/ref-driving`). The `just bake-*` recipes wrap these
+with the venv at `bake/.venv`.
 
 ### 1.1 Sites (`sites.py`)
 
-A site is a place Rich stopped. `python -m corridor sites` reads the GPS IFD out of every JPEG in
+A site is a place Rich stopped. `python -m piedmont_bake sites` reads the GPS IFD out of every JPEG in
 `ext/ref-driving` (`exif_fix`: lat/lon in DMS, altitude, `GPSImgDirection` as heading, the
 `DateTimeOriginal`), drops frames in `IGNORE` (fixes known to be off the road they show), and
 clusters fixes within `CLUSTER_M = 400` of an existing site. Slugs come from the nearest entry in
@@ -72,15 +72,15 @@ ENU frame, because gaussworks' worlds are ENU and a UTM tile is re-based by subt
 Three Overpass queries, each cached by SHA-1 of the query text under `data/cache/overpass/`, tried
 across four public mirrors with back-off (the main instance 504s under load).
 
-**Where the OSM comes from.** Our own Overpass instances first (`CORRIDOR_OVERPASS_URL`, set per
+**Where the OSM comes from.** Our own Overpass instances first (`PIEDMONT_OVERPASS_URL`, set per
 bake by the world editor), the public mirrors after. Each of ours holds one or more Geofabrik
 regions (`overpass-eu` Europe, `overpass` Maryland, `overpass-na` North America), and a world is
 routed to the instance whose extract — its real polygon, not a box — holds all of it; the bake
-re-checks every query against the same polygons (`CORRIDOR_OVERPASS_COVERAGE`) and stops with a
+re-checks every query against the same polygons (`PIEDMONT_OVERPASS_COVERAGE`) and stops with a
 `BakeFault` rather than send one to an instance that does not hold it. A regional instance asked
 about ground it does not hold answers HTTP 200 with nothing: that is how dc-metro-take-2 baked
 without Washington or Virginia on 2026-10-10. Coverage, routing, the control, adding a region to a
-running instance and keeping it current: `tools/overpass/README.md`, "Where the OSM comes from".
+running instance and keeping it current: `services/overpass/README.md`, "Where the OSM comes from".
 
 1. **`nearest_road`** — drivable ways (`DRIVABLE` regex: motorway … primary_link) within 300 m of
    the fix, widened to 800 m if empty. Scored by distance **plus** a class penalty
@@ -109,12 +109,12 @@ motorway/trunk an untagged highway crossing is **inferred** over (nothing crosse
 grade); two ordinary roads → `grade`. The lidar profile is the check on `inferred`.
 
 Outputs: `spine.geojson` (WGS84), `spine_utm.json` (metres, `coords`, `photo_s`, `segments`,
-`siblings`), `osm.geojson`, `crossings.json`, `site.json` (`frame`, `bbox_utm`, `corridor`
+`siblings`), `osm.geojson`, `crossings.json`, `site.json` (`frame`, `bbox_utm`, `road_band`
 polygon, `ident`).
 
 ### 1.4 Bare earth (`dem.py`)
 
-TNM API product search `Digital Elevation Model (DEM) 1 meter`, GeoTIFF, over the corridor bbox in
+TNM API product search `Digital Elevation Model (DEM) 1 meter`, GeoTIFF, over the road-band bbox in
 WGS84; tiles sorted oldest→newest so `gdalwarp` paints the newest on top. Downloads go to the
 `prd-tnm` S3 mirror first (5× faster than rockyweb) and fall back to the catalogued URL, cached
 under `data/cache/usgs1m/` so neighbouring sites share 300 MB tiles. `gdalwarp -t_srs UTM -tr 1 1
@@ -123,19 +123,19 @@ every bridge deck, tree and building, which is exactly why the point cloud is fe
 
 ### 1.5 Imagery (`naip.py`)
 
-Two sources, chosen by `CORRIDOR_NAIP_SOURCE` (`auto`, the default; `pc`; `usgs`), same files
+Two sources, chosen by `PIEDMONT_NAIP_SOURCE` (`auto`, the default; `pc`; `usgs`), same files
 either way — 4000 px tiles at the caller's lattice (`RES = 0.3` m → `naip.tif`, `NAIP_RES_M = 0.6`
 → `naip_1m.tif`), stitched into a JPEG-in-GeoTIFF (YCbCr), each tile cached under `cache/naip/`:
 
 - **Planetary Computer** (`naip_pc.py`, primary since 2026-10-10): STAC search of the `naip`
   collection, the USDA's quarter-quad COGs read over `/vsicurl/` with a free SAS token (refreshed
   near `msft:expiry`). ONE YEAR first: over the world's whole bbox (every shard agrees), the newest
-  year whose leaf-on items cover ≥ 98 % (`CORRIDOR_NAIP_YEAR_MAX_BARE`) of what any year covers is
+  year whose leaf-on items cover ≥ 98 % (`PIEDMONT_NAIP_YEAR_MAX_BARE`) of what any year covers is
   read alone — its states in order of how much of the world each covers, then finer, then later —
-  the rest only as gap fill (an opt-in cloud mask, `CORRIDOR_NAIP_CLOUDS=1`, makes confirmed
-  clouds holes too) (`CORRIDOR_NAIP_YEAR=auto|<yyyy>|off`;
-  recorded as `naip.year`). Without one, per pixel a leaf-on flight (`CORRIDOR_NAIP_LEAF_ON`, default months 5-9)
-  beats a leaf-off one up to `CORRIDOR_NAIP_LEAF_ON_YEARS` (default 2) newer, then the newest year,
+  the rest only as gap fill (an opt-in cloud mask, `PIEDMONT_NAIP_CLOUDS=1`, makes confirmed
+  clouds holes too) (`PIEDMONT_NAIP_YEAR=auto|<yyyy>|off`;
+  recorded as `naip.year`). Without one, per pixel a leaf-on flight (`PIEDMONT_NAIP_LEAF_ON`, default months 5-9)
+  beats a leaf-off one up to `PIEDMONT_NAIP_LEAF_ON_YEARS` (default 2) newer, then the newest year,
   the finer item, the later date; older items fill only what is still black (state lines, collars,
   a missing quarter-quad, white redaction rectangles); an item that adds nothing is never opened.
   The rule is in the manifest (`naip.rule`). R, G and B are read by name from `eo:bands`, checked
@@ -155,11 +155,11 @@ Crofton is full; an outage of both sources is a `BakeFault`.
 
 ### 1.6 Far terrain (`horizon.py`)
 
-`3DEPElevation/ImageServer/exportImage` at 30 m over `±CORRIDOR_HORIZON_M` (default 30 000 m → a
+`3DEPElevation/ImageServer/exportImage` at 30 m over `±PIEDMONT_HORIZON_M` (default 30 000 m → a
 2000² Float32 GeoTIFF, `horizon_30m.tif`) plus NAIP at 60 m over the same square
 (`horizon_naip_60m.jpg`, from the same two sources: a hundred-odd quarter-quads at their 19 m
 overviews, or one ImageServer request) so the far ridges are forest-green and field-tan, not a beige ramp. Same
-vertical datum as the corridor DEM (NAVD88 m), so the LOD seam is a resampling problem.
+vertical datum as the road-band DEM (NAVD88 m), so the LOD seam is a resampling problem.
 
 ### 1.7 Geology (`geology.py`)
 
@@ -171,7 +171,7 @@ palette (Part 3).
 
 ### 1.7b Flora (`flora.py`) — what grows beside it
 
-**LANDFIRE Existing Vegetation Type** (LF2024, 30 m, CONUS/AK/HI) over the corridor polygon, as
+**LANDFIRE Existing Vegetation Type** (LF2024, 30 m, CONUS/AK/HI) over the road-band polygon, as
 AREA SHARES — the class at the centre point is `Developed-Roads` at every site we have. Each class
 keeps LANDFIRE's own `EVT_LF` / `EVT_PHYS` / `EVT_CLASS` / `EVT_SBCLS`, from which the bake derives
 a leaf cycle (evergreen / deciduous / mixed) and one of eighteen ground-cover classes by rule.
@@ -190,32 +190,32 @@ is green. Bixby Bridge takes 2 mm of rain in June–August (0.2 % of its year), 
 
 Out: `flora.json` + `flora_evt.npy` (the class index per 30 m pixel), a `flora` block in
 `web/manifest.json` and `web/flora_30m.png`. The sources, the fallback chain, the readouts at every
-test site and the traps are in `docs/corridor/FLORA.md`.
+test site and the traps are in `docs/FLORA.md`.
 
 ### 1.8 The point cloud (`lidar.py`)
 
 **Fetch.** USGS stages 3DEP projects as Entwine Point Tiles (EPT) in Web Mercator on a public S3
 bucket. `DATASETS` lists the Maryland projects newest-first; `candidate_datasets` keeps those
-whose octree cube contains the corridor (necessary, not sufficient — Clarksburg sits in
+whose octree cube contains the road band (necessary, not sufficient — Clarksburg sits in
 MD_Western_2's cube with no points), `nodes_for` walks the hierarchy JSON by hand (no PDAL on
 arm64 trixie), `_read_node` reads each LAZ node with laspy + lazrs, and the result is re-projected
 to the site frame. When no EPT dataset yields points, `_fetch_tnm_laz` searches TNM for
 `Lidar Point Cloud (LPC)` tiles, keeps the **newest project only** (no vintage seams), downloads
 them (≈6 GB per eastern site), re-projects each from its declared CRS (US-foot compound CRSs are
-converted) and clips per tile to the corridor polygon so memory holds the strip, not the box.
+converted) and clips per tile to the road-band polygon so memory holds the strip, not the box.
 
 **Units.** `check_units` compares ground-class z to the DEM at 20 000 random points; a ratio near
 1/0.3048 means feet and the cloud is scaled.
 
-**Trust.** `classification_quality`: if class 17 (bridge deck) is more than 3 % of the corridor
+**Trust.** `classification_quality`: if class 17 (bridge deck) is more than 3 % of the road band
 the vendor used it as a junk bin (USGS Sandy NCR 2014: 24 % class 17, 21 % class 18), and 17/18
 are demoted to unassigned before any structure logic runs. The manifest records the demotion.
 
-**Rasters** (`rasters`, 1 m, inside the 200 m lidar corridor): `dtm.tif` (min of ground),
+**Rasters** (`rasters`, 1 m, inside the 200 m lidar road band): `dtm.tif` (min of ground),
 `dsm.tif` (max of everything), `chm.tif` (max of vegetation 3–5 **or unassigned 1** minus the
 gap-filled DTM, clipped 0–80 m, zeroed under deck cells — MD_Western_2021 has no vegetation
 classes at all, so canopy is "unassigned above ground"), `deck_z.tif` / `deck_n.tif` (class-17
-height and count), `building_n.tif` (class-6 count), and `corridor.laz` (the clipped cloud in the
+height and count), `building_n.tif` (class-6 count), and `road_band.laz` (the clipped cloud in the
 site frame, with the demoted classes).
 
 **Profile** (`profile`, every 2 m along the spine). Order matters:
@@ -256,7 +256,7 @@ never fails a fetch. `manifest.json` records what was fetched, from where, when 
 Every `STEP_M = 20` m: median **lidar intensity** of ground returns inside the lanes
 (`lanes × 3.66 / 2 − 0.3`) against the verge 12–30 m out (intensity is per project — the same
 asphalt reads 5 900 on MD_Western_2 and 14 300 on MD_Western_1 — so only the ratio to the
-corridor's own median votes); **NAIP** brightness, chroma and texture inside the lane polygon
+road band's own median votes); **NAIP** brightness, chroma and texture inside the lane polygon
 (absolute: concrete ≥ 120, new asphalt ≤ 90); **OSM `surface=`** as the third vote. Chip seal is
 gated to non-motorway classes. A station whose intensity ratio jumps ≥ 35 % against both
 neighbours is `asphalt_patched`. Classes: `asphalt_new | asphalt_aged | asphalt_patched |
@@ -273,7 +273,7 @@ Browser-decodable layers on one 2 m lattice, coordinates **relative to the site 
 | `chm_2m.png` | canopy, 8-bit, 0.25 m per step, **zeroed over every carriageway** (paved width + 2 m, from the max lane count) **and under every OSM building footprint + 1 m** — a truck is a 4 m "tree", a roof a 6 m one |
 | `naip_1m.jpg` | imagery at 1 m, saturation 1.3× / contrast 1.1× / warmed, because NAIP is flown for measurement and reads grey-green under fog |
 | `horizon_60m.png`, `horizon_naip_60m.jpg` | far terrain, same height encoding, 1000² over 60 km |
-| `flora_30m.png` | the LANDFIRE EVT class INDEX per pixel into `flora.evt.classes`, 255 outside the corridor — on its own 30 m lattice, because the source is 30 m and resampling a class raster to 2 m is megabytes of the same integer |
+| `flora_30m.png` | the LANDFIRE EVT class INDEX per pixel into `flora.evt.classes`, 255 outside the road band — on its own 30 m lattice, because the source is 30 m and resampling a class raster to 2 m is megabytes of the same integer |
 | `manifest.json` | see below |
 
 Before the vectors, `buildings.derive` (`buildings.py`) computes per OSM footprint the minimum
@@ -290,10 +290,10 @@ the kinks. Siblings get the same treatment (2-D only).
 `web/manifest.json` keys: `slug`, `ident`, `frame`, `bbox`, `layers`, `spine` (`coords` [x,y,z]
 every 10 m, `photo_s`, `length_m`, `segments` with tags), `siblings`, `structures`, `crossings`,
 `surface` (stations + segments + summary), `profile` (every 10 m: `road_z`, `ground_rel` at
-8/15/40, `canopy` at 15/40), `geology`, `flora` (EVT classes with their corridor share and species mix, the site species mix with
+8/15/40, `canopy` at 15/40), `geology`, `flora` (EVT classes with their road-band share and species mix, the site species mix with
 genus and measured canopy height per species, ground-cover shares, Daymet monthly climate),
 `photos`, `lidar` summary, `buildings`, `landuse`, `pois`.
-`write_index` rebuilds `sites/index.json`. The TypeScript mirror is `apps/corridor/src/site.ts`.
+`write_index` rebuilds `sites/index.json`. The TypeScript mirror is `apps/game/src/site.ts`.
 
 ### 1.12 Network sites (`network.py`, `network_tiles.py`) — one region of roads as one world
 
@@ -306,22 +306,22 @@ node ids shared between chains, positioned in the site frame with their along-tr
 chain. `write_vectors` emits the usual files: `spine_utm.json` (the primary as `coords`, every
 other chain as a `sibling` with the additive keys `id name ref ident highway lanes oneway
 length_m junctions`, plus `network: true`, `primary.junctions`, `roads`), `site.json` whose
-`corridor` is the **union of every chain buffered 150 m**, `osm.geojson` inside that union's hull,
+`road_band` is the **union of every chain buffered 150 m**, `osm.geojson` inside that union's hull,
 `crossings.json` for the primary.
 
-Rasters follow the corridor's bbox. Under 6 km a side (Arrowhead Farms: 2.6 × 4.3 km) the
+Rasters follow the road-band's bbox. Under 6 km a side (Arrowhead Farms: 2.6 × 4.3 km) the
 single-image path runs unchanged; over it (Crofton–Crownsville: 18.8 × 18.2 km, 30.7 km² of
-corridor) the **tiled path** does:
+the game) the **tiled path** does:
 
 - DEM via `dem.fetch_dem` over the whole bbox (deflate; the bbox is mostly fields, they compress);
 - NAIP at **`NAIP_RES_M`** (`naip_tiled`, 0.6 m; the file keeps the name `naip_1m.tif`): only the
-  4000 px tiles that touch the corridor, from either source (§1.5), written
+  4000 px tiles that touch the road band, from either source (§1.5), written
   window by window into one JPEG GeoTIFF — 0.3 m over 18 km would be 5 GB;
 - lidar tile-wise (`lidar_tiled`): TNM LAZ delivery tiles of the newest project, each read,
-  reprojected, clipped to the corridor and scattered into **1 km output tiles** (min ground, max
+  reprojected, clipped to the road band and scattered into **1 km output tiles** (min ground, max
   surface, max vegetation/unassigned, deck max/count, building count) — the whole cloud (~150 M
   points) never exists in memory; class 17/18 demoted per tile when over 3 %; only points within
-  15 m of a road are kept (`lidar/corridor.laz`) for the structure tests; per-tile GeoTIFFs under
+  15 m of a road are kept (`lidar/road_band.laz`) for the structure tests; per-tile GeoTIFFs under
   `lidar/tiles/<x>_<y>.*.tif` and `gdalbuildvrt` VRTs over them;
 - profiles per chain with `LazyRaster` (the VRT answering `arr[r, c]` in row bands) so
   `lidar.profile` runs unchanged on a 16 km branch.
@@ -339,10 +339,10 @@ each call needs, `cuts` builds its transects in 256-station chunks so those wind
 and runs per chain against that chain's own profile, and `rock` runs per 1 m raster tile. Face and
 polygon ids carry the road or tile they came from.
 
-Run: `python -m corridor fetch arrowhead-farms-network` (39 min, 2.2 GB of LAZ) /
+Run: `python -m piedmont_bake fetch arrowhead-farms-network` (39 min, 2.2 GB of LAZ) /
 `fetch crofton-crownsville --half-width 150 --lidar-half-width 150` (8.7 h, 199 LAZ tiles, 500 M
-points, 1.3 GB on disk). `python -m corridor.network_tiles <slug>` **re-profiles** a tiled site
-from the rasters and `lidar/corridor.laz` already on disk — minutes, for when a rule downstream of
+points, 1.3 GB on disk). `python -m piedmont_bake.network_tiles <slug>` **re-profiles** a tiled site
+from the rasters and `lidar/road_band.laz` already on disk — minutes, for when a rule downstream of
 the rasters changes.
 
 **Dead ends** (`network.dead_ends`). A chain end is an end only when no other chain of ours shares
@@ -361,26 +361,26 @@ editor's authoring path is the one that matters; NAIP row detection is not worth
 
 **A NaN is a broken site.** `lidar.profile` on the single-image path samples a gap-*filled* DTM;
 the tiled path samples a VRT, whose nodata is NaN, so a station in a lidar hole or at the
-corridor's edge produced `NaN` in `road_z`, and `json.dump` wrote a literal `NaN` that
+road band's edge produced `NaN` in `road_z`, and `json.dump` wrote a literal `NaN` that
 `JSON.parse` refuses — one token breaks the entire manifest. `network_tiles._fill_along`
 interpolates along every profile array and `export_branches` guards every number.
 
 ### 1.13 Proposals, publish, cluster
 
-`areas.py` (`python -m corridor areas`) proposes neutral adjustment-area polygons from what the
+`areas.py` (`python -m piedmont_bake areas`) proposes neutral adjustment-area polygons from what the
 bake measured: a canopy side that reads < 40 % of the other (a leaf-off flight line), canopy runs
 departing from the same side's ±300 m rolling median, one band per structure, one per surface-class
 run. Ids encode position so a re-bake merges. `publish.py` mirrors `data/sites/` to
-`s3://<bucket>/corridor/sites/<slug>/…` and writes `corridor/index.json`; size-matched objects are
+`s3://<bucket>/piedmont/sites/<slug>/…` and writes `piedmont/index.json`; size-matched objects are
 skipped. `Dockerfile` + `chart/` run the bake as a Kubernetes Job onto a kept PVC
-(`tools/corridor/README.md`, "Running it on the cluster").
+(`bake/README.md`, "Running it on the cluster").
 
 ---
 
-## Part 2 · The viewer (`apps/corridor`)
+## Part 2 · The viewer (`apps/game`)
 
-Dev server: `npx vite --port 5185 apps/corridor` (`just corridor-view`). `vite.config.ts` serves
-`/sites/**` straight from `tools/corridor/data/sites` and `/photos/**` from
+Dev server: `npx vite --port 5185 apps/game` (`just dev`). `vite.config.ts` serves
+`/sites/**` straight from `data/sites` and `/photos/**` from
 `ext/ref-driving/small`, returns a real 404 for a missing optional JSON (Vite's SPA fallback would
 otherwise answer `index.html` with a 200), and accepts `PUT` for exactly
 `<slug>/(adjustments|placements|structures).json` — the editor's three files, written beside the
@@ -456,11 +456,11 @@ Around it, `main.ts` owns the UI: site picker, layer toggles, seasons (`?season=
 is edited), fly camera (`fly.ts`, the trailworks scheme), drive mode (`car.ts`, the stuntin ground
 regime + lateral grip, tree collision, grass drag, chase and cockpit cameras), the inset
 `minimap.ts` (NAIP under OSM roads by class), stance URLs (X copies a URL that reproduces the
-view; `probes/corridor-stance.mjs` renders it headlessly), and the phone layout (`?lite`).
+view; `probes/stance.mjs` renders it headlessly), and the phone layout (`?lite`).
 
 The **editor** (`/editor.html`, `src/editor/`, the editor agent's) builds the same `buildSite`
 read-only and writes the three authored files: areas (mode 1), placements (mode 2), autogen
-(mode 3, `AUTOGEN.md`), structures (mode 4). `corridor.ts` there holds the along-track/lateral
+(mode 3, `AUTOGEN.md`), structures (mode 4). `roadband.ts` there holds the along-track/lateral
 conversions and every sign convention in one place.
 
 ---
@@ -470,13 +470,13 @@ conversions and every sign convention in one place.
 | what | source | how it gets in |
 |---|---|---|
 | **Terrain, canopy, far terrain** | USGS 3DEP 1 m DEM; 3DEP lidar (EPT or TNM LAZ); 3DEP seamless 1/3″ | `dem.py`, `lidar.py`, `horizon.py` → `web/*.png` |
-| **Imagery** | NAIP: Planetary Computer COGs, USGS NAIPPlus as fallback (0.3 m corridor, 0.6 m network, 60 m horizon); Sentinel-2 outside the US | `naip.py`, `horizon.py` → `naip_1m.jpg`, `horizon_naip_60m.jpg` |
+| **Imagery** | NAIP: Planetary Computer COGs, USGS NAIPPlus as fallback (0.3 m road band, 0.6 m network, 60 m horizon); Sentinel-2 outside the US | `naip.py`, `horizon.py` → `naip_1m.jpg`, `horizon_naip_60m.jpg` |
 | **Road geometry, lanes, paint, crossings, buildings, land use, water** | OpenStreetMap via Overpass (ODbL) | `osm.py`, `buildings.py` → `spine_utm.json`, `osm.geojson`, manifest |
 | **Rock palette** | Macrostrat map units (CC-BY) | `geology.py` → `geology.json` → manifest `geology` |
-| **Pavement textures** | flux.2-dev (`high-brine` on gh200-1) via `tools/surfaces/gen.py`: one prompt per class (`SETS`), 1024² top-down, made tileable by roll-and-blend over 96 px, normal from an albedo height field (Sobel, wrap-around), roughness = inverted blurred albedo; 3 variants per class + an 8 m macro map; also `grass_mown`, `grass_rough`, `shoulder_gravel` | `apps/corridor/public/surfaces/<class>/` + `surfaces.json` (gitignored, regenerable). `props.ts::loadSurfaceSets` builds one hex-tiled (`hextile.ts`, Mikkelsen 2022) `MeshStandardMaterial` per class; the join key is the class name `surface.py` emits |
+| **Pavement textures** | flux.2-dev (`high-brine` on gh200-1) via `pipelines/surfaces/gen.py`: one prompt per class (`SETS`), 1024² top-down, made tileable by roll-and-blend over 96 px, normal from an albedo height field (Sobel, wrap-around), roughness = inverted blurred albedo; 3 variants per class + an 8 m macro map; also `grass_mown`, `grass_rough`, `shoulder_gravel` | `apps/game/public/surfaces/<class>/` + `surfaces.json` (gitignored, regenerable). `props.ts::loadSurfaceSets` builds one hex-tiled (`hextile.ts`, Mikkelsen 2022) `MeshStandardMaterial` per class; the join key is the class name `surface.py` emits |
 | **Trees** | `@dgreenheck/ez-tree` (MIT) presets and its bundled bark/leaf textures | `trees.ts` at load; impostor atlas baked from the same meshes in `impostors.ts` |
 | **Grass** | procedural blades + sprite cards drawn by `grass.ts`'s shaders; ground textures from `gen.py` | `grass.ts`, `strip.ts` |
-| **3D props** (buildings, bridges, the car, rocks) | flux.2-dev image on chroma green → keyed cut-out → **TRELLIS.2** via `tools/recon-service` (`POST /reconstruct`, poll `/jobs/<id>`, `GET /jobs/<id>/asset`; ≈2 min per asset on a GH200, one job at a time) → `tools/assetgen/finish.mjs` (meshoptimizer to ~20 k faces, `KHR_materials_unlit`, 1024 px WebP, **Draco**) | `apps/corridor/public/assets/<id>.glb` (gitignored) + an entry in `catalog.json` |
+| **3D props** (buildings, bridges, the car, rocks) | flux.2-dev image on chroma green → keyed cut-out → **TRELLIS.2** via `services/recon` (`POST /reconstruct`, poll `/jobs/<id>`, `GET /jobs/<id>/asset`; ≈2 min per asset on a GH200, one job at a time) → `pipelines/assetgen/finish.mjs` (meshoptimizer to ~20 k faces, `KHR_materials_unlit`, 1024 px WebP, **Draco**) | `apps/game/public/assets/<id>.glb` (gitignored) + an entry in `catalog.json` |
 
 **Traps that recur** (from `reference-glb-and-flux-traps`): `finish.mjs` always Draco-compresses,
 so a `GLTFLoader` without a `DRACOLoader` rejects silently and every model becomes a box; flux
@@ -488,7 +488,7 @@ the catalog entry corrects it once, for every placement; flux would not omit bri
 
 ### Where TRELLIS props slot in
 
-`apps/corridor/public/assets/catalog.json` is the prop library manifest. One entry per asset:
+`apps/game/public/assets/catalog.json` is the prop library manifest. One entry per asset:
 
 ```json
 { "id": "overpass-01", "name": "Concrete overpass span", "category": "bridge",
@@ -529,7 +529,7 @@ collision — all tier B closures built from the bake. Splats replace what the e
 the tyres feel. What that looks like, tier by tier:
 
 - **Bake (A).** gaussworks' 360 drive-through captures → trained splats per capture → registered
-  into the corridor frame (EPSG UTM + NAVD88): the GPS track gives scale and a first pose, then an
+  into the road-band frame (EPSG UTM + NAVD88): the GPS track gives scale and a first pose, then an
   ICP of the splat means against the lidar DTM and the road spline pins it (the road surface is the
   most reliable common geometry). Dynamic objects (cars, people) masked out before training. Output
   per site: a 7-DOF transform in the manifest and the splats **chunked by along-track station**
@@ -568,18 +568,18 @@ See `DESIGN.md` for the rules and `SITES.md` for what each baked site actually c
 ## Appendix · Running it
 
 ```bash
-tools/corridor/.venv/bin/python -m corridor.verify [slug]     # is this safe to publish? (see below)
-just corridor-sites                    # photos → sites.json (or hand-edit sites.json for a lat/lon)
-just corridor-fetch <slug>             # one site; `all`; `--skip lidar` for a quick pass
-just corridor-export [slug]            # rewrite web/ + index.json without refetching (--resurface re-measures)
-tools/corridor/.venv/bin/python -m corridor areas <slug>     # seed adjustments.json
-tools/corridor/.venv/bin/python -m corridor report
-just corridor-view                     # :5185; /editor.html on the same server
-just corridor-tunnel                   # devproxy :5190 + cloudflared, for the phone
-tools/corridor/.venv/bin/python tools/surfaces/gen.py [class] # regenerate a texture set
+bake/.venv/bin/python -m piedmont_bake.verify [slug]     # is this safe to publish? (see below)
+just bake-sites                    # photos → sites.json (or hand-edit sites.json for a lat/lon)
+just bake-fetch <slug>             # one site; `all`; `--skip lidar` for a quick pass
+just bake-export [slug]            # rewrite web/ + index.json without refetching (--resurface re-measures)
+bake/.venv/bin/python -m piedmont_bake areas <slug>     # seed adjustments.json
+bake/.venv/bin/python -m piedmont_bake report
+just dev                     # :5185; /editor.html on the same server
+just tunnel                   # devproxy :5190 + cloudflared, for the phone
+bake/.venv/bin/python pipelines/surfaces/gen.py [class] # regenerate a texture set
 ```
 
-**Verify before you believe a bake.** `python -m corridor.verify [slug ...]` checks what a consumer
+**Verify before you believe a bake.** `python -m piedmont_bake.verify [slug ...]` checks what a consumer
 relies on and exits with the number of bad sites: the manifest parses and holds no non-finite
 number anywhere (one literal `NaN` makes `JSON.parse` refuse the whole file); `manifest.json`
 exists beside `web/`, so a bake that died before lidar cannot pass as a finished site; every layer

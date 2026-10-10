@@ -30,7 +30,7 @@ const zones = (rings: [number, number][][]): Shapes => ({ polygons: rings.map((r
 
 describe('oldFrameMove', () => {
   it('is the bake’s recorded fit: pyproj’s answer at dc-metro to a quarter of a metre at 10 km', () => {
-    // tools/corridor geo.Frame.to_enu for UTM origin + (10 000, 0) and (0, 10 000)
+    // bake geo.Frame.to_enu for UTM origin + (10 000, 0) and (0, 10 000)
     const [e1, n1] = move([10_000, 0])
     expect(Math.hypot(e1 - 9998.067, n1 - 219.857)).toBeLessThan(0.3)
     const [e2, n2] = move([0, 10_000])

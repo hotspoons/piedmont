@@ -1,6 +1,6 @@
 // A drawn boundary → a site definition the bake already accepts.
 //
-// There is no new format here and that is the point. `tools/corridor/sites.json` is a JSON array
+// There is no new format here and that is the point. `bake/sites.json` is a JSON array
 // of dicts; `cmd_fetch` picks by `slug` and hands the whole dict to `network.fetch_site`, which
 // reads `lat`, `lon`, `radius_m`, `primary`, and either `all_streets` or `roads`. A world drawn in
 // the editor is one of those dicts with extra keys. `boundary` is the bake: when it is present the
@@ -106,7 +106,7 @@ export function validate(world) {
  */
 export const SURFACE_ROLES = ['road', 'shoulder', 'sidewalk', 'paving', 'ground_cover', 'verge']
 
-/** the palettes the viewer has (apps/corridor/src/style.ts) and the four seasons */
+/** the palettes the viewer has (apps/game/src/style.ts) and the four seasons */
 export const STYLES = ['realistic', 'fantasy']
 export const SEASONS = ['winter', 'spring', 'summer', 'autumn']
 

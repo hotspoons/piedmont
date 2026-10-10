@@ -1,11 +1,11 @@
-# Spike — realistic corridor water (Gerstner + depth extinction + shore foam)
+# Spike — realistic water (Gerstner + depth extinction + shore foam)
 
 Source: [tuxalin/water-shader](https://github.com/tuxalin/water-shader), MIT, Copyright (c) 2017 tuxalin.
 See `NOTICE` and `CREDITS.md` for the licence text.
 
 ## What this is
 
-The corridor water was a `MeshStandardMaterial` whose normal was perturbed by two scrolling
+The road band water was a `MeshStandardMaterial` whose normal was perturbed by two scrolling
 value-noise layers over world position. From a car it read as moving water, but the specular broke
 into blocky patches and nothing about the surface responded to depth — a stream, a pond and the sea
 all shaded the same.
@@ -13,7 +13,7 @@ all shaded the same.
 This spike replaces the normal with a **summed Gerstner wave** normal evaluated analytically, and
 adds **wavelength-dependent colour extinction** and **depth-based shore foam**, the three ideas
 worth taking from tuxalin. It deliberately does **not** bring in tuxalin's planar-reflection /
-refraction render targets or its normal/foam/shore textures: the corridor renderer is forward and
+refraction render targets or its normal/foam/shore textures: the game renderer is forward and
 has no scene-depth texture, so the high-value portable part is the wave/radiance/foam math.
 
 | | before | after |
@@ -32,8 +32,8 @@ Before / after at Braddock I-70 (Rock Creek), temperate look:
 
 ## How it works
 
-`apps/corridor/src/world/waterShader.ts` — all ported GLSL, with the MIT header.
-`apps/corridor/src/world/water.ts` — builders and the per-look material buckets.
+`apps/game/src/world/waterShader.ts` — all ported GLSL, with the MIT header.
+`apps/game/src/world/water.ts` — builders and the per-look material buckets.
 
 - **Waves.** Four Gerstner bands, long ones aligned with the flow and short ones fanned across it.
   The surface derivative of one band is summed against +Y and the result mixed into three's
@@ -88,7 +88,7 @@ are unchanged, so `scene.ts`'s call sites are untouched. `WaterResult` only **ad
 
 ## Demo harness
 
-`apps/corridor/waterdemo.html` + `src/waterdemo.ts` render the water without the terrain, trees or
+`apps/game/waterdemo.html` + `src/waterdemo.ts` render the water without the terrain, trees or
 road so shots take seconds instead of the minutes the full build takes under software GL.
 
 - `?mode=lagoon` (default) — a wide shallow body over a sand bed under a real sky environment, so
@@ -107,8 +107,8 @@ road so shots take seconds instead of the minutes the full build takes under sof
   at once.
 - No refraction or true water-column depth: on an area the depth is assumed, and a stream's depth is
   a shape rather than a measurement. tuxalin gets this from a refraction+depth render target. If the
-  corridor renderer ever gains a scene-depth texture, feed it in and the extinction/foam become
+  game renderer ever gains a scene-depth texture, feed it in and the extinction/foam become
   measured — and the planar pass can become a proper depth-aware screen-space one.
 - `WATER_CROWN` is baked, so it needs a reload.
-- The look presets are corridor-local for now; if another game wants water, `waterShader.ts` is
+- The look presets are game-local for now; if another game wants water, `waterShader.ts` is
   already self-contained and can move into the engine.

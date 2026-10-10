@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "../../node_modules/.tmp/corridor.tsbuildinfo"
+    "tsBuildInfoFile": "../../node_modules/.tmp/game.tsbuildinfo"
   },
   "include": ["src"]
 }

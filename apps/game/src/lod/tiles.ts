@@ -1,6 +1,6 @@
 // Streamed terrain for a network site: the DEM, canopy and imagery arrive as 1 km tiles.
 //
-// A corridor site is a 3 km ribbon and its DEM fits in one PNG. A NETWORK covers a hull —
+// A road-band site is a 3 km ribbon and its DEM fits in one PNG. A NETWORK covers a hull —
 // Crofton to Crownsville is 19 x 19 km — where one 2 m raster would be 90 million cells, mostly
 // of ground nobody baked. So the bake cuts the fine rasters into `size_m` tiles on the projection
 // grid and lists only the ones with data, keeping a coarse overview (8 m DEM, 30 m flora) for
@@ -398,7 +398,7 @@ export interface PyrTile extends Tile {
   z: number
   /**
    * The earth as sampled, beside a GRADED `dem` (the bake folded the road grading into `dem`;
-   * see tools/corridor/corridor/grade.py). Null on a bare tile — an older bake, or a coarse level
+   * see bake/piedmont_bake/grade.py). Null on a bare tile — an older bake, or a coarse level
    * the bake left ungraded — where `dem` itself is the earth. The deck tests read this: a
    * carriageway is a deck when it stands OVERPASS_CLEAR_M above the EARTH, and a graded raster
    * under a bridge approach is the road, not the earth.

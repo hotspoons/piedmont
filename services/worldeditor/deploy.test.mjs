@@ -205,50 +205,50 @@ test('the run writes every object under the prefix, keeps a ledger, publishes th
   const svc = await assetService()
   const appDir = path.join(root, 'dist')
   await mkdir(path.join(appDir, 'assets'), { recursive: true })
-  await writeFile(path.join(appDir, 'index.html'), '<!doctype html><title>corridor</title>')
+  await writeFile(path.join(appDir, 'index.html'), '<!doctype html><title>piedmont</title>')
   await writeFile(path.join(appDir, 'assets', 'main.js'), 'console.log(1)')
   const cf = fakeCloudflare()
   const lines = []
   const log = (l) => lines.push(l)
   try {
     const p1 = await plan({ store, worlds: ['alpha'], assetsvc: svc.url, transpile, appDir })
-    const r1 = await run({ cf, accountId: 'acc', bucket: 'new-bucket', prefix: 'corridor/alpha-1', plan: p1, worker: { name: 'corridor-alpha', hostname: 'play.example.com', zoneId: 'z1' }, appDir, log })
+    const r1 = await run({ cf, accountId: 'acc', bucket: 'new-bucket', prefix: 'piedmont/alpha-1', plan: p1, worker: { name: 'piedmont-alpha', hostname: 'play.example.com', zoneId: 'z1' }, appDir, log })
     assert.ok(cf.calls.includes('createBucket new-bucket'), 'the bucket did not exist, so it was made')
-    assert.ok(cf.objects.has('corridor/alpha-1/sites/alpha/web/tiles/0/0_0.pack'))
-    assert.equal(cf.objects.get('corridor/alpha-1/assetsvc/catalog/saloon/file/mesh.finished.glb').body.toString(), 'glb:saloon:mesh.finished.glb')
-    assert.equal(cf.objects.get('corridor/alpha-1/assetsvc/catalog/saloon/file/mesh.finished.glb').type, 'model/gltf-binary')
-    const manifest = JSON.parse(cf.objects.get('corridor/alpha-1/deploy.json').body)
+    assert.ok(cf.objects.has('piedmont/alpha-1/sites/alpha/web/tiles/0/0_0.pack'))
+    assert.equal(cf.objects.get('piedmont/alpha-1/assetsvc/catalog/saloon/file/mesh.finished.glb').body.toString(), 'glb:saloon:mesh.finished.glb')
+    assert.equal(cf.objects.get('piedmont/alpha-1/assetsvc/catalog/saloon/file/mesh.finished.glb').type, 'model/gltf-binary')
+    const manifest = JSON.parse(cf.objects.get('piedmont/alpha-1/deploy.json').body)
     assert.equal(manifest.keys.length, p1.objects.length)
     const ledger = JSON.parse(cf.objects.get(LEDGER_KEY).body)
     assert.equal(ledger.deployments.length, 1)
     // the worker: the app as assets, the bucket and the prefix as bindings, both addresses
-    assert.equal(cf.worker.name, 'corridor-alpha')
+    assert.equal(cf.worker.name, 'piedmont-alpha')
     assert.deepEqual(cf.worker.assets.map((a) => a.path).sort(), ['/assets/main.js', '/index.html'])
-    assert.deepEqual(cf.worker.bindings, [{ type: 'r2_bucket', name: 'DATA', bucket_name: 'new-bucket' }, { type: 'plain_text', name: 'PREFIX', text: 'corridor/alpha-1' }])
+    assert.deepEqual(cf.worker.bindings, [{ type: 'r2_bucket', name: 'DATA', bucket_name: 'new-bucket' }, { type: 'plain_text', name: 'PREFIX', text: 'piedmont/alpha-1' }])
     assert.match(cf.worker.script, /env\.DATA\.get/)
-    assert.deepEqual(r1.urls, ['https://corridor-alpha.rich.workers.dev', 'https://play.example.com'])
+    assert.deepEqual(r1.urls, ['https://piedmont-alpha.rich.workers.dev', 'https://play.example.com'])
     assert.ok(cf.calls.includes('domain play.example.com'))
 
     // a second deploy of the same world, with prune: the first one's objects go, the ledger says so
     const p2 = await plan({ store, worlds: ['alpha'], assetsvc: svc.url, transpile, appDir })
-    const r2 = await run({ cf, accountId: 'acc', bucket: 'new-bucket', prefix: 'corridor/alpha-2', plan: p2, worker: { name: 'corridor-alpha' }, appDir, prune: true, log })
+    const r2 = await run({ cf, accountId: 'acc', bucket: 'new-bucket', prefix: 'piedmont/alpha-2', plan: p2, worker: { name: 'piedmont-alpha' }, appDir, prune: true, log })
     assert.equal(r2.pruned.deployments, 1)
     // redeploying that prefix deletes its objects, then writes the current bake back into it
-    const replaced = await run({ cf, accountId: 'acc', bucket: 'new-bucket', prefix: 'corridor/alpha-2', replacePrefix: 'corridor/alpha-2', plan: p2, worker: { name: 'corridor-alpha' }, appDir, log })
-    assert.ok(lines.some((l) => l.startsWith('removed corridor/alpha-2:')))
-    assert.ok(cf.objects.has('corridor/alpha-2/sites/alpha/web/tiles/0/0_0.pack'), 'the fresh tile is there')
-    assert.equal(JSON.parse(cf.objects.get(LEDGER_KEY).body).deployments.filter((d) => d.prefix === 'corridor/alpha-2').length, 1)
+    const replaced = await run({ cf, accountId: 'acc', bucket: 'new-bucket', prefix: 'piedmont/alpha-2', replacePrefix: 'piedmont/alpha-2', plan: p2, worker: { name: 'piedmont-alpha' }, appDir, log })
+    assert.ok(lines.some((l) => l.startsWith('removed piedmont/alpha-2:')))
+    assert.ok(cf.objects.has('piedmont/alpha-2/sites/alpha/web/tiles/0/0_0.pack'), 'the fresh tile is there')
+    assert.equal(JSON.parse(cf.objects.get(LEDGER_KEY).body).deployments.filter((d) => d.prefix === 'piedmont/alpha-2').length, 1)
     assert.ok(replaced.objects > 0)
-    assert.ok(!cf.objects.has('corridor/alpha-1/sites/alpha/web/tiles/0/0_0.pack'), 'the old tile is gone')
-    assert.ok(!cf.objects.has('corridor/alpha-1/deploy.json'))
-    assert.ok(cf.objects.has('corridor/alpha-2/sites/alpha/web/tiles/0/0_0.pack'), 'the new one is not')
+    assert.ok(!cf.objects.has('piedmont/alpha-1/sites/alpha/web/tiles/0/0_0.pack'), 'the old tile is gone')
+    assert.ok(!cf.objects.has('piedmont/alpha-1/deploy.json'))
+    assert.ok(cf.objects.has('piedmont/alpha-2/sites/alpha/web/tiles/0/0_0.pack'), 'the new one is not')
     const ledger2 = JSON.parse(cf.objects.get(LEDGER_KEY).body)
-    assert.deepEqual(ledger2.deployments.map((d) => d.prefix), ['corridor/alpha-2'])
-    assert.ok(lines.some((l) => /pruning corridor\/alpha-1/.test(l)))
+    assert.deepEqual(ledger2.deployments.map((d) => d.prefix), ['piedmont/alpha-2'])
+    assert.ok(lines.some((l) => /pruning piedmont\/alpha-1/.test(l)))
 
     // a dry run writes nothing
     const before = cf.objects.size
-    const r3 = await run({ cf, accountId: 'acc', bucket: 'new-bucket', prefix: 'corridor/alpha-3', plan: p2, worker: { name: 'corridor-alpha' }, appDir, dryRun: true, log })
+    const r3 = await run({ cf, accountId: 'acc', bucket: 'new-bucket', prefix: 'piedmont/alpha-3', plan: p2, worker: { name: 'piedmont-alpha' }, appDir, dryRun: true, log })
     assert.equal(r3.dryRun, true)
     assert.equal(cf.objects.size, before)
   } finally {
@@ -264,9 +264,9 @@ test('a run refuses a plan with problems, and a missing app', async () => {
 })
 
 test('names, prefixes, strings and the worker key map', () => {
-  assert.match(defaultPrefix(['crofton-triangle'], new Date('2026-09-30T21:05:07.123Z')), /^corridor\/crofton-triangle-20260930-210507Z$/)
-  assert.match(defaultPrefix(['a', 'b', 'c'], new Date('2026-09-30T21:05:07Z')), /^corridor\/a\+2-/)
-  assert.equal(workerName('Corridor: Route 3!'), 'corridor-route-3')
+  assert.match(defaultPrefix(['crofton-triangle'], new Date('2026-09-30T21:05:07.123Z')), /^piedmont\/crofton-triangle-20260930-210507Z$/)
+  assert.match(defaultPrefix(['a', 'b', 'c'], new Date('2026-09-30T21:05:07Z')), /^piedmont\/a\+2-/)
+  assert.equal(workerName('Piedmont: Route 3!'), 'piedmont-route-3')
   assert.deepEqual([...stringsOf({ a: ['x', { b: 'y' }], c: 1 })].sort(), ['a', 'b', 'c', 'x', 'y'])
   // the worker maps the viewer's paths to keys exactly as the plan wrote them
   assert.equal(keyFor('/sites/alpha/web/tiles/0/0_0.pack'), 'sites/alpha/web/tiles/0/0_0.pack')
@@ -290,12 +290,12 @@ test('a file too big for one REST PUT goes up as a multipart upload read from th
   await writeFile(path.join(store.sites, 'alpha', 'osm.geojson'), big)
   const cf = fakeCloudflare()
   const p = await plan({ store, worlds: ['alpha'], transpile, appDir })
-  await run({ cf, accountId: 'acc', bucket: 'existing', prefix: 'corridor/alpha-big', plan: p, worker: { name: 'w', workersDev: false }, appDir, log: () => {} })
+  await run({ cf, accountId: 'acc', bucket: 'existing', prefix: 'piedmont/alpha-big', plan: p, worker: { name: 'w', workersDev: false }, appDir, log: () => {} })
   const multi = cf.calls.filter((c) => c.startsWith('multipart '))
-  assert.deepEqual(multi, ['multipart corridor/alpha-big/sites/alpha/osm.geojson 5'])
-  assert.ok(cf.objects.get('corridor/alpha-big/sites/alpha/osm.geojson').body.equals(big))
-  assert.equal(cf.objects.get('corridor/alpha-big/sites/alpha/osm.geojson').type, 'application/geo+json')
-  assert.ok(cf.objects.has('corridor/alpha-big/sites/alpha/web/tiles/0/0_0.pack'), 'the small ones still go whole')
+  assert.deepEqual(multi, ['multipart piedmont/alpha-big/sites/alpha/osm.geojson 5'])
+  assert.ok(cf.objects.get('piedmont/alpha-big/sites/alpha/osm.geojson').body.equals(big))
+  assert.equal(cf.objects.get('piedmont/alpha-big/sites/alpha/osm.geojson').type, 'application/geo+json')
+  assert.ok(cf.objects.has('piedmont/alpha-big/sites/alpha/web/tiles/0/0_0.pack'), 'the small ones still go whole')
 })
 
 test('a game deploy leaves the bake sources home; sources ships them; the raw OSM only when there is no context.json', async () => {
@@ -330,7 +330,7 @@ test('the plan names the monoliths: the biggest things the game loads whole, nev
 
 test('every site file the game client fetches by name is in the game set — a deploy cannot leave one behind', async () => {
   // MEASURED, NOT LISTED: walk the viewer's source for `${…slug…}/<file>` and hold GAME_TOP to it
-  const src = path.join(path.dirname(new URL(import.meta.url).pathname), '..', '..', 'apps', 'corridor', 'src')
+  const src = path.join(path.dirname(new URL(import.meta.url).pathname), '..', '..', 'apps', 'game', 'src')
   const found = new Set()
   const walkSrc = async (d) => {
     for (const e of await readdir(d, { withFileTypes: true })) {
@@ -365,7 +365,7 @@ test('one failed upload stops the whole deploy — the other workers do not carr
     return 8
   }
   const p = await plan({ store, worlds: ['alpha'], transpile, appDir })
-  await assert.rejects(run({ cf, accountId: 'acc', bucket: 'existing', prefix: 'corridor/alpha-x', plan: p, worker: { name: 'w', workersDev: false }, appDir, log: () => {}, concurrency: 4 }), /429/)
+  await assert.rejects(run({ cf, accountId: 'acc', bucket: 'existing', prefix: 'piedmont/alpha-x', plan: p, worker: { name: 'w', workersDev: false }, appDir, log: () => {}, concurrency: 4 }), /429/)
   // the three others may each have had one upload in flight; nothing new starts after the failure
   assert.ok(after <= 3, `${after} uploads started after the failure`)
   assert.ok(puts < p.objects.length, 'the deploy stopped well short of the end')
@@ -409,20 +409,20 @@ test('deleting a deployment takes every object under its prefix and its ledger l
   const cf = fakeCloudflare()
   const put = (k, v = 'x') => cf.objects.set(k, { body: Buffer.from(v), type: 'application/octet-stream' })
   // a failed deploy: objects, no deploy.json — found by listing
-  for (const k of ['sites/a/web/tiles/0/0_0.pack', 'sites/a/manifest.json', 'levels/l.json']) put(`corridor/dc-1/${k}`)
+  for (const k of ['sites/a/web/tiles/0/0_0.pack', 'sites/a/manifest.json', 'levels/l.json']) put(`piedmont/dc-1/${k}`)
   // a finished one beside it, which must survive
-  put('corridor/dc-2/sites/a/manifest.json')
-  put('corridor/dc-2/deploy.json', JSON.stringify({ keys: ['sites/a/manifest.json'] }))
-  put(LEDGER_KEY, JSON.stringify({ deployments: [{ prefix: 'corridor/dc-1', worlds: ['a'] }, { prefix: 'corridor/dc-2', worlds: ['a'] }] }))
+  put('piedmont/dc-2/sites/a/manifest.json')
+  put('piedmont/dc-2/deploy.json', JSON.stringify({ keys: ['sites/a/manifest.json'] }))
+  put(LEDGER_KEY, JSON.stringify({ deployments: [{ prefix: 'piedmont/dc-1', worlds: ['a'] }, { prefix: 'piedmont/dc-2', worlds: ['a'] }] }))
   const lines = []
-  const out = await removeDeployment({ cf, accountId: 'acc', bucket: 'b', prefix: 'corridor/dc-1/', log: (l) => lines.push(l) })
+  const out = await removeDeployment({ cf, accountId: 'acc', bucket: 'b', prefix: 'piedmont/dc-1/', log: (l) => lines.push(l) })
   assert.equal(out.objects, 4) // three objects and the (absent) deploy.json
-  assert.deepEqual([...cf.objects.keys()].filter((k) => k.startsWith('corridor/dc-1/')), [])
-  assert.ok(cf.objects.has('corridor/dc-2/sites/a/manifest.json'), 'the other deployment is untouched')
-  assert.deepEqual(JSON.parse(cf.objects.get(LEDGER_KEY).body).deployments.map((d) => d.prefix), ['corridor/dc-2'])
+  assert.deepEqual([...cf.objects.keys()].filter((k) => k.startsWith('piedmont/dc-1/')), [])
+  assert.ok(cf.objects.has('piedmont/dc-2/sites/a/manifest.json'), 'the other deployment is untouched')
+  assert.deepEqual(JSON.parse(cf.objects.get(LEDGER_KEY).body).deployments.map((d) => d.prefix), ['piedmont/dc-2'])
   assert.ok(lines.some((l) => /removed from the bucket ledger/.test(l)))
   await assert.rejects(removeDeployment({ cf, accountId: 'acc', bucket: 'b', prefix: '/' }), /refusing/)
-  await assert.rejects(removeDeployment({ cf, accountId: 'acc', bucket: 'b', prefix: 'corridor' }), /refusing/)
+  await assert.rejects(removeDeployment({ cf, accountId: 'acc', bucket: 'b', prefix: 'piedmont' }), /refusing/)
 })
 
 

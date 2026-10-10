@@ -1,4 +1,4 @@
-// The page-state poll (apps/corridor/src/world/pageactive.ts): a page the browser stops painting is
+// The page-state poll (apps/game/src/world/pageactive.ts): a page the browser stops painting is
 // called backgrounded within a couple of seconds though visibilityState still says "visible", and
 // comes back when frames do. Run on a LIGHT same-origin page — the game itself paints well under
 // 1 fps on swiftshader, which would make every frame look like a stall.

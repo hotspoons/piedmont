@@ -264,7 +264,7 @@ export function presetsFor(kind: string | null | undefined): VehiclePreset[] {
 
 /** The export envelope, the same shape `presets.ts` uses for the world-look library. */
 export interface VehiclePresetDoc {
-  kind: 'corridor-vehicle-presets'
+  kind: 'piedmont-vehicle-presets'
   version: 1
   exported?: string
   presets: VehiclePreset[]

@@ -1,4 +1,4 @@
-"""OpenStreetMap for a corridor: the road's spine, then everything near it.
+"""OpenStreetMap for a road band: the road's spine, then everything near it.
 
 Three steps, each one Overpass query, each cached by query hash so a re-run is offline:
 
@@ -41,25 +41,25 @@ from .geo import Frame
 
 # Public Overpass instances, tried in turn: the main one 504s under load on queries that take
 # milliseconds elsewhere, and every one of these is a shared free server owed the same courtesy.
-# Ours first, when there is one: CORRIDOR_OVERPASS_URL (comma-separated) jumps the queue, and the
+# Ours first, when there is one: PIEDMONT_OVERPASS_URL (comma-separated) jumps the queue, and the
 # public mirrors stay as the fallback for regions our extract does not cover. Every public mirror
 # refused connections for an hour on 2026-09-21 and took every new bake down with it; the chart
-# for our own is in tools/overpass/chart.
-_OURS = [u.strip() for u in os.environ.get("CORRIDOR_OVERPASS_URL", "").split(",") if u.strip()]
+# for our own is in deploy/helm/overpass.
+_OURS = [u.strip() for u in os.environ.get("PIEDMONT_OVERPASS_URL", "").split(",") if u.strip()]
 OVERPASS = _OURS + [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
     "https://lz4.overpass-api.de/api/interpreter",
 ]
-UA = "apex-conduit corridor (github.com/hotspoons; road-corridor extraction for a driving game)"
+UA = "piedmont (github.com/hotspoons; road-band extraction for a driving game)"
 DRIVABLE = "motorway|trunk|primary|secondary|tertiary|unclassified|residential|motorway_link|trunk_link|primary_link"
 
 session = requests.Session()
 session.headers["User-Agent"] = UA
 
 
-# WHAT EACH OF OURS HOLDS, from the world editor (tools/worldeditor/coverage.mjs): a file on the
+# WHAT EACH OF OURS HOLDS, from the world editor (services/worldeditor/coverage.mjs): a file on the
 # volume naming each instance's Geofabrik regions, polygons and all. Unset on a laptop pointed at
 # one instance, and then nothing here changes.
 #
@@ -69,9 +69,9 @@ session.headers["User-Agent"] = UA
 # roads in Maryland and none across the river, and the bake reported success (2026-10-10). So
 # every query whose area can be read is checked against the polygon of the instance it is about
 # to go to, and a query that NONE of ours holds is a BakeFault — never a quiet empty, never a quiet
-# half. See tools/overpass/README.md, "Where the OSM comes from".
-_COVERAGE_FILE = os.environ.get("CORRIDOR_OVERPASS_COVERAGE", "")
-_REFRESH = os.environ.get("CORRIDOR_OSM_REFRESH", "") == "1"
+# half. See services/overpass/README.md, "Where the OSM comes from".
+_COVERAGE_FILE = os.environ.get("PIEDMONT_OVERPASS_COVERAGE", "")
+_REFRESH = os.environ.get("PIEDMONT_OSM_REFRESH", "") == "1"
 _coverage_cache: dict | None = None
 
 
@@ -396,7 +396,7 @@ def spine(site: dict, frame: Frame, cache: Path, half_length_m: float, search_m:
     a, b = max(0.0, s0 - half_length_m), min(full.length, s0 + half_length_m)
     line = substring(full, a, b)
 
-    # per-way attribute segments along the trimmed spine (lanes change mid-corridor)
+    # per-way attribute segments along the trimmed spine (lanes change mid-road band)
     segs = []
     acc = 0.0
     for wy in mine:
@@ -459,8 +459,8 @@ FEATURE_FILTERS = [
 ]
 
 
-def features(corridor: Polygon, frame: Frame, cache: Path) -> dict:
-    poly = corridor.simplify(15)
+def features(road_band: Polygon, frame: Frame, cache: Path) -> dict:
+    poly = road_band.simplify(15)
     if poly.geom_type != "Polygon":  # a tight curve can buffer into pieces; the hull is fine for a filter
         poly = poly.convex_hull
     ring = poly.exterior.coords
@@ -518,7 +518,7 @@ def context(feats: dict) -> dict:
     - `crossings` `highway=crossing` nodes (WGS84) for the ladder crosswalks.
     - `roads`    the drawable LineStrings for the minimap base, class already resolved, tags dropped.
 
-    Kept in step with `loadJunctionFacts`/`MiniMap.load` in apps/corridor.
+    Kept in step with `loadJunctionFacts`/`MiniMap.load` in apps/game.
     """
     lanes: dict = {}
     crossings: list = []
