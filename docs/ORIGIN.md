@@ -177,6 +177,16 @@ needed code to change:
   area READ — the whole region — and added a `road_band=` keyword for the streets. Both cannot be
   `road_band`, so the area read is `clip` here, the name `lidar.point_batches` already gives the
   same thing; its progress lines say "outside the area" / "pts in the area".
+- **The world editor's OSM routing** (found by the first local bake here; the arcade has the same
+  code). Geofabrik's `index-v1.json` of 2026-10-10 gives `us/maryland`, `us/virginia` and nine more
+  regions an empty outline, and `coverage.mjs` recorded it, so an instance configured after that
+  index was cached held nothing and its worlds went to the public mirrors with no problem reported.
+  `geofabrik.mjs` now fills an empty outline from the previous copy or the seed, retries a failed
+  fetch hourly and reports it (`/api/osm/coverage` → `problems`, `geofabrik`); `coverage.mjs`
+  never records an outline-less region and re-looks-up one already on a volume, and clips in the
+  box's own coordinates (a 900 m world in Arlington was "1.4e-9 outside" North America in absolute
+  degrees, over `INSIDE_TOL`, so not routed to it). The server opens coverage through
+  `openCoverage`, which `coverage-fresh.test.mjs` uses too, and re-checks the index every 3 hours.
 - **New checks**: `scripts/check-names.mjs`, `scripts/check-pull-policy.mjs`,
   `scripts/check-links.mjs` (all in the `checks` vitest project and CI), and
   `scripts/boot-check.mjs` (the headless boot).

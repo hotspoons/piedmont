@@ -69,9 +69,14 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
       `node scripts/boot-check.mjs http://localhost:8780/index.html#<slug>`; publish needs a bucket
       (`PIEDMONT_EDITOR_S3_*`, `PIEDMONT_S3_*`).
       *Bakes and plays: proved.* The local service baked `smoke-world` (39.02, −76.68, r 900 m) with
-      the local runner — OSM from Overpass (routed to the public mirrors: the fresh volume's Geofabrik index was the
-      outline-less seed, so the Maryland instance was not credited with the area; a first attempt
-      minutes earlier had failed on the mirrors' 504s),
+      the local runner — OSM from Overpass (routed to the public mirrors, and a first attempt
+      minutes earlier had failed on the mirrors' 504s: the volume had cached Geofabrik's index of
+      2026-10-10, which lists `us/maryland` with an empty outline, and the editor recorded the
+      Maryland instance as holding nothing. Fixed — outlines are checked region by region and filled
+      from the previous copy or the seed, and a fetch failure is reported in `/api/osm/coverage`
+      ([services/overpass](../services/overpass/README.md#where-the-osm-comes-from),
+      `services/worldeditor/coverage-fresh.test.mjs`); proved on a scratch volume against the live
+      index: Crofton → `overpass`, Arlington → `overpass-na`, Paris → `overpass-eu`),
       3DEP DEM, NOAA lidar (10.3 M points), NAIP, flora, geology, water — in 27 s on a warm cache,
       and the production build served by that service booted it headlessly
       (`boot-check: OK … smoke-world`). The first attempt found a bake bug that is also in the arcade

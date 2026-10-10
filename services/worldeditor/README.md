@@ -251,6 +251,8 @@ Environment only, so the chart and a laptop run the same code.
 | `PIEDMONT_EDITOR_DATA` | the volume (`--data`). Default `data` |
 | `PIEDMONT_EDITOR_APP` | the built app to serve (`--app`). Default `apps/game/dist` |
 | `PIEDMONT_EDITOR_OVERPASS_URL` | comma list, ours first; the public mirrors are appended. A REGIONAL instance must declare what it holds: `https://host/api/interpreter#south/west/north/east` (slashes, because the list itself is comma-separated) |
+| `PIEDMONT_EDITOR_OVERPASS_REGIONS` | what each instance holds, by Geofabrik region id: `overpass=us/maryland,overpass-na=north-america`; routing uses those extracts' outlines ([services/overpass](../overpass/README.md#where-the-osm-comes-from)) |
+| `PIEDMONT_EDITOR_GEOFABRIK_URL` `_CHECK_MS` | where the Geofabrik index (the outlines) is read from (`https://download.geofabrik.de/index-v1.json`), and how often the editor checks whether its copy needs fetching again (3 h; it fetches when the copy is a week old, or an hour after a failure) |
 | `PIEDMONT_EDITOR_OVERPASS_TIMEOUT` `_DEADLINE` `_DOWN_FOR` | per attempt (120 s), for the whole call (240 s), and how long a failed upstream is skipped (60 s) |
 | `PIEDMONT_EDITOR_ASSETSVC` | the assetsvc base URL, e.g. `http://assetsvc.default.svc` |
 | `PIEDMONT_EDITOR_RUNNER` | force `local`, or `docker` for the Docker runner (`PIEDMONT_EDITOR_DOCKER_*`, [docs/DOCKER.md](../../docs/DOCKER.md)); otherwise Kubernetes when a service-account token is mounted |
