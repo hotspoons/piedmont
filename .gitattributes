@@ -1,0 +1,10 @@
+# The generated kit — the placement models and the road surface textures — is tracked in Git LFS.
+#
+# It is regenerable (probes/editor-assets.mjs, probes/terrain-rockkit.mjs and
+# pipelines/surfaces/gen.py) and too large for the plain object store, but the app image must ship
+# it so a fresh editor draws the built-ins: the Dockerfile's `COPY apps/game/ apps/game/` puts
+# `public/` into the build, which Vite copies into `dist/`. Git LFS keeps a clone small and the
+# `worldeditor-image` job checks the blobs out with `lfs: true`.
+apps/game/public/assets/*.glb filter=lfs diff=lfs merge=lfs -text
+apps/game/public/surfaces/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+apps/game/public/surfaces/**/*.png filter=lfs diff=lfs merge=lfs -text

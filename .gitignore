@@ -48,13 +48,10 @@ bake/.venv/
 bake/.venv
 bake/.bin
 
-# the game: generated textures (pipelines/surfaces/gen.py) and generated props (editor
-# probes/editor-assets.mjs) are regenerable and ~100 MB; they will live in a bucket, not in git.
-# catalog.json and the vendored Draco decoder stay. Both forms: a symlinked directory once got
-# committed past the slash-only rule and replaced the real one with a link to itself.
-apps/game/public/surfaces/
-apps/game/public/surfaces
-apps/game/public/assets/*.glb
+# the game: generated textures (pipelines/surfaces/gen.py) and generated props
+# (probes/editor-assets.mjs) are regenerable and large, so they are tracked in Git LFS rather than
+# ignored — the app image ships them so a fresh editor draws the built-ins (see .gitattributes).
+# catalog.json and the vendored Draco decoder are ordinary files and stay.
 
 # python bytecode
 __pycache__/

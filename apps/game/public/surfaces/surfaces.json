@@ -1,0 +1,228 @@
+{
+ "sets": [
+  {
+   "name": "asphalt_new",
+   "albedo": "surfaces/asphalt_new/albedo.jpg",
+   "normal": "surfaces/asphalt_new/normal.png",
+   "roughness": "surfaces/asphalt_new/roughness.jpg",
+   "variants": [
+    {
+     "albedo": "surfaces/asphalt_new/albedo.jpg",
+     "normal": "surfaces/asphalt_new/normal.png",
+     "roughness": "surfaces/asphalt_new/roughness.jpg"
+    },
+    {
+     "albedo": "surfaces/asphalt_new/albedo_1.jpg",
+     "normal": "surfaces/asphalt_new/normal_1.png",
+     "roughness": "surfaces/asphalt_new/roughness_1.jpg"
+    },
+    {
+     "albedo": "surfaces/asphalt_new/albedo_2.jpg",
+     "normal": "surfaces/asphalt_new/normal_2.png",
+     "roughness": "surfaces/asphalt_new/roughness_2.jpg"
+    }
+   ],
+   "macro": "surfaces/asphalt_new/macro.jpg",
+   "metres_per_tile": 1.0,
+   "macro_metres": 8.0,
+   "prompt": "fresh black asphalt laid this year, dense-graded hot mix, dark charcoal aggregate with a faint blue-black sheen, fine even texture. Top-down orthographic photograph of a road surface, camera pointing straight down, uniform flat overcast lighting, no shadows, no objects, no paint markings, no lane lines, no cracks larger than a hand, edge to edge texture only, photorealistic, sharp, 1 metre square of pavement",
+   "seed": 11
+  },
+  {
+   "name": "asphalt_aged",
+   "albedo": "surfaces/asphalt_aged/albedo.jpg",
+   "normal": "surfaces/asphalt_aged/normal.png",
+   "roughness": "surfaces/asphalt_aged/roughness.jpg",
+   "variants": [
+    {
+     "albedo": "surfaces/asphalt_aged/albedo.jpg",
+     "normal": "surfaces/asphalt_aged/normal.png",
+     "roughness": "surfaces/asphalt_aged/roughness.jpg"
+    },
+    {
+     "albedo": "surfaces/asphalt_aged/albedo_1.jpg",
+     "normal": "surfaces/asphalt_aged/normal_1.png",
+     "roughness": "surfaces/asphalt_aged/roughness_1.jpg"
+    },
+    {
+     "albedo": "surfaces/asphalt_aged/albedo_2.jpg",
+     "normal": "surfaces/asphalt_aged/normal_2.png",
+     "roughness": "surfaces/asphalt_aged/roughness_2.jpg"
+    }
+   ],
+   "macro": "surfaces/asphalt_aged/macro.jpg",
+   "metres_per_tile": 1.0,
+   "macro_metres": 8.0,
+   "prompt": "aged grey asphalt after ten years of traffic, exposed light grey and tan aggregate stones with dark binder between them, slightly oxidised, fine oil stains. Top-down orthographic photograph of a road surface, camera pointing straight down, uniform flat overcast lighting, no shadows, no objects, no paint markings, no lane lines, no cracks larger than a hand, edge to edge texture only, photorealistic, sharp, 1 metre square of pavement",
+   "seed": 11
+  },
+  {
+   "name": "asphalt_patched",
+   "albedo": "surfaces/asphalt_patched/albedo.jpg",
+   "normal": "surfaces/asphalt_patched/normal.png",
+   "roughness": "surfaces/asphalt_patched/roughness.jpg",
+   "variants": [
+    {
+     "albedo": "surfaces/asphalt_patched/albedo.jpg",
+     "normal": "surfaces/asphalt_patched/normal.png",
+     "roughness": "surfaces/asphalt_patched/roughness.jpg"
+    },
+    {
+     "albedo": "surfaces/asphalt_patched/albedo_1.jpg",
+     "normal": "surfaces/asphalt_patched/normal_1.png",
+     "roughness": "surfaces/asphalt_patched/roughness_1.jpg"
+    },
+    {
+     "albedo": "surfaces/asphalt_patched/albedo_2.jpg",
+     "normal": "surfaces/asphalt_patched/normal_2.png",
+     "roughness": "surfaces/asphalt_patched/roughness_2.jpg"
+    }
+   ],
+   "macro": "surfaces/asphalt_patched/macro.jpg",
+   "metres_per_tile": 3.0,
+   "macro_metres": 8.0,
+   "prompt": "worn grey asphalt with many small irregular dark sealed crack lines and several palm-sized black patch repairs scattered evenly across the whole frame, no single large feature, uniform density edge to edge. Top-down orthographic photograph of a road surface, camera pointing straight down, uniform flat overcast lighting, no shadows, no objects, no paint markings, no lane lines, no cracks larger than a hand, edge to edge texture only, photorealistic, sharp, 1 metre square of pavement",
+   "seed": 11
+  },
+  {
+   "name": "concrete",
+   "albedo": "surfaces/concrete/albedo.jpg",
+   "normal": "surfaces/concrete/normal.png",
+   "roughness": "surfaces/concrete/roughness.jpg",
+   "variants": [
+    {
+     "albedo": "surfaces/concrete/albedo.jpg",
+     "normal": "surfaces/concrete/normal.png",
+     "roughness": "surfaces/concrete/roughness.jpg"
+    },
+    {
+     "albedo": "surfaces/concrete/albedo_1.jpg",
+     "normal": "surfaces/concrete/normal_1.png",
+     "roughness": "surfaces/concrete/roughness_1.jpg"
+    },
+    {
+     "albedo": "surfaces/concrete/albedo_2.jpg",
+     "normal": "surfaces/concrete/normal_2.png",
+     "roughness": "surfaces/concrete/roughness_2.jpg"
+    }
+   ],
+   "macro": "surfaces/concrete/macro.jpg",
+   "metres_per_tile": 1.0,
+   "macro_metres": 8.0,
+   "prompt": "portland cement concrete highway pavement, light warm grey, transverse tined grooves for drainage running horizontally, fine surface pitting, one straight sawn joint. Top-down orthographic photograph of a road surface, camera pointing straight down, uniform flat overcast lighting, no shadows, no objects, no paint markings, no lane lines, no cracks larger than a hand, edge to edge texture only, photorealistic, sharp, 1 metre square of pavement",
+   "seed": 11
+  },
+  {
+   "name": "chipseal",
+   "albedo": "surfaces/chipseal/albedo.jpg",
+   "normal": "surfaces/chipseal/normal.png",
+   "roughness": "surfaces/chipseal/roughness.jpg",
+   "variants": [
+    {
+     "albedo": "surfaces/chipseal/albedo.jpg",
+     "normal": "surfaces/chipseal/normal.png",
+     "roughness": "surfaces/chipseal/roughness.jpg"
+    },
+    {
+     "albedo": "surfaces/chipseal/albedo_1.jpg",
+     "normal": "surfaces/chipseal/normal_1.png",
+     "roughness": "surfaces/chipseal/roughness_1.jpg"
+    },
+    {
+     "albedo": "surfaces/chipseal/albedo_2.jpg",
+     "normal": "surfaces/chipseal/normal_2.png",
+     "roughness": "surfaces/chipseal/roughness_2.jpg"
+    }
+   ],
+   "macro": "surfaces/chipseal/macro.jpg",
+   "metres_per_tile": 1.0,
+   "macro_metres": 8.0,
+   "prompt": "chip seal road surface, coarse angular gravel chips half embedded in dark bitumen, high relief, varied grey and brown stones. Top-down orthographic photograph of a road surface, camera pointing straight down, uniform flat overcast lighting, no shadows, no objects, no paint markings, no lane lines, no cracks larger than a hand, edge to edge texture only, photorealistic, sharp, 1 metre square of pavement",
+   "seed": 11
+  },
+  {
+   "name": "shoulder_gravel",
+   "albedo": "surfaces/shoulder_gravel/albedo.jpg",
+   "normal": "surfaces/shoulder_gravel/normal.png",
+   "roughness": "surfaces/shoulder_gravel/roughness.jpg",
+   "variants": [
+    {
+     "albedo": "surfaces/shoulder_gravel/albedo.jpg",
+     "normal": "surfaces/shoulder_gravel/normal.png",
+     "roughness": "surfaces/shoulder_gravel/roughness.jpg"
+    },
+    {
+     "albedo": "surfaces/shoulder_gravel/albedo_1.jpg",
+     "normal": "surfaces/shoulder_gravel/normal_1.png",
+     "roughness": "surfaces/shoulder_gravel/roughness_1.jpg"
+    },
+    {
+     "albedo": "surfaces/shoulder_gravel/albedo_2.jpg",
+     "normal": "surfaces/shoulder_gravel/normal_2.png",
+     "roughness": "surfaces/shoulder_gravel/roughness_2.jpg"
+    }
+   ],
+   "macro": "surfaces/shoulder_gravel/macro.jpg",
+   "metres_per_tile": 1.0,
+   "macro_metres": 8.0,
+   "prompt": "compacted crushed limestone gravel shoulder, light grey and white angular stones with fine dust between, some larger stones. Top-down orthographic photograph of a road surface, camera pointing straight down, uniform flat overcast lighting, no shadows, no objects, no paint markings, no lane lines, no cracks larger than a hand, edge to edge texture only, photorealistic, sharp, 1 metre square of pavement",
+   "seed": 11
+  },
+  {
+   "name": "grass_mown",
+   "albedo": "surfaces/grass_mown/albedo.jpg",
+   "normal": "surfaces/grass_mown/normal.png",
+   "roughness": "surfaces/grass_mown/roughness.jpg",
+   "variants": [
+    {
+     "albedo": "surfaces/grass_mown/albedo.jpg",
+     "normal": "surfaces/grass_mown/normal.png",
+     "roughness": "surfaces/grass_mown/roughness.jpg"
+    },
+    {
+     "albedo": "surfaces/grass_mown/albedo_1.jpg",
+     "normal": "surfaces/grass_mown/normal_1.png",
+     "roughness": "surfaces/grass_mown/roughness_1.jpg"
+    },
+    {
+     "albedo": "surfaces/grass_mown/albedo_2.jpg",
+     "normal": "surfaces/grass_mown/normal_2.png",
+     "roughness": "surfaces/grass_mown/roughness_2.jpg"
+    }
+   ],
+   "macro": null,
+   "metres_per_tile": 2.0,
+   "macro_metres": 8.0,
+   "prompt": "Top-down orthographic photograph of a freshly mown highway verge, dense short green turf grass with a few clover leaves and some thin brown thatch showing through, uniform flat overcast lighting, no shadows, no objects, edge to edge texture only, photorealistic, two metre square",
+   "seed": 11
+  },
+  {
+   "name": "grass_rough",
+   "albedo": "surfaces/grass_rough/albedo.jpg",
+   "normal": "surfaces/grass_rough/normal.png",
+   "roughness": "surfaces/grass_rough/roughness.jpg",
+   "variants": [
+    {
+     "albedo": "surfaces/grass_rough/albedo.jpg",
+     "normal": "surfaces/grass_rough/normal.png",
+     "roughness": "surfaces/grass_rough/roughness.jpg"
+    },
+    {
+     "albedo": "surfaces/grass_rough/albedo_1.jpg",
+     "normal": "surfaces/grass_rough/normal_1.png",
+     "roughness": "surfaces/grass_rough/roughness_1.jpg"
+    },
+    {
+     "albedo": "surfaces/grass_rough/albedo_2.jpg",
+     "normal": "surfaces/grass_rough/normal_2.png",
+     "roughness": "surfaces/grass_rough/roughness_2.jpg"
+    }
+   ],
+   "macro": null,
+   "metres_per_tile": 2.0,
+   "macro_metres": 8.0,
+   "prompt": "Top-down orthographic photograph of rough unmown roadside grass and weeds, mixed tall grass stems lying in different directions, dandelion and plantain leaves, some dry straw-coloured stems, uniform flat overcast lighting, no shadows, no objects, edge to edge texture only, photorealistic, two metre square",
+   "seed": 11
+  }
+ ]
+}
