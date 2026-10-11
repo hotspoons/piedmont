@@ -271,6 +271,12 @@ def roads(site: dict, frame: Frame, cache: Path) -> dict:
 DEAD_END_RADIUS = {"residential": 9.0, "unclassified": 9.0, "tertiary": 9.0, "living_street": 8.0, "service": 6.0}
 DEAD_END_DEFAULT = 9.0
 BOUNDARY_M = 60.0  # an end this close to the query box was CLIPPED by us, not built as a dead end
+# How many chain-end ids go in one `node(id:…)` lookup. Every chain end in the world is one id and
+# the query carries the whole list in its POST body; dc-maryland-nova-suburbs sent ~110k ids, past
+# the 1 MB nginx default on overpass-na, which answered HTTP 413 and left the bake to a public
+# mirror (2026-10-11). A chunk this size is ~200 KB and a handful of small id lookups; it also holds
+# on a mirror with a smaller cap than ours.
+DEAD_END_ID_CHUNK = 20000
 
 
 def dead_ends(chains: list[dict], frame: Frame, cache: Path, radius_m: float, site_lat: float, site_lon: float, clip=None) -> None:
@@ -305,18 +311,24 @@ def dead_ends(chains: list[dict], frame: Frame, cache: Path, radius_m: float, si
         # `id:` takes COMMAS (semicolons are a syntax error and every mirror 400s), and the ways go
         # out as `body` — ids AND nodes AND tags — because the node list says which end a way
         # touches and the tags say whether it is a road or somebody's driveway.
-        ids = ",".join(str(n) for n in sorted(ends))
-        q = f"[out:json][timeout:180];node(id:{ids})->.e;.e out tags;way(bn.e)[highway];out body;"
+        #
+        # IN BATCHES, because the whole list in one query is over a megabyte on a big world and a
+        # front end with a 1 MB body cap answers 413 (see DEAD_END_ID_CHUNK). Same query per chunk,
+        # elements merged; a node or way the chunks share is simply seen twice.
+        ordered = sorted(ends)
         try:
-            for el in osm.overpass(q, cache)["elements"]:
-                if el["type"] == "node":
-                    node_tags[el["id"]] = el.get("tags", {})
-                    continue
-                if el.get("tags", {}).get("highway") not in ROUTABLE:
-                    continue
-                for nid in el.get("nodes", []) or []:
-                    if nid in ends:
-                        node_routable.setdefault(nid, set()).add(el["id"])
+            for i in range(0, len(ordered), DEAD_END_ID_CHUNK):
+                ids = ",".join(str(n) for n in ordered[i:i + DEAD_END_ID_CHUNK])
+                q = f"[out:json][timeout:180];node(id:{ids})->.e;.e out tags;way(bn.e)[highway];out body;"
+                for el in osm.overpass(q, cache)["elements"]:
+                    if el["type"] == "node":
+                        node_tags[el["id"]] = el.get("tags", {})
+                        continue
+                    if el.get("tags", {}).get("highway") not in ROUTABLE:
+                        continue
+                    for nid in el.get("nodes", []) or []:
+                        if nid in ends:
+                            node_routable.setdefault(nid, set()).add(el["id"])
         except Exception as exc:  # a dead end we cannot confirm is better than a failed bake
             print(f"  ends    overpass failed ({exc}); assuming every unshared end is a cul-de-sac")
     ox, oy = frame.origin
