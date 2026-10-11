@@ -34,11 +34,6 @@ spec:
             - { name: OVERPASS_USE_AREAS, value: "{{ .Values.useAreas }}" }
             - { name: OVERPASS_UPDATE_SLEEP, value: "{{ .Values.updateSleep }}" }
             - { name: OVERPASS_MAX_TIMEOUT, value: "600" }
-            # The query goes in the POST body, and a `node(id:…)` lookup names every id at once:
-            # the image's nginx default is 1M, which a big world's dead-end list exceeds, so nginx
-            # answers 413 before Overpass ever runs. The entrypoint substitutes this into
-            # `client_max_body_size`. See values.yaml.
-            - { name: OVERPASS_MAX_SIZE, value: "{{ .Values.maxBodySize }}" }
             # The image defaults this to 16, meaning a 16 GB flush buffer — sized for the
             # planet, against our 16Gi limit. Maryland is a 204 MB extract.
             - { name: OVERPASS_FLUSH_SIZE, value: "{{ .Values.flushSize }}" }

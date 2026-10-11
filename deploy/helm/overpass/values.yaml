@@ -57,16 +57,6 @@ flushSize: 4
 # Block compression for the imported database: gz (image default), lz4 or no.
 compression: "no"
 
-# The request body this instance's OWN listener (nginx, in the image) will accept. An Overpass
-# query travels in the POST body, and a `node(id:…)` lookup names every id in one request — the
-# bake's dead-end query lists a node per chain end, which passes 1 MB on a big world. The image
-# defaults `client_max_body_size` to 1M, so overpass-na answered HTTP 413 for dc-maryland-nova-suburbs
-# (~110k ends, 2026-10-11) and the bake silently fell to a public mirror. The ingress already allows
-# 16m, but a bake reaches the Service directly. The image's entrypoint substitutes
-# `OVERPASS_MAX_SIZE` into `client_max_body_size`; the bake also chunks its id lists now, but a
-# generous cap here keeps any single large query off the public mirrors.
-maxBodySize: "64m"
-
 storage:
   size: 60Gi
   # CORRECTED 2026-09-22: this comment used to say the database must be on a block device because
