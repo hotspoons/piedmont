@@ -77,7 +77,7 @@ if [ -n "$DRAWN" ]; then
   printf '%s' "$DRAWN" | base64 -d > "$DIR/region.poly" || fail "the drawn polygon could not be decoded"
   rm -f "$DIR/src-"*.osm.pbf "$DIR/merged.osm.pbf"
   n=0
-  for u in $PBF_URLS; do
+  for u in ${PBF_URLS:-}; do
     n=$((n + 1))
     log "  source   $u"
     curl -fsSL --retry 5 --retry-delay 30 -A "$UA" -o "$DIR/src-$n.osm.pbf.part" "$u" || fail "download of $u failed"
@@ -94,7 +94,7 @@ if [ -n "$DRAWN" ]; then
   log "  clipping to the drawn shape"
   "$OSMIUM" extract -p "$DIR/region.poly" -s complete_ways "$SRC" -o "$DIR/region.osm.pbf" --overwrite || fail "osmium could not clip the extracts to the drawn shape"
   rm -f "$DIR/src-"*.osm.pbf "$DIR/merged.osm.pbf"
-  PBF_URL=$PBF_URLS
+  PBF_URL=${PBF_URLS:-}
   PBF_BYTES=$(stat -c %s "$DIR/region.osm.pbf")
   log "  got      $(( PBF_BYTES / 1048576 )) MiB clipped"
 else
