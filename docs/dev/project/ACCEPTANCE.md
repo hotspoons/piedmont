@@ -85,10 +85,12 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
 
 ## Images and deploy
 
-- [ ] **CI builds and pushes every image under its new name.** `piedmont-bake`,
-      `piedmont-worldeditor`, `piedmont-assetsvc`, `piedmont-recon`, `piedmont-blender` —
-      [.github/workflows](../../../.github/workflows). *Waits on the first push* (no Docker daemon where
-      the port was made).
+- [x] **CI builds and pushes every image under its new name.** `piedmont-bake`,
+      `piedmont-worldeditor`, `piedmont-assetsvc`, `piedmont-recon`, `piedmont-blender`, and
+      `piedmont-core` — [.github/workflows](../../../.github/workflows). 2026-10-11: all six answer
+      `ghcr.io/v2/hotspoons/<image>/manifests/latest` with 200; the core image's smoke (inner dockerd,
+      a nested container, the editor on the Docker runner) passed on amd64 and arm64. A fresh repo
+      builds them through `images-all.yml` (Blender → editor → core in order).
 - [ ] **A fresh deployment in a NEW namespace on the cluster (Helm, Rich runs or approves it) brings
       up the world editor, asset service and at least one Overpass instance, all healthy.**
       Prove: `just deploy-check gh200-1` then `just deploy gh200-1` (namespace `piedmont`,

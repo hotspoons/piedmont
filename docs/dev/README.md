@@ -26,7 +26,8 @@ physics, traffic, the bake and the services. Set-up, the dev servers and the tes
 - [specs/](specs/README.md): design documents, plans, spikes and handoffs. They record why things
   are the way they are, with their measurements; some describe plans that have since landed or
   changed, so check the code before relying on a detail.
-- [project/](project/): [ORIGIN.md](project/ORIGIN.md) (the split from siomporas-arcade and how to
+- [project/](project/): [HANDOFF.md](project/HANDOFF.md) (where the split stands and what is next — start here),
+  [ORIGIN.md](project/ORIGIN.md) (the split from siomporas-arcade and how to
   port a later change from it), [ACCEPTANCE.md](project/ACCEPTANCE.md) (the split's criteria and
   what proves each), [SITES.md](project/SITES.md) (what the early bakes held, generated).
 - [history/](history/): session logs from the project's first days.

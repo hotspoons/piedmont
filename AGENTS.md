@@ -1,7 +1,9 @@
 # Working in this repository
 
 This file is for agents (and people) working in piedmont, and above all for running long tests
-against the game. Start with [DEVELOPING.md](DEVELOPING.md) (set-up, dev servers, the gate) and
+against the game. **Picking up the split from the arcade? Read
+[docs/dev/project/HANDOFF.md](docs/dev/project/HANDOFF.md) first:** where things stand, what is
+next, and what needs Rich's approval. Start with [DEVELOPING.md](DEVELOPING.md) (set-up, dev servers, the gate) and
 [docs/dev/architecture.md](docs/dev/architecture.md) (what lives where). The developer docs are under
 [docs/dev/](docs/dev/README.md), the design notes and plans under [docs/dev/specs/](docs/dev/specs/README.md),
 and the user guide under [docs/guide/](docs/guide/README.md); the game's own README is
