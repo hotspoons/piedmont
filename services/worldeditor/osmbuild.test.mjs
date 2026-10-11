@@ -1,19 +1,18 @@
 // The geometry half of a drawn-area build: turning a ring a person drew into a closed polygon, an
 // osmium `.poly` file, and — the part that decides the download — the smallest Geofabrik extract(s)
-// covering it. No network: the index here is the same seed the coverage tests use.
+// covering it.
+//
+// The pick is tested against a small FIXTURE, not the live index: the fixture reproduces the two
+// things that broke it in production — `us`, `us-south` and the states all naming `north-america`
+// as their parent (siblings, not a tree) and overlapping rectangles — so the choice is exact and
+// cannot flake when Geofabrik moves a border. A DC-sized draw once matched the whole-US extract
+// here; the fixture is that regression.
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 import { coveringRegions, drawnPolygon, osmPolyText } from './osmbuild.mjs'
 
 const seed = JSON.parse(await readFile(new URL('./geofabrik-seed.json', import.meta.url), 'utf8'))
-// a point inside each seed feature's own (coarse) outline, found once and written down
-const IN = {
-  maryland: [-79.413, 39.2661],
-  virginia: [-83.5221, 36.6357],
-  dc: [-77.1166, 38.9311],
-  northAmerica: [-174.0, 22.7907],
-}
 const ids = (fs) => fs.map((f) => f.id)
 
 test('a drawn ring becomes a closed polygon, and nonsense is refused by name', () => {
@@ -49,34 +48,55 @@ test('the osmium .poly file is the shape, the format osmium extract and defer_de
   assert.equal(lines.length, 2 + 4 + 1)
 })
 
-test('an area inside one state picks that state, never the continent', () => {
-  const fs = coveringRegions(seed.features, drawnPolygon(square(IN.maryland)))
-  assert.deepEqual(ids(fs), ['us/maryland'])
-  assert.ok(fs[0].pbf.endsWith('maryland-latest.osm.pbf'))
-  assert.ok(fs[0].updates.endsWith('maryland-updates'), 'the covering extract also names its diff stream')
+test('a shape picks the smallest containing extract — a city, not the whole US beside it', () => {
+  // DC is inside DC, Maryland, Virginia, the US and North America, all overlapping. Only DC.
+  assert.deepEqual(ids(coveringRegions(FIXTURE, drawnPolygon(square([-77.0, 38.9], 0.02)))), ['us/district-of-columbia'])
+  // Baltimore: Maryland is the smallest of US/Maryland/US/North America that hold it
+  const md = coveringRegions(FIXTURE, drawnPolygon(square([-76.6, 39.3], 0.02)))
+  assert.deepEqual(ids(md), ['us/maryland'])
+  assert.ok(md[0].pbf.endsWith('maryland-latest.osm.pbf'))
+  assert.ok(md[0].updates.endsWith('maryland-updates'), 'the covering extract also names its diff stream')
+  // northern Virginia, south of the DC line
+  assert.deepEqual(ids(coveringRegions(FIXTURE, drawnPolygon(square([-78.0, 37.5], 0.05)))), ['us/virginia'])
 })
 
-test('an area that straddles two states picks both, and still not the continent', () => {
-  // a long, thin shape with a corner in Maryland and a corner in Virginia
-  const fs = coveringRegions(seed.features, drawnPolygon([IN.maryland, IN.virginia, [IN.virginia[0], IN.maryland[1]]]))
+test('a shape across a border picks both neighbours, and never the continent', () => {
+  const fs = coveringRegions(FIXTURE, drawnPolygon(ring(-78.2, 37.5, -77.8, 39.6)))
   assert.deepEqual(ids(fs).sort(), ['us/maryland', 'us/virginia'])
 })
 
-test('an area no extract covers is refused, plainly', () => {
-  assert.throws(() => coveringRegions(seed.features, drawnPolygon(square([10, 10]))), /no Geofabrik extract covers/)
+test('a shape only a continent holds picks the continent', () => {
+  assert.deepEqual(ids(coveringRegions(FIXTURE, drawnPolygon(square([-60, 20], 0.5)))), ['north-america'])
 })
 
-test('an area only a continent covers picks the continent', () => {
-  const fs = coveringRegions(seed.features, drawnPolygon(square(IN.northAmerica)))
+test('a shape no extract covers is refused, plainly', () => {
+  assert.throws(() => coveringRegions(FIXTURE, drawnPolygon(square([-30, 0], 0.5))), /no Geofabrik extract covers/)
+  // …and an open-ocean hole in the coarse vendored seed, too
+  assert.throws(() => coveringRegions(seed.features, drawnPolygon(square([10, 10], 0.05))), /no Geofabrik extract covers/)
+})
+
+test('the coarse vendored seed (what patches an empty live outline) still never reaches the continent', () => {
+  const fs = coveringRegions(seed.features, drawnPolygon(square([-174.0, 22.79], 0.5)))
   assert.deepEqual(ids(fs), ['north-america'])
 })
 
+// --- the fixture ---------------------------------------------------------------------------------
+//
+// Flat parents, exactly as the live index files them, and rectangles so the areas order cleanly:
+// DC (0.04) < Maryland (8.6) < Virginia (26) < US South (403) < US (1475) < North America (7440).
+const ring = (w, s, e, n) => [[w, s], [e, s], [e, n], [w, n]]
+const geo = (w, s, e, n) => ({ type: 'Polygon', coordinates: [[...ring(w, s, e, n), [w, s]]] })
+const feat = (id, w, s, e, n) => ({ type: 'Feature', properties: { id, name: id, parent: 'north-america', urls: { pbf: `${id.replace(/\//g, '-')}-latest.osm.pbf`, updates: `${id.replace(/\//g, '-')}-updates` } }, geometry: geo(w, s, e, n) })
+const FIXTURE = [
+  feat('north-america', -170, 10, -50, 72),
+  feat('us', -125, 25, -66, 50),
+  feat('us-south', -106, 24, -75, 37),
+  feat('us/maryland', -79.5, 37.9, -75.0, 39.8),
+  feat('us/virginia', -83.7, 36.5, -75.0, 39.5),
+  feat('us/district-of-columbia', -77.12, 38.79, -76.91, 39.0),
+]
+
 /** A small square around a point, big enough for the boundary sampler to land inside a state. */
 function square([lon, lat], d = 0.05) {
-  return [
-    [lon - d, lat - d],
-    [lon + d, lat - d],
-    [lon + d, lat + d],
-    [lon - d, lat + d],
-  ]
+  return ring(lon - d, lat - d, lon + d, lat + d)
 }

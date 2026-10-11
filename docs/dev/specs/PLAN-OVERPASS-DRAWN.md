@@ -30,13 +30,26 @@ drawn shape is the missing primitive.
 
 ## The pick: smallest, not biggest
 
-Geofabrik files a state under a country under a continent through `properties.parent`. Overlapping
-features are dropped when another overlapping feature descends from them, so a shape inside Virginia
-picks `us/virginia`, not `us` or `north-america`. Nesting is read from `parent`, never from the id
-prefix: the ids are not reliably nested (`us/maryland` with `parent: north-america`). "Touches" is
-tested two ways — a sample of the drawn boundary inside the region, or a sample of the region inside
-the drawing — because a bounding-box overlap means nothing when a continent's own bbox spans the
-world. A shape no extract covers is a plain 400.
+For each point of the drawn boundary, take the **smallest-area overlapping region that contains it**;
+the union over the boundary is what to download. So a shape inside Virginia picks `us/virginia`, not
+`us`, `us-south` or `north-america`, and a shape across a border picks both neighbours.
+
+This is deliberately NOT built on `properties.parent`, and NOT on a global "region A contains region
+B" test. Both look right and both broke in production:
+
+- In the live index `us`, `us-south`, `us/maryland` and `us/district-of-columbia` **all** name
+  `north-america` as their parent. They are siblings, so a DC-sized shape matched the whole-US
+  extract (11 GB) beside DC itself.
+- Geofabrik ships some regions with an **empty outline** (TODO #3), patched here from the coarse
+  vendored seed. Deciding containment from those geometries drops a state for the tiniest enclave
+  inside it and cascades: a shape spanning Maryland and Virginia came back as Washington DC alone.
+
+A local "is this point inside this region, smallest area wins" is exact, cannot cascade, and needs
+no nesting to be correct. A bounding-box overlap is only a pre-filter — a continent's bbox spans the
+world. Two edge cases are known and cosmetic: a square whose corner crosses the Potomac into the
+coarse patched Virginia outline names Virginia as well as DC, and an open-ocean draw in the Pacific
+can name `us-pacific` (another whole-world-bbox outline in the index). A shape no extract covers at
+all is a plain 400.
 
 ## The snapshot decision
 

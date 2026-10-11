@@ -20,7 +20,7 @@
 // Pure functions over plain geometry and index features, so the pick is tested without a network
 // (osmbuild.test.mjs). coverage.mjs owns point-in-polygon and the bounding box; this only chooses.
 
-import { bboxOfGeom, hasOutline, pointIn, polygonsOf } from './coverage.mjs'
+import { bboxOfGeom, hasOutline, pointIn, polygonsOf, ringArea } from './coverage.mjs'
 
 /** A drawn area wider than this is a mistake, not a build — north-america is ~170° × 80°. */
 const MAX_SPAN_DEG = 20
@@ -107,14 +107,27 @@ function geomSamples(geom, target = 64) {
   return polygonsOf(geom).flatMap((poly) => (poly[0] ? ringSamples(poly[0], target) : []))
 }
 
+/** Rough area of a (multi)polygon: the sum of its outer rings' |shoelace| areas. Orders extracts only. */
+function geomArea(geom) {
+  return polygonsOf(geom).reduce((sum, poly) => sum + (poly[0] ? ringArea(poly[0]) : 0), 0)
+}
+
 /**
  * The smallest Geofabrik extracts whose coverage the drawn area touches.
  *
- * "Smallest" is by nesting, not by area: Geofabrik files a state under a country under a continent
- * (`north-america/us/virginia`), and any feature that has a DESCENDANT also overlapping is dropped.
- * So a city inside Virginia picks Virginia, not the United States, and a drawn area straddling a
- * border picks both neighbours. A drawn area that no extract covers (ocean, or a hole in the index)
- * is a 400, said plainly.
+ * "Smallest" is by CONTAINMENT. Geofabrik publishes nested extracts — a state inside a country
+ * inside a continent — and what a person wants is the innermost one holding their shape, so a city
+ * picks its state and not the United States or North America it also sits in. A drawn area that
+ * straddles a border picks both neighbours. An area no extract covers (ocean, or a hole in the
+ * index) is a 400, said plainly.
+ *
+ * WHY NOT `properties.parent`, AND WHY NOT A GLOBAL CONTAINMENT TEST. `parent` is the obvious
+ * nesting signal and it is not trustworthy: in the live index `us`, `us-south`, `us/maryland` and
+ * `us/district-of-columbia` ALL name `north-america` as their parent — they are siblings. And the
+ * index ships some regions with an EMPTY outline (patched here from the coarse vendored seed), so
+ * deciding "region A contains region B" from the geometry drops the states for the tiniest enclave
+ * and, in a cascade, leaves only DC for a shape spanning two states. Asking per boundary point
+ * ("which region contains THIS point, smallest area wins") is local, exact, and cannot cascade.
  *
  * @param {Array<{properties: {id: string, name?: string, urls?: {pbf?: string, updates?: string}}, geometry: unknown}>} features  the Geofabrik index's features
  * @param {{type: 'Polygon', coordinates: number[][][]}} polygon
@@ -122,33 +135,32 @@ function geomSamples(geom, target = 64) {
 export function coveringRegions(features, polygon) {
   const box = bboxOfGeom(polygon)
   const all = features ?? []
-  const byId = new Map(all.map((f) => [f.properties?.id, f]))
-  // is `ancestor` above `f` in the index's parent chain? (Geofabrik files a state under a country
-  // under a continent through `properties.parent`; the ids themselves are not always nested)
-  const descendsFrom = (f, ancestor) => {
-    let p = f.properties?.parent
-    for (let hops = 0; p && hops < 32; hops++) {
-      if (p === ancestor) return true
-      p = byId.get(p)?.properties?.parent
-    }
-    return false
-  }
   const overlap = all.filter((f) => hasOutline(f.geometry) && boxIntersects(bboxOfGeom(f.geometry), box))
-  // the SMALLEST overlapping features: drop any that has a descendant also overlapping, so a city
-  // inside Virginia picks Virginia's extract, not the whole continent's
-  const leaves = overlap.filter((f) => !overlap.some((g) => g !== f && descendsFrom(g, f.properties?.id)))
-  // A drawn area touches a leaf if either shape reaches into the other: a vertex or edge of the
-  // drawing inside the leaf (the drawing sits in it, or crosses its border), OR a point of the leaf
-  // inside the drawing (the drawing swallows a whole leaf). Their bboxes overlapping alone means
-  // nothing — a continent's own bbox spans the world, so a square over the ocean overlaps it.
+  const area = new Map(overlap.map((f) => [f, geomArea(f.geometry)]))
   const drawn = ringSamples(polygon.coordinates[0])
-  const touched = leaves.filter(
-    (f) => drawn.some(([lon, lat]) => pointIn(f.geometry, lon, lat)) || geomSamples(f.geometry).some(([lon, lat]) => pointIn(polygon, lon, lat)),
-  )
-  const chosen = touched
-  if (!chosen.length) throw bad('no Geofabrik extract covers that area — draw over land Geofabrik publishes, or add a named region')
-  if (chosen.length > MAX_SOURCES) throw bad(`that area touches ${chosen.length} extracts (${chosen.map((f) => f.properties?.id).join(', ')}) — draw a smaller area`)
-  return chosen
+  // Per point, the smallest region containing it is the innermost one. Take the union of those over
+  // the drawn boundary — the set of extracts to download. Area beats the parent chain because the
+  // live index lists `us`, `us-south` and the states as siblings AND ships some outlines empty (the
+  // seed patches them coarsely), so no global containment test survives; asking "is THIS point
+  // inside THIS region, smallest wins" cannot cascade and needs no nesting to be correct.
+  const chosen = new Set()
+  for (const [lon, lat] of drawn) {
+    let best = null
+    for (const f of overlap) {
+      if (pointIn(f.geometry, lon, lat) && (best === null || area.get(f) < area.get(best))) best = f
+    }
+    if (best) chosen.add(best)
+  }
+  let out = [...chosen]
+  if (!out.length) {
+    // a coarse outline can leave the drawing's own corners in a gap even though it is inside the
+    // region: fall back to the regions a sample of whose own outline lands in the drawing. An ocean
+    // square still finds nothing (no region has a point in it), so it is still a plain 400.
+    out = overlap.filter((f) => geomSamples(f.geometry).some(([lon, lat]) => pointIn(polygon, lon, lat)))
+  }
+  if (!out.length) throw bad('no Geofabrik extract covers that area — draw over land Geofabrik publishes, or add a named region')
+  if (out.length > MAX_SOURCES) throw bad(`that area touches ${out.length} extracts (${out.map((f) => f.properties?.id).join(', ')}) — draw a smaller area`)
+  return out
     .map((f) => ({
       id: f.properties?.id ?? '',
       name: f.properties?.name ?? f.properties?.id ?? '',
