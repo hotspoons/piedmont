@@ -135,9 +135,18 @@ export interface Preview {
   cache: 'hit' | 'miss'
 }
 
+/** One Geofabrik extract a build's job will download (services/worldeditor/osmbuild.mjs). */
+export interface OsmSource {
+  id: string
+  name: string
+  pbf: string | null
+  updates: string | null
+  bytes: number | null
+}
+
 export interface Run {
   id: string
-  kind: 'bake' | 'publish' | 'deploy' | 'osm-import'
+  kind: 'bake' | 'publish' | 'deploy' | 'osm-import' | 'osm-build'
   slug: string
   label: string
   runner: 'kubernetes' | 'local'
@@ -148,8 +157,11 @@ export interface Run {
   job: string | null
   pod: string | null
   exit: number | null
-  /** an osm-import's instance and region */
-  osm?: { upstream: string; region: string; name: string; node?: string }
+  /**
+   * An osm run's instance and area. `region` is an osm-import's Geofabrik id; an osm-build has the
+   * `polygon` a person drew and the `sources` the server found covering it instead.
+   */
+  osm?: { upstream: string; region?: string; name: string; node?: string; polygon?: [number, number][]; sources?: OsmSource[] }
 }
 
 /* ---- where the OSM comes from (Settings → OSM data) ---- */
@@ -159,7 +171,7 @@ export type GeoJsonPolygonal = { type: 'Polygon'; coordinates: number[][][] } | 
 export interface CoverageRegion {
   id: string
   name: string
-  source: 'deploy' | 'import' | 'fence'
+  source: 'deploy' | 'import' | 'fence' | 'build'
   added?: string
   run?: string
   pbf?: string | null
@@ -624,6 +636,19 @@ export const api = {
       touches: { name: string; outside: number }[]
     }>(`/api/osm/geofabrik/region?id=${encodeURIComponent(id)}`),
   osmImport: (upstream: string, region: string) => call<{ run: Run }>('/api/osm/imports', { method: 'POST', body: JSON.stringify({ upstream, region }) }),
+  /**
+   * Add a drawn area to an instance as a new region. `polygon` is `[lon,lat]` pairs forming a ring
+   * (a closing point is optional); the answer names the Geofabrik extracts that cover it — what the
+   * job downloads — and the run is tracked exactly like an import.
+   */
+  osmBuild: (upstream: string, polygon: [number, number][], name?: string) =>
+    call<{ run: Run; sources: OsmSource[] }>('/api/osm/builds', { method: 'POST', body: JSON.stringify({ upstream, polygon, name }) }),
+  /**
+   * The Geofabrik extract(s) a build WOULD download, without starting it (the route's `dryRun`), so
+   * the confirmation can name real extracts and sizes and a refusal starts no Job at all.
+   */
+  osmBuildPreview: (upstream: string, polygon: [number, number][], name?: string) =>
+    call<{ sources: OsmSource[] }>('/api/osm/builds', { method: 'POST', body: JSON.stringify({ upstream, polygon, name, dryRun: true }) }),
 
   runs: () => call<{ runs: Run[]; runner: string }>('/api/runs'),
   run: (id: string) => call<{ run: Run }>(`/api/runs/${id}`),

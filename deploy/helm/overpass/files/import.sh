@@ -22,7 +22,12 @@
 set -euo pipefail
 
 : "${REGION_ID:?REGION_ID is required}"
-: "${PBF_URL:?PBF_URL is required}"
+# A named region names its own extract (PBF_URL). A DRAWN AREA instead names the extract(s) that
+# cover it (PBF_URLS) and the shape to clip them to (POLYGON_POLY_B64). One of the two is required.
+if [ -z "${POLYGON_POLY_B64:-}" ]; then
+  : "${PBF_URL:?PBF_URL is required for a named region (for a drawn area, use PBF_URLS and POLYGON_POLY_B64)}"
+fi
+DRAWN=${POLYGON_POLY_B64:-}
 UPSTREAM=${UPSTREAM:-overpass}
 DB_ROOT=${DB_ROOT:-/db}
 OSMIUM=${OSMIUM:-osmium}
@@ -42,7 +47,7 @@ state() { printf '%s\n' "$1" > "$DIR/state.json.tmp" && mv "$DIR/state.json.tmp"
 field() { sed -n "s/.*\"$1\": *\"\{0,1\}\([^\",}]*\)\"\{0,1\}.*/\1/p" "$2" | head -1; }
 
 log "adding $REGION_ID to $UPSTREAM"
-log "  pbf      $PBF_URL"
+[ -n "$DRAWN" ] || log "  pbf      $PBF_URL"
 
 # ---- 0. the sidecar must be there: it applies; this only stages ----------------------------------
 if [ ! -f "$AGENT" ]; then
@@ -64,29 +69,71 @@ fi
 state "{\"state\":\"downloading\",\"id\":$(json "$REGION_ID"),\"at\":\"$(now)\"}"
 
 # ---- 1. the extract and its outline ---------------------------------------------------------------
-# curl -L: `-latest` is a redirect to a dated file, and the large ones go on to a mirror
-curl -fsSL --retry 5 --retry-delay 30 -A "$UA" -o "$DIR/region.osm.pbf.part" "$PBF_URL" || fail "download of $PBF_URL failed"
-mv "$DIR/region.osm.pbf.part" "$DIR/region.osm.pbf"
-PBF_BYTES=$(stat -c %s "$DIR/region.osm.pbf")
-log "  got      $(( PBF_BYTES / 1048576 )) MiB"
-# Geofabrik: <region>-latest.osm.pbf beside <region>.poly — the polygon the extract was cut with,
-# which the delete filter needs (defer_deletes.py) and the coverage map shows
-POLY_URL=${POLY_URL:-${PBF_URL%-latest.osm.pbf}.poly}
-curl -fsSL --retry 3 -A "$UA" -o "$DIR/region.poly" "$POLY_URL" || fail "the region's outline $POLY_URL could not be read"
+if [ -n "$DRAWN" ]; then
+  # A DRAWN AREA (runs.mjs `osmBuild`): the polygon is the shape a person drew, and the sources are
+  # the Geofabrik extracts that cover it — chosen by the world editor's server, which holds the
+  # index geometry and the sizes (osmbuild.mjs `coveringRegions`). Download them, merge if there is
+  # more than one, and clip the lot to the drawn shape.
+  printf '%s' "$DRAWN" | base64 -d > "$DIR/region.poly" || fail "the drawn polygon could not be decoded"
+  rm -f "$DIR/src-"*.osm.pbf "$DIR/merged.osm.pbf"
+  n=0
+  for u in $PBF_URLS; do
+    n=$((n + 1))
+    log "  source   $u"
+    curl -fsSL --retry 5 --retry-delay 30 -A "$UA" -o "$DIR/src-$n.osm.pbf.part" "$u" || fail "download of $u failed"
+    mv "$DIR/src-$n.osm.pbf.part" "$DIR/src-$n.osm.pbf"
+  done
+  [ "$n" -ge 1 ] || fail "no source extract was named to build from"
+  SRC=$DIR/src-1.osm.pbf
+  if [ "$n" -gt 1 ]; then
+    log "  merging  $n extracts"
+    "$OSMIUM" merge "$DIR/src-"*.osm.pbf -o "$DIR/merged.osm.pbf" --overwrite || fail "could not merge the source extracts"
+    SRC=$DIR/merged.osm.pbf
+  fi
+  # complete_ways so a road crossing the drawn edge still routes (its ways keep their nodes)
+  log "  clipping to the drawn shape"
+  "$OSMIUM" extract -p "$DIR/region.poly" -s complete_ways "$SRC" -o "$DIR/region.osm.pbf" --overwrite || fail "osmium could not clip the extracts to the drawn shape"
+  rm -f "$DIR/src-"*.osm.pbf "$DIR/merged.osm.pbf"
+  PBF_URL=$PBF_URLS
+  PBF_BYTES=$(stat -c %s "$DIR/region.osm.pbf")
+  log "  got      $(( PBF_BYTES / 1048576 )) MiB clipped"
+else
+  # curl -L: `-latest` is a redirect to a dated file, and the large ones go on to a mirror
+  curl -fsSL --retry 5 --retry-delay 30 -A "$UA" -o "$DIR/region.osm.pbf.part" "$PBF_URL" || fail "download of $PBF_URL failed"
+  mv "$DIR/region.osm.pbf.part" "$DIR/region.osm.pbf"
+  PBF_BYTES=$(stat -c %s "$DIR/region.osm.pbf")
+  log "  got      $(( PBF_BYTES / 1048576 )) MiB"
+  # Geofabrik: <region>-latest.osm.pbf beside <region>.poly — the polygon the extract was cut with,
+  # which the delete filter needs (defer_deletes.py) and the coverage map shows
+  POLY_URL=${POLY_URL:-${PBF_URL%-latest.osm.pbf}.poly}
+  curl -fsSL --retry 3 -A "$UA" -o "$DIR/region.poly" "$POLY_URL" || fail "the region's outline $POLY_URL could not be read"
+fi
 
 # ---- 2. what the extract says about itself -------------------------------------------------------
-# The replication sequence in the header is where this region's diff stream picks up. Without it
-# the region could be imported and never kept current, which would rot without a sound — so it is
-# a failure here, not a warning.
-HDR=$("$OSMIUM" fileinfo "$DIR/region.osm.pbf") || fail "osmium cannot read the download — truncated or not a pbf"
-SEQ=$(printf '%s\n' "$HDR" | sed -n 's/.*osmosis_replication_sequence_number=\([0-9]*\).*/\1/p' | head -1)
-BASE=$(printf '%s\n' "$HDR" | sed -n 's/.*osmosis_replication_base_url=\(.*\)$/\1/p' | head -1)
-TS=$(printf '%s\n' "$HDR" | sed -n 's/.*osmosis_replication_timestamp=\(.*\)$/\1/p' | head -1)
-[ -n "$SEQ" ] && [ -n "$BASE" ] || fail "the extract carries no replication sequence/base url, so it could never be kept current"
-UPDATES=${UPDATES_URL:-$BASE}
-[ "${UPDATES%/}" = "${BASE%/}" ] || log "  note: the index names $UPDATES_URL but the file says $BASE; following the file's"
-UPDATES=$BASE
-log "  snapshot $TS (sequence $SEQ of $UPDATES)"
+if [ -n "$DRAWN" ]; then
+  # A drawn area has no Geofabrik region of its own to follow: the extract it was clipped from also
+  # spans ground OUTSIDE the shape, so following that extract's diffs would pour data back in
+  # outside the drawing. So it is staged as a SNAPSHOT — no updates — and the sidecar applies it
+  # once and stops (regions-agent.sh returns early when the request's `updates` is empty). Re-draw
+  # and rebuild to refresh; a later change can clip the source diffs to the shape for live updates.
+  SEQ=0
+  UPDATES=""
+  TS=$(now)
+  log "  snapshot $TS (a drawn area: applied once, not followed)"
+else
+  # The replication sequence in the header is where this region's diff stream picks up. Without it
+  # the region could be imported and never kept current, which would rot without a sound — so it is
+  # a failure here, not a warning.
+  HDR=$("$OSMIUM" fileinfo "$DIR/region.osm.pbf") || fail "osmium cannot read the download — truncated or not a pbf"
+  SEQ=$(printf '%s\n' "$HDR" | sed -n 's/.*osmosis_replication_sequence_number=\([0-9]*\).*/\1/p' | head -1)
+  BASE=$(printf '%s\n' "$HDR" | sed -n 's/.*osmosis_replication_base_url=\(.*\)$/\1/p' | head -1)
+  TS=$(printf '%s\n' "$HDR" | sed -n 's/.*osmosis_replication_timestamp=\(.*\)$/\1/p' | head -1)
+  [ -n "$SEQ" ] && [ -n "$BASE" ] || fail "the extract carries no replication sequence/base url, so it could never be kept current"
+  UPDATES=${UPDATES_URL:-$BASE}
+  [ "${UPDATES%/}" = "${BASE%/}" ] || log "  note: the index names $UPDATES_URL but the file says $BASE; following the file's"
+  UPDATES=$BASE
+  log "  snapshot $TS (sequence $SEQ of $UPDATES)"
+fi
 
 # ---- 3. room for it --------------------------------------------------------------------------------
 # An apply through update_from_dir is copy-on-write: every flush writes the .map blocks it touches
@@ -156,4 +203,8 @@ ids=$(paste -sd, "$DIR/control.ids")
 got=$(curl -fsS --max-time 300 --data-urlencode "data=[out:json][timeout:240];way(id:$ids);out ids;" "$INTERPRETER" | { grep -o '"type": *"way"' || true; } | wc -l) || got=-1
 log "  control  $got of $want sampled ways of $REGION_ID answered by $UPSTREAM"
 [ "$got" -eq "$want" ] || fail "$UPSTREAM answered $got of $want of the region's own ways after the apply"
-log "done: $UPSTREAM holds $REGION_ID, and its regions sidecar follows $UPDATES from sequence $SEQ"
+if [ -n "$DRAWN" ]; then
+  log "done: $UPSTREAM holds the drawn area $REGION_ID (a snapshot — rebuild it to refresh)"
+else
+  log "done: $UPSTREAM holds $REGION_ID, and its regions sidecar follows $UPDATES from sequence $SEQ"
+fi

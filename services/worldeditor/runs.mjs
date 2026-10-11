@@ -23,11 +23,12 @@
 // Job specs below are built once and go to whichever it is; the run records say which
 // (`runner: 'kubernetes' | 'docker'`), and nothing here branches on it except to name it.
 
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { createWriteStream, existsSync } from 'node:fs'
 import { open, readFile, rm, stat } from 'node:fs/promises'
 import { bakeArea, regionLabel } from './coverage.mjs'
+import { osmPolyText } from './osmbuild.mjs'
 import { mirrorsFor } from './overpass.mjs'
 
 const now = () => new Date().toISOString()
@@ -232,8 +233,8 @@ export class Runs {
     if (!pod) throw Object.assign(new Error(`${upstream} has no running pod — an import is staged on its volume, on its node, and applied by it`), { status: 409 })
     const p = { ...(region.properties ?? {}) }
     p.name = regionLabel(p)
-    const live = (await this.store.listRuns(200)).find((r) => r.kind === 'osm-import' && r.osm?.upstream === upstream && r.state !== 'done' && r.state !== 'failed')
-    if (live) throw Object.assign(new Error(`${upstream} already has an import running (${live.label}); one at a time — they share one disk and one dispatcher`), { status: 409 })
+    const live = await this.#liveOsm(upstream)
+    if (live) throw Object.assign(new Error(`${upstream} already has ${live.kind === 'osm-build' ? 'a build' : 'an import'} running (${live.label}); one at a time — they share one disk and one dispatcher`), { status: 409 })
     const slug = `${upstream}-${String(p.id).replace(/[^a-z0-9]+/gi, '-')}`
     const id = `osm-import-${short(slug)}-${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}-${randomUUID().slice(0, 4)}`
     const run = {
@@ -257,6 +258,91 @@ export class Runs {
     await this.store.writeAtomic(this.store.logFile(id), Buffer.from(`=== ${run.label} (${run.runner}) ${run.started}\n`))
     const spec = osmImportJob({
       name: `osm-import-${short(upstream)}-${short(String(p.id).replace(/\//g, '-'))}-${Date.now().toString(36)}`.slice(0, 60).replace(/-+$/, ''),
+      runId: id,
+      upstream,
+      region: run.osm,
+      node: pod.spec.nodeName,
+      image: this.cfg.osmImportImage ?? 'wiktorn/overpass-api:latest',
+      ttlSeconds: this.cfg.ttlSeconds ?? 604800,
+    })
+    const made = await this.k8s.createJob(spec)
+    run.job = made.metadata.name
+    run.state = 'queued'
+    await this.#save(run)
+    this.#watchJob(run)
+    return run
+  }
+
+  /** An osm-import or osm-build in flight for this instance: they share one disk and one dispatcher. */
+  async #liveOsm(upstream) {
+    return (await this.store.listRuns(200)).find((r) => (r.kind === 'osm-import' || r.kind === 'osm-build') && r.osm?.upstream === upstream && r.state !== 'done' && r.state !== 'failed')
+  }
+
+  /**
+   * Add a DRAWN AREA to an Overpass instance: an `osm-build` run.
+   *
+   * SAME JOB, SAME VOLUME, SAME SIDECAR as an import (above): a Job on the instance's node stages
+   * the area under /db/regions/<id>/, and the instance's `regions` sidecar applies it through the
+   * dispatcher. The one difference is where the area came from. An import names a Geofabrik region
+   * and downloads its own extract; a build is a polygon a person drew, clipped out of whichever
+   * Geofabrik extract(s) the server found covering it (`server.mjs POST /api/osm/builds`, the pick
+   * in osmbuild.mjs `coveringRegions`).
+   *
+   * WHY IT IS A SNAPSHOT. A named Geofabrik region carries its own diff stream in the extract's
+   * header and the sidecar follows it. A drawn area is clipped from an extract that also spans
+   * ground OUTSIDE the shape, so following that extract's diffs would pour data back in outside the
+   * drawing. The area is therefore staged with no updates: the sidecar applies it once and stops
+   * (regions-agent.sh returns early when the request's `updates` is empty). Re-draw and rebuild to
+   * refresh it; a later change can clip the source diffs to the shape if live refresh is wanted.
+   *
+   * @param {{ upstream: string, polygon: { type: 'Polygon', coordinates: number[][][] }, sources: { id: string, name?: string, pbf?: string|null, updates?: string|null, bytes?: number|null }[], name?: string }} o
+   */
+  async osmBuild({ upstream, polygon, sources, name }) {
+    if (!this.#jobs) {
+      throw Object.assign(new Error('a build writes into an Overpass instance in the cluster (or on the Docker host, PIEDMONT_EDITOR_RUNNER=docker), and this editor is not running in one'), { status: 409 })
+    }
+    const pods = await this.k8s.podsByLabel(`app=${upstream}`).catch(() => [])
+    const pod = pods.find((p) => p.status?.phase === 'Running' && p.spec?.nodeName)
+    if (!pod) throw Object.assign(new Error(`${upstream} has no running pod — a build is staged on its volume, on its node, and applied by it`), { status: 409 })
+    const live = await this.#liveOsm(upstream)
+    if (live) throw Object.assign(new Error(`${upstream} already has ${live.kind === 'osm-build' ? 'a build' : 'an import'} running (${live.label}); one at a time — they share one disk and one dispatcher`), { status: 409 })
+    const says = (sources ?? []).filter((s) => s?.pbf)
+    if (!says.length) throw Object.assign(new Error('no Geofabrik extract covers that area to build from'), { status: 400 })
+    const label = typeof name === 'string' && name.trim() ? name.trim().slice(0, 80) : `drawn area on ${upstream}`
+    // the slug is the region id, and a region is idempotent by id: two unnamed draws must not share
+    // one, or the second would be mistaken for the first and never applied. Fingerprint the shape.
+    const fingerprint = createHash('sha1').update(JSON.stringify(polygon?.coordinates?.[0] ?? [])).digest('hex').slice(0, 6)
+    const slug = `${upstream}-build-${short(label)}-${fingerprint}`
+    const id = `osm-build-${short(slug)}-${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}-${randomUUID().slice(0, 4)}`
+    const run = {
+      id,
+      kind: 'osm-build',
+      slug,
+      label: `build ${label}`,
+      args: [],
+      runner: this.runner,
+      state: 'starting',
+      started: now(),
+      finished: null,
+      detail: null,
+      job: null,
+      pod: null,
+      lastStamp: null,
+      exit: null,
+      osm: {
+        upstream,
+        region: slug,
+        name: label,
+        node: pod.spec.nodeName,
+        // the ring the person drew, so coverage.mjs can render the region and defer_deletes.py gets its outline
+        polygon: polygon?.coordinates?.[0] ?? [],
+        sources: says.map((s) => ({ id: s.id, name: s.name ?? s.id, pbf: s.pbf ?? null, updates: s.updates ?? null, bytes: s.bytes ?? null })),
+      },
+    }
+    await this.store.writeAtomic(this.store.runFile(id), Buffer.from(JSON.stringify(run, null, 1)))
+    await this.store.writeAtomic(this.store.logFile(id), Buffer.from(`=== ${run.label} (${run.runner}) ${run.started}\n`))
+    const spec = osmBuildJob({
+      name: `osm-build-${short(upstream)}-${Date.now().toString(36)}`.slice(0, 60).replace(/-+$/, ''),
       runId: id,
       upstream,
       region: run.osm,
@@ -878,9 +964,9 @@ export class Runs {
         await this.#append(run.id, `(look not applied: ${e.message ?? e})\n`)
       }
     }
-    if (state === 'done' && run.kind === 'osm-import') {
-      // the instance now holds the region: route to it (coverage.mjs). A failure here is said in
-      // the log and does not unmake the import — the region is there, only the map does not know.
+    if (state === 'done' && (run.kind === 'osm-import' || run.kind === 'osm-build')) {
+      // the instance now holds the region or drawn area: route to it (coverage.mjs). A failure here
+      // is said in the log and does not unmake the run — the data is there, only the map does not know.
       try {
         await this.cfg.onImported?.(run)
         await this.#append(run.id, `(coverage: ${run.osm?.upstream} now holds ${run.osm?.region})\n`)
@@ -1062,6 +1148,77 @@ export function osmImportJob({ name, runId, upstream, region, node, image, ttlSe
                 { name: 'REGION_NAME', value: region.name ?? region.region },
                 { name: 'PBF_URL', value: region.pbf ?? '' },
                 { name: 'UPDATES_URL', value: region.updates ?? '' },
+                { name: 'INTERPRETER', value: `http://${upstream}/api/interpreter` },
+              ],
+              resources: { requests: { cpu: '2', memory: '2Gi' }, limits: { cpu: '8', memory: '8Gi' } },
+              volumeMounts: [
+                { name: 'db', mountPath: '/db' },
+                { name: 'scripts', mountPath: '/opt/regions', readOnly: true },
+              ],
+            },
+          ],
+          volumes: [
+            { name: 'db', persistentVolumeClaim: { claimName: `${upstream}-db` } },
+            { name: 'scripts', configMap: { name: `${upstream}-regions`, defaultMode: 0o755 } },
+          ],
+        },
+      },
+    },
+  }
+}
+
+/**
+ * The Job that stages a DRAWN AREA on an Overpass instance's volume: `osmImportJob`'s twin.
+ *
+ * It runs the same `/opt/regions/import.sh`, on the same node, with the same volume and ConfigMap,
+ * because the hard half is identical — the instance's own `regions` sidecar applies the change
+ * through its dispatcher. What differs is how import.sh learns the area:
+ *
+ *   * `POLYGON_POLY_B64` is the drawn ring as an osmium `.poly` file, base64 so it survives an env
+ *     var. import.sh decodes it to `$DIR/region.poly`, which becomes the region's outline — what
+ *     defer_deletes.py and the coverage map read.
+ *   * `PBF_URLS` is the Geofabrik extract(s) the server found covering the ring, space-separated.
+ *     The job downloads them, merges if there is more than one, and clips with `osmium extract -p`.
+ *   * there is no `UPDATES_URL`: a drawn area follows no diff stream (runs.mjs `osmBuild`).
+ *
+ * No RBAC the editor does not already have: it creates a Job and reads the instance's pod for its
+ * node — exactly what `osmImportJob` needs.
+ */
+export function osmBuildJob({ name, runId, upstream, region, node, image, ttlSeconds = 604800 }) {
+  const urls = (region.sources ?? []).map((s) => s.pbf).filter(Boolean)
+  const poly = osmPolyText({ type: 'Polygon', coordinates: [region.polygon] }, region.name ?? region.region)
+  const labels = { 'app.kubernetes.io/name': 'worldeditor-run', 'worldeditor/run': runId, 'worldeditor/kind': 'osm-build', 'worldeditor/upstream': upstream }
+  return {
+    apiVersion: 'batch/v1',
+    kind: 'Job',
+    metadata: { name, labels },
+    spec: {
+      backoffLimit: 0,
+      activeDeadlineSeconds: 172800,
+      ttlSecondsAfterFinished: ttlSeconds,
+      template: {
+        metadata: { labels: { 'app.kubernetes.io/name': 'worldeditor-run', 'worldeditor/run': runId } },
+        spec: {
+          restartPolicy: 'Never',
+          affinity: {
+            nodeAffinity: {
+              requiredDuringSchedulingIgnoredDuringExecution: {
+                nodeSelectorTerms: [{ matchExpressions: [{ key: 'kubernetes.io/hostname', operator: 'In', values: [node] }] }],
+              },
+            },
+          },
+          containers: [
+            {
+              name: 'build',
+              image,
+              imagePullPolicy: 'Always',
+              command: ['/bin/bash', '/opt/regions/import.sh'],
+              env: [
+                { name: 'UPSTREAM', value: upstream },
+                { name: 'REGION_ID', value: region.region },
+                { name: 'REGION_NAME', value: region.name ?? region.region },
+                { name: 'PBF_URLS', value: urls.join(' ') },
+                { name: 'POLYGON_POLY_B64', value: Buffer.from(poly).toString('base64') },
                 { name: 'INTERPRETER', value: `http://${upstream}/api/interpreter` },
               ],
               resources: { requests: { cpu: '2', memory: '2Gi' }, limits: { cpu: '8', memory: '8Gi' } },

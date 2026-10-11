@@ -857,17 +857,9 @@ function buildDrawer() {
     onClick: () => openSettings(),
   })
   // Rich, 2026-10-10: "a dialogue spawned from the settings menu, where we can see OSM coverage
-  // and select and download more source OSM data" (osmdata.ts)
-  drawer.item(nav, {
-    id: 'osm',
-    label: 'OSM data',
-    icon: 'globe-alt',
-    hint: 'which Overpass holds which ground, which one each world reads, and adding a region',
-    onClick: () => {
-      drawer.set(false)
-      openOsmData(logs)
-    },
-  })
+  // and select and download more source OSM data" (osmdata.ts). Its door is in Explore now, beside
+  // `New world here` — it is about the ground on screen, not about this installation — and it stays
+  // under Settings → Services for when you are already there.
 }
 
 /**
@@ -1341,6 +1333,13 @@ function renderExplore() {
       },
     }),
     button({ label: 'Overpass status', icon: 'server-stack', onClick: () => void showOverpass() }),
+    button({
+      label: 'OSM data',
+      icon: 'globe-alt',
+      variant: 'primary',
+      title: 'coverage of each Overpass instance, adding a region, and building a drawn area',
+      onClick: () => openOsmData(logs),
+    }),
   )
   wrap.append(acts)
   inspector.append(wrap)

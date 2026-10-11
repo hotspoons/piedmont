@@ -32,6 +32,7 @@ For how things work now, read the pages in [docs/dev](../README.md) and the code
 | [PLAN-OPEN-WORLD.md](PLAN-OPEN-WORLD.md) | from a road band to a world: trees and ground not tied to roads |
 | [PLAN-STREAMING-WORLD.md](PLAN-STREAMING-WORLD.md) | from a compiled site to a streamed world |
 | [PLAN-SHARDED-BAKE.md](PLAN-SHARDED-BAKE.md) | baking a large world in pieces: plan → shard → finalize |
+| [PLAN-OVERPASS-DRAWN.md](PLAN-OVERPASS-DRAWN.md) | adding a polygon drawn in the editor to an Overpass instance: the smallest-extract pick, and why it is a snapshot |
 | [PLAN-MONOLITHS.md](PLAN-MONOLITHS.md) | what the game still loads whole, measured, and the order to break it up |
 | [PLAN-GRADE-SEPARATION-RENDER.md](PLAN-GRADE-SEPARATION-RENDER.md) | grade-separated crossings: the DEM, the underside, the ground |
 | [PLAN-STREET-FURNITURE.md](PLAN-STREET-FURNITURE.md) | signs, kerbs, walks, trails and rail |

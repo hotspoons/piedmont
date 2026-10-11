@@ -79,7 +79,12 @@ index (a seed copy ships with the service, outlines are checked region by region
 world's bake to the smallest instance that holds all of it; the bake is handed the same coverage
 and refuses a query its instance does not hold. **Adding a region** to a running instance is an
 `osm-import` run: a Job on the instance's node stages the extract as an osmChange and the
-instance's `regions` sidecar applies it through the running dispatcher.
+instance's `regions` sidecar applies it through the running dispatcher. **Building a DRAWN AREA**
+is an `osm-build` run: the same Job and script, but the area is a polygon drawn in the editor
+(`osmbuild.mjs` picks the smallest Geofabrik extract(s) covering it and `import.sh` clips them to
+it with `osmium extract -p`). Because a drawn area follows no diff stream — the extract it is cut
+from also covers ground outside the shape — it is applied once, as a snapshot. See
+[specs/PLAN-OVERPASS-DRAWN.md](specs/PLAN-OVERPASS-DRAWN.md).
 
 Two traps that shaped this: a regional instance answers an out-of-area box with HTTP 200 and zero
 ways, and the importer writes `init_done` last, so a crash re-imports over a finished database.

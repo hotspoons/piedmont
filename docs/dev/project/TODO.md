@@ -15,6 +15,13 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 
 ## Recently fixed
 
+- **No way to add just a slice of a region to an Overpass instance** — the only lane was a named
+  Geofabrik region, downloaded whole, so taking a strip of one meant importing a whole state or
+  continent. **World → Explore → OSM data** now lists the instances, lets you draw a polygon on the
+  coverage map, and builds it (`osm-build`): the server picks the smallest Geofabrik extract(s)
+  covering the shape (`osmbuild.mjs`) and the job clips them to it with `osmium extract -p`
+  (`import.sh` drawn mode). A drawn area is a snapshot, not kept current by diffs — see
+  [specs/PLAN-OVERPASS-DRAWN.md](../specs/PLAN-OVERPASS-DRAWN.md).
 - **The built-in asset kit never shipped** — `catalog.json` listed 33 ids but no `.glb` existed
   and `surfaces/` was empty, so a fresh editor drew none of its own models or road textures. The
   generated kit (33 models, 8 surface sets) is now tracked in Git LFS and shipped by the

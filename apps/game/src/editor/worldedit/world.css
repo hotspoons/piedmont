@@ -786,6 +786,13 @@ canvas.drop-target { outline: 2px dashed var(--accent); outline-offset: -4px; }
 .osm-side { overflow-y: auto; min-height: 0; padding: var(--s3); display: grid; gap: var(--s3); align-content: start; }
 .osm-up { display: grid; gap: var(--s1); padding: var(--s2) 0; border-bottom: 1px solid var(--line-1); }
 .osm-up:last-child { border-bottom: 0; }
+/* the card is the target picker for the drawn-area lane */
+.osm-up.selectable { cursor: pointer; }
+.osm-up.on { box-shadow: inset 2px 0 0 var(--accent); }
+.osm-run-chip { border: 0; background: none; padding: 0; cursor: pointer; font: inherit; }
+.osm-build { display: grid; gap: var(--s2); }
+.osm-build-on { display: flex; gap: var(--s1); margin: 0; font-weight: 600; }
+.osm-build-hint { margin: 0; }
 .osm-up-head { display: flex; align-items: center; gap: var(--s2); }
 .osm-up-name { font-weight: 600; flex: 1; }
 .osm-url { font-size: var(--text-xs); overflow-wrap: anywhere; }
@@ -798,6 +805,8 @@ canvas.drop-target { outline: 2px dashed var(--accent); outline-offset: -4px; }
 }
 .osm-region.src-import { border-color: var(--accent-line); color: var(--ink-1); }
 .osm-region.src-fence { border-style: dashed; color: var(--warn); }
+/* a region drawn in the editor and built onto an instance (osmdata.ts) */
+.osm-region.src-build { border-color: var(--ok); color: var(--ok); }
 .osm-world {
   display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: var(--s2); align-items: baseline;
   width: 100%; text-align: left; padding: var(--s1) 0;

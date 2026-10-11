@@ -12,6 +12,7 @@ import path from 'node:path'
 import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import { Coverage } from './coverage.mjs'
+import { drawnPolygon } from './osmbuild.mjs'
 import { Runs, osmImportJob } from './runs.mjs'
 import { Store } from './store.mjs'
 import { manifest } from '../overpass/osm-import-job.mjs'
@@ -174,6 +175,93 @@ test('an import is refused, by name, when the instance is not running or the edi
     await assert.rejects(down.osmImport({ upstream: 'overpass', region: F('us/virginia') }), /overpass has no running pod/)
     const laptop = new Runs(store, { ...cluster(), available: false }, { force: 'local', coverage })
     await assert.rejects(laptop.osmImport({ upstream: 'overpass', region: F('us/virginia') }), /not running in one/)
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 })
+  }
+})
+
+test('an osm-build is one Job on the instance, with the drawn shape and the covering extracts, and adds a build region', async () => {
+  const { root, store, coverage } = await setup(URLS, REGIONS)
+  const k8s = cluster()
+  try {
+    const polygon = drawnPolygon([[-77.2, 38.8], [-76.9, 38.8], [-76.9, 39.0]])
+    const sources = [
+      { id: 'us/maryland', name: 'us/maryland', pbf: 'https://download.geofabrik.de/north-america/us/maryland-latest.osm.pbf', updates: 'https://download.geofabrik.de/north-america/us/maryland-updates', bytes: 123 },
+    ]
+    const runs = new Runs(store, k8s, {
+      force: 'kubernetes',
+      image: 'piedmont-bake:latest',
+      claim: 'data',
+      resources: {},
+      coverage,
+      osmImportImage: 'wiktorn/overpass-api@sha256:9bb5',
+      onImported: async (r) => {
+        // the server's branch (server.mjs onImported): a build's outline is the polygon, not a lookup
+        if (r.kind === 'osm-build') {
+          await coverage.addRegion(r.osm.upstream, { type: 'Feature', properties: { id: r.osm.region, name: r.osm.name }, geometry: { type: 'Polygon', coordinates: [r.osm.polygon] } }, { source: 'build', run: r.id })
+          return
+        }
+        await coverage.addRegion(r.osm.upstream, F(r.osm.region), { run: r.id })
+      },
+    })
+    const run = await runs.osmBuild({ upstream: 'overpass', polygon, sources, name: 'my patch' })
+    assert.equal(run.kind, 'osm-build')
+    assert.match(run.label, /build my patch/)
+    assert.match(run.slug, /overpass-build-mypatch-[0-9a-f]{6}/)
+    await until(() => k8s.jobs.size === 1)
+    const [job] = [...k8s.jobs.values()]
+    const pod = job.spec.spec.template.spec
+    assert.equal(job.spec.metadata.labels['worldeditor/kind'], 'osm-build')
+    assert.equal(pod.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0], 'gh200-1-node-2')
+    assert.equal(pod.volumes.find((v) => v.name === 'db').persistentVolumeClaim.claimName, 'overpass-db')
+    assert.equal(pod.volumes.find((v) => v.name === 'scripts').configMap.name, 'overpass-regions')
+    assert.equal(pod.containers[0].image, 'wiktorn/overpass-api@sha256:9bb5')
+    // the same script as an import: the instance's sidecar does the apply either way
+    assert.deepEqual(pod.containers[0].command, ['/bin/bash', '/opt/regions/import.sh'])
+    const e = env(job.spec)
+    assert.equal(e.REGION_ID, run.osm.region)
+    assert.equal(e.PBF_URLS, sources[0].pbf)
+    assert.equal(e.UPDATES_URL, undefined, 'a drawn area follows no diff stream')
+    const poly = Buffer.from(e.POLYGON_POLY_B64, 'base64').toString('utf8')
+    assert.match(poly, /^my patch\n1\n/)
+    assert.match(poly, /-77\.2000000 38\.8000000/)
+
+    // one at a time ACROSS kinds: they share one disk and one dispatcher
+    await assert.rejects(runs.osmImport({ upstream: 'overpass', region: F('us/district-of-columbia') }), /already has a build running/)
+
+    job.status = { succeeded: 1 }
+    await until(async () => JSON.parse(await readFile(store.runFile(run.id), 'utf8')).state === 'done')
+    const ov = coverage.upstreams().find((u) => u.name === 'overpass')
+    const built = ov.regions.find((r) => r.source === 'build')
+    assert.ok(built, 'the drawn area is in coverage, as a build region')
+    assert.equal(built.id, run.osm.region)
+    assert.equal(built.name, 'my patch')
+    assert.match(await readFile(store.logFile(run.id), 'utf8'), /coverage: overpass now holds/)
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 })
+  }
+})
+
+test('a build is refused by name when the instance is down, and two unnamed draws get their own regions', async () => {
+  const { root, store, coverage } = await setup(URLS, REGIONS)
+  try {
+    const polygon = drawnPolygon([[-77.2, 38.8], [-76.9, 38.8], [-76.9, 39.0]])
+    const down = new Runs(store, cluster({ overpassNode: null }), { force: 'kubernetes', coverage })
+    await assert.rejects(down.osmBuild({ upstream: 'overpass', polygon, sources: [{ pbf: 'x' }] }), /overpass has no running pod/)
+    const laptop = new Runs(store, { ...cluster(), available: false }, { force: 'local', coverage })
+    await assert.rejects(laptop.osmBuild({ upstream: 'overpass', polygon, sources: [{ pbf: 'x' }] }), /not running in one/)
+
+    const runs = new Runs(store, cluster(), { force: 'kubernetes', coverage, osmImportImage: 'i' })
+    const a = await runs.osmBuild({ upstream: 'overpass', polygon, sources: [{ pbf: 'x' }] })
+    // the same shape and (default) name is the same region: rebuilding it is idempotent, not a dupe
+    await runs.cancel(a.id)
+    const again = await runs.osmBuild({ upstream: 'overpass', polygon, sources: [{ pbf: 'x' }] })
+    assert.equal(again.osm.region, a.osm.region)
+    // a DIFFERENT shape under the same default name must NOT collide, or it would be skipped as done
+    await runs.cancel(again.id)
+    const other = await runs.osmBuild({ upstream: 'overpass', polygon: drawnPolygon([[-80, 36], [-79, 36], [-79, 37]]), sources: [{ pbf: 'x' }] })
+    assert.notEqual(other.osm.region, a.osm.region)
+    await runs.cancel(other.id)
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 })
   }

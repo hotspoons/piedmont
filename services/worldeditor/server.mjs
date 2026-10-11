@@ -46,6 +46,7 @@ import * as programs from './programs.mjs'
 import * as training from './training.mjs'
 import { Overpass, PUBLIC_MIRRORS, mirrorsFor } from './overpass.mjs'
 import { bakeArea, bboxOfGeom, hasOutline, openCoverage, parseRegions, parseUpstream } from './coverage.mjs'
+import { coveringRegions, drawnPolygon } from './osmbuild.mjs'
 import { Geofabrik, INDEX_URL } from './geofabrik.mjs'
 import { Tiles } from './tiles.mjs'
 import { Basemap } from './basemap.mjs'
@@ -229,8 +230,18 @@ const runs = new Runs(store, k8s, {
   overpassUrl: settings.get('overpass.url'),
   coverage,
   osmImportImage: settings.get('osm.importImage'),
-  // an import that succeeded: the instance holds the region now, so route to it
+  // an import or build that succeeded: the instance holds the area now, so route to it
   onImported: async (run) => {
+    if (run.kind === 'osm-build') {
+      // a drawn area: its outline is the polygon the person drew, not a Geofabrik feature, so the
+      // coverage record is built here rather than looked up by id (osmbuild.mjs made the polygon)
+      await coverage.addRegion(
+        run.osm.upstream,
+        { type: 'Feature', properties: { id: run.osm.region, name: run.osm.name }, geometry: { type: 'Polygon', coordinates: [run.osm.polygon] } },
+        { source: 'build', run: run.id },
+      )
+      return
+    }
     const f = await geofabrik.region(run.osm.region)
     if (!f) throw new Error(`${run.osm.region} is not in the Geofabrik index`)
     await coverage.addRegion(run.osm.upstream, f, { run: run.id })
@@ -868,6 +879,50 @@ async function api(req, res, seg, q) {
     // the import would succeed and the region could never be routed to: say so before, not after
     if (!hasOutline(f.geometry)) return json(res, 409, { error: `${body.region} has no outline in the Geofabrik index this editor holds (${geofabrik.source}); an instance holding it could not be routed to. Try again when the index has one.` })
     return json(res, 202, { run: await runs.osmImport({ upstream: up.name, region: f }) })
+  }
+
+  /**
+   * Build a DRAWN AREA into an instance: an `osm-build` run (runs.mjs `osmBuild`).
+   *
+   * The server picks the Geofabrik extract(s) covering the drawn ring, because the client cannot:
+   * the index's geometry and every candidate's .pbf size live here. `dryRun: true` answers with the
+   * pick alone — the dialog confirms against real numbers BEFORE a Job exists to download gigabytes
+   * (osmbuild.ts `osmBuildPreview`). A real call does the same pick, then starts the run.
+   */
+  if (seg[0] === 'osm' && seg[1] === 'builds' && req.method === 'POST') {
+    const body = await readJson(req)
+    const up = coverage.configured().find((u) => u.name === body.upstream)
+    if (!up) return json(res, 404, { error: `no Overpass instance "${body.upstream}" — one of ${coverage.configured().map((u) => u.name).join(', ') || '(none configured)'}` })
+    let polygon
+    try {
+      polygon = drawnPolygon(body.polygon)
+    } catch (e) {
+      return json(res, e.status ?? 400, { error: e.message })
+    }
+    const doc = await geofabrik.index().catch(() => null)
+    if (!doc?.features?.length) return json(res, 503, { error: 'the Geofabrik index is not available yet — try again in a moment' })
+    let chosen
+    try {
+      chosen = coveringRegions(doc.features, polygon)
+    } catch (e) {
+      return json(res, e.status ?? 400, { error: e.message })
+    }
+    // a covering extract with no .pbf is a region the index names but has no download for: refuse
+    // before the run exists, the way the import route refuses region without a pbf
+    const noPbf = chosen.filter((c) => !c.pbf)
+    if (noPbf.length) return json(res, 409, { error: `${noPbf.map((c) => c.id).join(', ')} has no .pbf in the Geofabrik index this editor holds (${geofabrik.source}); draw a smaller area, or add a named region instead.` })
+    const sources = await Promise.all(
+      chosen.map(async (c) => ({
+        id: c.id,
+        name: c.name,
+        pbf: c.pbf,
+        updates: c.updates,
+        bytes: (await geofabrik.pbfBytes(c.id).catch(() => null))?.bytes ?? null,
+      })),
+    )
+    if (body.dryRun) return json(res, 200, { sources })
+    const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 80) : undefined
+    return json(res, 202, { run: await runs.osmBuild({ upstream: up.name, polygon, sources, name }), sources })
   }
 
   /**

@@ -32,6 +32,16 @@ export class CoverageMap {
   /** upstreams switched off in the legend */
   hidden = new Set<string>()
 
+  /* ---- drawing a region to build (osmdata.ts) ----
+   *
+   * The map is a canvas and a drag; a build needs a ring drawn on the same ground. So when
+   * `drawing` is on a press becomes a vertex rather than a pan, and the ring is painted with the
+   * coverage. `ring` is always `[lon,lat]` — the same pairs every other route in this app speaks —
+   * and `onRing` is how the panel hears a vertex landed, the shape closed, or it was cleared. */
+  drawing = false
+  ring: [number, number][] = []
+  onRing: ((ring: [number, number][], closed: boolean) => void) | null = null
+
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
   private scratch = document.createElement('canvas')
@@ -40,25 +50,59 @@ export class CoverageMap {
   private dpr = 1
   private frame = 0
   private drag: { x: number; y: number; cx: number; cy: number } | null = null
+  /** a press while drawing, held until pointerup decides click-or-drag */
+  private down: { x: number; y: number; moved: boolean } | null = null
+  /** the cursor, in canvas pixels, for the rubber-band line */
+  private cursor: { x: number; y: number } | null = null
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
     this.ctx = canvas.getContext('2d')!
+    // focusable so Backspace/Enter reach the dialog while a person is drawing
+    canvas.tabIndex = 0
     new ResizeObserver(() => this.resize()).observe(canvas)
     canvas.addEventListener('pointerdown', (e) => {
+      if (this.drawing) {
+        // a press while drawing is a vertex, not a pan — which one it was is decided on release
+        this.down = { x: e.clientX, y: e.clientY, moved: false }
+        canvas.focus()
+        return
+      }
       const [cx, cy] = project(this.centre)
       this.drag = { x: e.clientX, y: e.clientY, cx, cy }
       canvas.setPointerCapture(e.pointerId)
     })
     canvas.addEventListener('pointermove', (e) => {
+      if (this.drawing) {
+        const r = canvas.getBoundingClientRect()
+        this.cursor = { x: e.clientX - r.left, y: e.clientY - r.top }
+        if (this.down && (Math.abs(e.clientX - this.down.x) > 4 || Math.abs(e.clientY - this.down.y) > 4)) this.down.moved = true
+        this.draw()
+        return
+      }
+      this.cursor = null
       if (!this.drag) return
       const s = 2 ** this.zoom
       this.centre = unproject(this.drag.cx - (e.clientX - this.drag.x) / s, this.drag.cy - (e.clientY - this.drag.y) / s)
       this.draw()
     })
-    const end = () => { this.drag = null }
+    const end = () => {
+      if (this.drawing) {
+        const d = this.down
+        this.down = null
+        // a release that did not move is a click: put a vertex here (or close on the first one)
+        if (d && !d.moved) this.tap(d.x, d.y)
+        this.draw()
+        return
+      }
+      this.drag = null
+    }
     canvas.addEventListener('pointerup', end)
     canvas.addEventListener('pointercancel', end)
+    canvas.addEventListener('pointerleave', () => { this.cursor = null; this.draw() })
+    // a double-click closes the shape; the two taps it fires first add two vertices at the same
+    // spot, which `closeRing` drops before it closes
+    canvas.addEventListener('dblclick', () => { if (this.drawing) this.closeRing() })
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault()
       const r = canvas.getBoundingClientRect()
@@ -110,6 +154,54 @@ export class CoverageMap {
     return [this.w / 2 + (x - cx) * s, this.h / 2 + (y - cy) * s]
   }
 
+  /** A click while drawing: close on the first vertex, otherwise drop a corner here. */
+  private tap(clientX: number, clientY: number) {
+    const r = this.canvas.getBoundingClientRect()
+    const x = clientX - r.left
+    const y = clientY - r.top
+    if (this.ring.length >= 3) {
+      const [fx, fy] = this.xy(this.ring[0][0], this.ring[0][1])
+      if (Math.hypot(x - fx, y - fy) <= 10) {
+        this.closeRing()
+        return
+      }
+    }
+    const ll = this.toLonLat(x, y)
+    this.ring.push([ll.lon, ll.lat])
+    this.onRing?.(this.ring, false)
+  }
+
+  /**
+   * Close the shape. A double-click fires two taps first, so a duplicate tail is dropped before
+   * the ring is handed over; fewer than three corners is not a ring and does nothing.
+   */
+  closeRing() {
+    if (this.ring.length >= 2) {
+      const [ax, ay] = this.ring[this.ring.length - 1]
+      const [bx, by] = this.ring[this.ring.length - 2]
+      if (ax === bx && ay === by) this.ring.pop()
+    }
+    if (this.ring.length < 3) return
+    this.onRing?.(this.ring, true)
+    this.draw()
+  }
+
+  /** Throw the ring away. */
+  clearRing() {
+    if (!this.ring.length) return
+    this.ring = []
+    this.onRing?.(this.ring, false)
+    this.draw()
+  }
+
+  /** Backspace: drop the last corner. */
+  removeLastVertex() {
+    if (!this.ring.length) return
+    this.ring.pop()
+    this.onRing?.(this.ring, false)
+    this.draw()
+  }
+
   private path(g: CanvasRenderingContext2D, polys: Ring[][]) {
     g.beginPath()
     for (const poly of polys) {
@@ -146,6 +238,7 @@ export class CoverageMap {
 
   private paint() {
     const g = this.ctx
+    this.canvas.style.cursor = this.drawing ? 'crosshair' : 'grab'
     const css = getComputedStyle(document.documentElement)
     const tok = (n: string, d: string) => css.getPropertyValue(n).trim() || d
     g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
@@ -255,6 +348,46 @@ export class CoverageMap {
       g.lineWidth = 1.5
       g.stroke()
       g.setLineDash([])
+    }
+
+    // THE RING BEING DRAWN for a build (osmdata.ts): the polyline and its handles, plus the
+    // rubber band a person is pulling to the cursor. Above the coverage, because it is the thing
+    // being claimed and everything under it is only where it lands.
+    if (this.ring.length) {
+      const bright = tok('--accent', '#4aa8e8')
+      const pts = this.ring.map(([lon, lat]) => this.xy(lon, lat))
+      g.beginPath()
+      pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)))
+      if (this.ring.length >= 3) {
+        g.closePath()
+        g.fillStyle = `${bright}22`
+        g.fill('evenodd')
+      }
+      g.strokeStyle = bright
+      g.lineWidth = 2
+      g.setLineDash([])
+      g.stroke()
+      if (this.drawing && this.cursor) {
+        const [lx, ly] = pts[pts.length - 1]
+        g.beginPath()
+        g.moveTo(lx, ly)
+        g.lineTo(this.cursor.x, this.cursor.y)
+        if (this.ring.length >= 2) {
+          // and the end of the rubber band back to the first corner: the shape as it would close
+          g.moveTo(this.cursor.x, this.cursor.y)
+          g.lineTo(pts[0][0], pts[0][1])
+        }
+        g.setLineDash([5, 4])
+        g.lineWidth = 1.5
+        g.stroke()
+        g.setLineDash([])
+      }
+      g.fillStyle = bright
+      for (const [x, y] of pts) {
+        g.beginPath()
+        g.arc(x, y, 3.5, 0, Math.PI * 2)
+        g.fill()
+      }
     }
     this.painted = { upstreams: nUp, worlds: this.worlds.filter((w) => w.placed).length, missing: nMissing }
   }

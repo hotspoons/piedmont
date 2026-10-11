@@ -19,6 +19,9 @@ The side panel says what is loaded, and why the map is empty when it is.
 - **New world here** (or press `N`) starts a new world and switches to Define.
 - **Overpass status** says which OpenStreetMap server answered, and whether the editor fell back to
   a public mirror.
+- **OSM data** (also under Settings → Services) opens the OSM data dialog: each instance's coverage,
+  which instance each world reads from, and adding data to an instance — a named region, or a shape
+  you **draw and build** (see [Where the OpenStreetMap data comes from](#where-the-openstreetmap-data-comes-from)).
 
 The world picker on the left of the top bar lists every world on this install, baked or not. The
 globe button beside it opens the selected world in the game.
@@ -112,9 +115,17 @@ for the sources a world was built from.
 ## Where the OpenStreetMap data comes from
 
 Bakes ask your own Overpass instances first, routed by which regions each one holds, and fall back
-to the public Overpass mirrors for anywhere none of them covers. The drawer menu's **OSM data**
-dialog shows each instance's coverage on a map, which instance each world reads from, and lets you
-**add a Geofabrik region to an instance**. That runs as a job like a bake.
+to the public Overpass mirrors for anywhere none of them covers. **World → Explore → OSM data** (also
+under Settings → Services) shows each instance's coverage on a map, which instance each world reads
+from, and adds data to an instance. There are two ways to add data; both run as a job like a bake,
+with a log, and are listed together while they run:
+
+- **Add a Geofabrik region**: the named extract (a state, a country), downloaded whole.
+- **Build a drawn area**: pick an instance, draw a shape on the coverage map, and build it. The job
+  downloads the smallest Geofabrik extract(s) that cover the shape, clips them to it, and applies
+  only what is inside — the way to take a subset of a big area instead of importing all of it. A
+  drawn area is a **snapshot**: it is not kept current by diffs (the extract it is cut from also
+  covers ground outside the shape), so re-draw and rebuild it to refresh.
 
 If a world was baked from stale or wrong OSM data, a bake request with `"refreshOsm": true` asks
 Overpass again instead of using the cache.

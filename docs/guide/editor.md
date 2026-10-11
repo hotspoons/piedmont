@@ -15,8 +15,9 @@ to right, and each mode has a number key:
 | 8 | **Deploy** | publish worlds to Cloudflare ([Deploying to Cloudflare](cloudflare.md)) |
 
 The world picker at the left of the bar selects the world every mode works on. The gear button
-opens **Settings**; the menu button opens the drawer, with **Settings** and **OSM data**. An
-"unsaved" mark in the bar names anything not yet saved.
+opens **Settings**; the menu button opens the drawer. **OSM data** — each Overpass instance's
+coverage and adding data to one — is in **World → Explore** ([Creating worlds](worlds.md)) and under
+**Settings → Services**. An "unsaved" mark in the bar names anything not yet saved.
 
 Everything you make is stored on the install's data volume, beside the baked world, and can be
 committed to git from Settings (below).
