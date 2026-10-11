@@ -32,8 +32,10 @@ node scripts/setup.mjs || echo "WARN: npm run setup failed — re-run it: npm ru
 # Headless Chromium for the Playwright verification loop (agents drive the
 # live dev server with it — see scripts/smoke.mjs). Deps go via sudo apt; the
 # browser lands in the USER's cache (sudo would hide it under /root). Both
-# best-effort so a flaky network can't kill container create.
-(sudo npx playwright install-deps chromium && npx playwright install chromium) \
+# best-effort so a flaky network can't kill container create. --yes: when setup failed and playwright
+# is not in node_modules, npx otherwise asks "Ok to proceed?" on a terminal nobody sees, and container
+# create hangs here forever with everything below it undone.
+(sudo npx --yes playwright install-deps chromium && npx --yes playwright install chromium) \
     || echo "WARN: playwright setup failed — run 'just browser' to retry"
 
 # kubectl for the mounted ~/.kube config, with `k` aliased to it and bash
@@ -105,30 +107,8 @@ if ! command -v cloudflared >/dev/null 2>&1; then
         || echo "WARN: cloudflared install failed — 'just tunnel' will not work"
 fi
 
-# opencode's bind mounts (~/.local/share/opencode, ~/.local/state/opencode) make Docker materialise
-# their parents root-owned, as with the Blender volume below: opencode, OpenChamber and anything else
-# that writes under ~/.local would then fail. Only the parents, never -R: the mounts are the host's.
-for _d in "$HOME/.local" "$HOME/.local/share" "$HOME/.local/state"; do
-    [ -d "$_d" ] && [ ! -w "$_d" ] && { sudo chown "$(id -u):$(id -g)" "$_d" || echo "WARN: could not chown $_d"; }
-done
-unset _d
-
-# opencode: the coding agent this workspace is driven from. The binary sits in the container layer
-# (~/.opencode/bin), so a rebuild drops it and leaves `opencode` missing until it's reinstalled by
-# hand. State (config, auth, sessions) is bind-mounted from the host — see devcontainer.json — but
-# the binary has to be fetched fresh for this container's architecture. Idempotent.
-if ! command -v opencode >/dev/null 2>&1 && [ ! -x "$HOME/.opencode/bin/opencode" ]; then
-    (curl -fsSL https://opencode.ai/install | bash) \
-        || echo "WARN: opencode install failed — run: curl -fsSL https://opencode.ai/install | bash"
-fi
-# ~/.bashrc lives in the container layer too, so the installer's PATH line goes with it. Re-add it.
-if [ -x "$HOME/.opencode/bin/opencode" ] && ! grep -q "\.opencode/bin" ~/.bashrc 2>/dev/null; then
-    cat >>~/.bashrc <<'EOF'
-
-# opencode
-export PATH="$HOME/.opencode/bin:$PATH"
-EOF
-fi
+# opencode and OpenChamber are not here: .devcontainer/opencode.sh, the onCreateCommand, so they are
+# ready before the editor connects.
 
 # Blender, pinned by .devcontainer/blender.env. pipelines/rigging/rig_character.py needs >= 5.1 and
 # Debian ships 4.3, so this either fetches the official binary (x86_64) or builds from source

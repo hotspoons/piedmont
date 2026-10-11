@@ -115,6 +115,18 @@ httpRoute:
   # only has to cover an upload and a glb download.
   timeout: 300s
 
+# Gateway API with a ListenerSet — the full `pai-managed-ext-gateway` path (templates/gateway.yaml).
+# Turn on EITHER ingress, httpRoute or this, never more than one.
+gateway:
+  enabled: false
+  parentRef:
+    name: pai-managed-ext-gateway
+    namespace: patapsco-richard-siomporas-platform
+  hostnames: []
+  tlsSecretName: ""
+  issuer: ""
+  redirect: true
+
 ingress:
   enabled: false
   className: nginx

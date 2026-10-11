@@ -1,0 +1,107 @@
+{{- if and .Values.enabled .Values.gateway.enabled }}
+{{- $full := include "assetsvc.fullname" . -}}
+{{- $host := index .Values.gateway.hostnames 0 -}}
+{{- $ls := printf "%s-ext-listeners" $full -}}
+# Gateway API (the `pai-managed-ext-gateway` path). See the worldeditor chart's gateway.yaml for the
+# full WHY: the ext Gateway's own listener is a mock on 8443, so the real :80/:443 listeners and the
+# TLS Secret are contributed per app by a ListenerSet in this namespace, and the route attaches to
+# both the Gateway and the ListenerSet.
+#
+# Turn on EITHER ingress, httpRoute or gateway: external-dns publishes whichever object carries the
+# hostname, and two objects claiming one name fight over the record.
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: {{ $ls }}
+  labels: {{- include "assetsvc.labels" . | nindent 4 }}
+spec:
+  parentRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.gateway.parentRef.name }}
+    namespace: {{ .Values.gateway.parentRef.namespace }}
+  listeners:
+    - name: https
+      hostname: {{ $host | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: {{ .Values.gateway.tlsSecretName }}
+      allowedRoutes:
+        namespaces: { from: Same }
+    - name: http
+      hostname: {{ $host | quote }}
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces: { from: Same }
+{{- if .Values.gateway.issuer }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $full }}-cert
+  labels: {{- include "assetsvc.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.gateway.tlsSecretName }}
+  dnsNames: {{- toYaml .Values.gateway.hostnames | nindent 4 }}
+  issuerRef:
+    name: {{ .Values.gateway.issuer }}
+    kind: ClusterIssuer
+{{- end }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $full }}-ext-route
+  labels: {{- include "assetsvc.labels" . | nindent 4 }}
+spec:
+  hostnames: {{- toYaml .Values.gateway.hostnames | nindent 4 }}
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ .Values.gateway.parentRef.name }}
+      namespace: {{ .Values.gateway.parentRef.namespace }}
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: {{ $ls }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      timeouts:
+        request: {{ .Values.httpRoute.timeout }}
+        backendRequest: {{ .Values.httpRoute.timeout }}
+      backendRefs:
+        - name: {{ $full }}
+          port: {{ .Values.service.port }}
+{{- if .Values.gateway.redirect }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $full }}-ext-redirect
+  labels: {{- include "assetsvc.labels" . | nindent 4 }}
+  annotations:
+    external-dns.alpha.kubernetes.io/controller: disabled
+spec:
+  hostnames: {{- toYaml .Values.gateway.hostnames | nindent 4 }}
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: {{ $ls }}
+      sectionName: http
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 308
+{{- end }}
+{{- end }}

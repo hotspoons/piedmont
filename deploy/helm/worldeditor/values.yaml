@@ -137,6 +137,12 @@ publish:
 # create is a Job. `pods/log` is `get` — that is the log the editor streams.
 rbac:
   create: true
+  # ClusterRole and ClusterRoleBinding have NO namespaces: their names are global, so a second
+  # release in another namespace collides with this one (the `piedmont` install hit exactly this
+  # against `default`). Empty keeps the plain `<fullname>-gpu-visibility` — right for a single
+  # install. Set it to something unique (e.g. "-piedmont", or the release namespace) when more than
+  # one release of this chart exists on a cluster, so neither adopts the other's objects.
+  clusterResourceSuffix: ""
 serviceAccount:
   create: true
   name: ""
@@ -196,8 +202,29 @@ httpRoute:
   enabled: false
   parentRef:
     name: pai-managed-ext-gateway
-    namespace: pai-managed
+    # The platform's external Gateway lives in its own namespace (NOT `pai-managed`).
+    namespace: patapsco-richard-siomporas-platform
   hostnames: []
+
+# Gateway API with a ListenerSet — the full `pai-managed-ext-gateway` path, and what the platform's
+# own apps use (templates/gateway.yaml). Different from `httpRoute` above: that one attaches a bare
+# route to a parent, and the ext Gateway's own listener is a mock on 8443, so it never gets a real
+# listener. This block contributes the :80/:443 listeners (a ListenerSet in this namespace), the TLS
+# Secret (a cert-manager Certificate), the route and the http->https redirect. Turn on EITHER
+# ingress, httpRoute or this, never more than one: external-dns publishes the hostname of whichever
+# object carries it.
+gateway:
+  enabled: false
+  parentRef:
+    name: pai-managed-ext-gateway
+    namespace: patapsco-richard-siomporas-platform
+  # All of these go on the HTTPRoute; the FIRST is the ListenerSet's hostname.
+  hostnames: []
+  # The Secret the ListenerSet terminates TLS with. A Certificate is issued into it when `issuer`
+  # is set; leave both empty to bring your own Secret.
+  tlsSecretName: ""
+  issuer: ""
+  redirect: true
 
 podAnnotations: {}
 nodeSelector: {}

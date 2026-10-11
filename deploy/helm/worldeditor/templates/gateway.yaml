@@ -1,0 +1,113 @@
+{{- if and .Values.enabled .Values.gateway.enabled }}
+{{- $full := include "worldeditor.fullname" . -}}
+{{- $host := index .Values.gateway.hostnames 0 -}}
+{{- $ls := printf "%s-ext-listeners" $full -}}
+# Gateway API (the `pai-managed-ext-gateway` path), and the shape the platform's own apps use:
+# a ListenerSet in THIS namespace attaches to the shared external Gateway and terminates TLS with a
+# Secret here; one HTTPRoute carries the hostname to the Service; a second redirects http to https.
+# external-dns (--source=gateway-httproute) publishes the hostname from the routes.
+#
+# WHY A LISTENERSET AND NOT A BARE HTTPRoute: the ext Gateway's own listener is a mock on 8443. The
+# real :80/:443 listeners (with the hostname and the certificate) are contributed per app by a
+# ListenerSet, so a route that attaches only to the Gateway never gets a working listener. The route
+# below therefore attaches to BOTH — the Gateway (for sectionName) and the ListenerSet (for TLS).
+#
+# Turn on EITHER ingress, httpRoute or gateway: external-dns publishes whichever object carries the
+# hostname, and two objects claiming one name fight over the record.
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: {{ $ls }}
+  labels: {{- include "worldeditor.labels" . | nindent 4 }}
+spec:
+  parentRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.gateway.parentRef.name }}
+    namespace: {{ .Values.gateway.parentRef.namespace }}
+  listeners:
+    - name: https
+      hostname: {{ $host | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: {{ .Values.gateway.tlsSecretName }}
+      allowedRoutes:
+        namespaces: { from: Same }
+    - name: http
+      hostname: {{ $host | quote }}
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces: { from: Same }
+{{- if .Values.gateway.issuer }}
+---
+# cert-manager issues the Secret the ListenerSet references. DNS-01 through Cloudflare, so the
+# hostname gets a real certificate even though the gateway is at a private 172.16.10.x address.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $full }}-cert
+  labels: {{- include "worldeditor.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.gateway.tlsSecretName }}
+  dnsNames: {{- toYaml .Values.gateway.hostnames | nindent 4 }}
+  issuerRef:
+    name: {{ .Values.gateway.issuer }}
+    kind: ClusterIssuer
+{{- end }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $full }}-ext-route
+  labels: {{- include "worldeditor.labels" . | nindent 4 }}
+spec:
+  hostnames: {{- toYaml .Values.gateway.hostnames | nindent 4 }}
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ .Values.gateway.parentRef.name }}
+      namespace: {{ .Values.gateway.parentRef.namespace }}
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: {{ $ls }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $full }}
+          port: {{ .Values.service.port }}
+{{- if .Values.gateway.redirect }}
+---
+# http:// on the same hostname, 308 to https. Its hostname is NOT published by external-dns (the
+# annotation), so the two routes do not fight over one A record.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $full }}-ext-redirect
+  labels: {{- include "worldeditor.labels" . | nindent 4 }}
+  annotations:
+    external-dns.alpha.kubernetes.io/controller: disabled
+spec:
+  hostnames: {{- toYaml .Values.gateway.hostnames | nindent 4 }}
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: {{ $ls }}
+      sectionName: http
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 308
+{{- end }}
+{{- end }}

@@ -82,3 +82,8 @@ pipelines/sounds/.venv/
 pipelines/sounds/.venv
 pipelines/sounds/.cache/
 pipelines/sounds/.cache
+
+# the dev container's opencode and OpenChamber (binary, config with credentials, sessions, state),
+# bind-mounted into ~ by .devcontainer/devcontainer.json so a rebuild keeps them. Never committed.
+/.devhome/
+/.devhome

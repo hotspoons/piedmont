@@ -20,6 +20,9 @@
 			"installDockerComposeSwitch": true
 		}
 	},
+	// opencode first, and on its own: onCreateCommand finishes before the editor connects, so the binary
+	// is there when OpenChamber activates. post-create.sh runs after the editor is up and takes far longer.
+	"onCreateCommand": "bash .devcontainer/opencode.sh",
 	"postCreateCommand": "bash .devcontainer/post-create.sh",
 	// NOT host networking, unlike the arcade's container. Docker-in-Docker runs its own dockerd, and in
 	// the host's network namespace that daemon would create its bridge and iptables rules on the host
@@ -40,9 +43,9 @@
 	},
 	// Runs on the HOST before the container exists, on any host OS: cmd.exe/PowerShell on Windows, or
 	// the `sh` fallback everywhere else. It makes every bind-mount source, so Docker never creates them
-	// root-owned (or fails on a missing file): ~/.kube, ~/.claude, ~/.claude.json, opencode's config,
-	// data and state (~/.config, ~/.local/share and ~/.local/state /opencode), and ~/piedmont-data.
-	"initializeCommand": "cmd.exe /c powershell -NoProfile -Command \"$ErrorActionPreference='SilentlyContinue'; New-Item -ItemType Directory -Force -Path $env:USERPROFILE\\.kube, $env:USERPROFILE\\.claude, $env:USERPROFILE\\.config\\opencode, $env:USERPROFILE\\.local\\share\\opencode, $env:USERPROFILE\\.local\\state\\opencode, $env:USERPROFILE\\piedmont-data | Out-Null; if (!(Test-Path $env:USERPROFILE\\.claude.json)) { Set-Content -Path $env:USERPROFILE\\.claude.json -Value '{}' }\" || sh -c 'mkdir -p \"$HOME/.kube\" \"$HOME/.claude\" \"$HOME/.config/opencode\" \"$HOME/.local/share/opencode\" \"$HOME/.local/state/opencode\" \"$HOME/piedmont-data\" && touch \"$HOME/.claude.json\"'",
+	// root-owned (or fails on a missing file): ~/.kube, ~/.claude, ~/.claude.json, ~/piedmont-data, and
+	// opencode's and OpenChamber's directories under .devhome/ in this checkout (the cwd here).
+	"initializeCommand": "cmd.exe /c powershell -NoProfile -Command \"$ErrorActionPreference='SilentlyContinue'; New-Item -ItemType Directory -Force -Path $env:USERPROFILE\\.kube, $env:USERPROFILE\\.claude, $env:USERPROFILE\\piedmont-data, .devhome\\.opencode, .devhome\\.config\\opencode, .devhome\\.local\\share\\opencode, .devhome\\.local\\state\\opencode, .devhome\\.cache\\opencode, .devhome\\.config\\openchamber, .devhome\\.agents | Out-Null; if (!(Test-Path $env:USERPROFILE\\.claude.json)) { Set-Content -Path $env:USERPROFILE\\.claude.json -Value '{}' }\" || sh -c 'mkdir -p \"$HOME/.kube\" \"$HOME/.claude\" \"$HOME/piedmont-data\" .devhome/.opencode .devhome/.config/opencode .devhome/.local/share/opencode .devhome/.local/state/opencode .devhome/.cache/opencode .devhome/.config/openchamber .devhome/.agents && touch \"$HOME/.claude.json\"'",
 	"containerEnv": {
 		// the bake's caches and sites, the world editor's volume in development: the bind mount below
 		"PIEDMONT_DATA": "${containerWorkspaceFolder}/data"
@@ -63,22 +66,20 @@
 		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.kube,target=/home/node/.kube,type=bind,consistency=cached",
 		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude.json,target=/home/node/.claude.json,type=bind",
 		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude,target=/home/node/.claude,type=bind",
-		// opencode's state (~/.config/opencode, ~/.local/share/opencode) otherwise lives in the
-		// container layer and is wiped on rebuild — this keeps config, auth and session history.
-		// The binary itself is reinstalled by post-create.sh, so it is NOT mounted (a host binary
-		// would be the wrong architecture on macOS/Windows anyway).
-		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.config/opencode,target=/home/node/.config/opencode,type=bind,consistency=cached",
-		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.local/share/opencode,target=/home/node/.local/share/opencode,type=bind,consistency=cached",
-		// ~/.local/state/opencode: opencode's runtime state (the TUI's and the server's), which OpenChamber
-		// shares with a host-side opencode when both point at the same sessions
-		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.local/state/opencode,target=/home/node/.local/state/opencode,type=bind,consistency=cached"
+		// opencode and OpenChamber: binary, config, auth, sessions, state, caches and skills, from
+		// .devhome/ in this checkout (gitignored), so a rebuild keeps all of it. Each .devhome/<path> is
+		// ~/<path>. The container's own, never the host's ~/.config/opencode and ~/.local/share/opencode:
+		// one SQLite database shared by a host and a container opencode is how the old setup corrupted
+		// it, and OpenCode 2 migrates a 1.x database in place. Why mounts and not symlinks, and the
+		// install: .devcontainer/opencode.sh (keep its list in step with these and initializeCommand).
+		"source=${localWorkspaceFolder}/.devhome/.opencode,target=/home/node/.opencode,type=bind",
+		"source=${localWorkspaceFolder}/.devhome/.config/opencode,target=/home/node/.config/opencode,type=bind",
+		"source=${localWorkspaceFolder}/.devhome/.local/share/opencode,target=/home/node/.local/share/opencode,type=bind",
+		"source=${localWorkspaceFolder}/.devhome/.local/state/opencode,target=/home/node/.local/state/opencode,type=bind",
+		"source=${localWorkspaceFolder}/.devhome/.cache/opencode,target=/home/node/.cache/opencode,type=bind",
+		"source=${localWorkspaceFolder}/.devhome/.config/openchamber,target=/home/node/.config/openchamber,type=bind",
+		"source=${localWorkspaceFolder}/.devhome/.agents,target=/home/node/.agents,type=bind"
 	],
-	// OpenChamber (the VS Code UI for opencode) starts and talks to the `opencode` binary from the
-	// EXTENSION HOST, which does not read ~/.bashrc — so the PATH entry post-create.sh adds there never
-	// reaches it, and the extension reports opencode missing. The install dir goes on the remote PATH.
-	"remoteEnv": {
-		"PATH": "${containerEnv:PATH}:/home/node/.opencode/bin"
-	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -90,13 +91,15 @@
 				"redhat.vscode-yaml",
 				"ms-kubernetes-tools.vscode-kubernetes-tools",
 				"ms-azuretools.vscode-docker",
-				// OpenChamber: a UI for opencode inside the editor (opencode itself: post-create.sh)
+				// OpenChamber: a UI for opencode inside the editor (opencode itself: opencode.sh)
 				"FedaykinDev.openchamber"
 			],
 			"settings": {
 				"editor.formatOnSave": false,
 				"typescript.tsdk": "node_modules/typescript/lib",
-				"python.defaultInterpreterPath": "${containerWorkspaceFolder}/bake/.venv/bin/python"
+				"python.defaultInterpreterPath": "${containerWorkspaceFolder}/bake/.venv/bin/python",
+				// opencode's database, logs and snapshots churn under .devhome/; nothing there to watch
+				"files.watcherExclude": { "**/.devhome/**": true }
 			}
 		}
 	}
