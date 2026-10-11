@@ -31,7 +31,15 @@ let state: OsmData | null = null
 /** Open the dialog (one per page), reading everything fresh. */
 export function openOsmData(logs: LogView): void {
   if (!dialog) {
-    dialog = new Dialog({ title: 'OSM data', icon: 'globe-alt', size: 'xl', movable: true, onClose: () => state?.stop() })
+    dialog = new Dialog({
+      title: 'OSM data',
+      icon: 'globe-alt',
+      size: 'xl',
+      movable: true,
+      onClose: () => state?.stop(),
+      // Escape cancels the area being drawn before it closes the dialog (ui/shell.ts)
+      onEscape: () => state?.cancelDraw() ?? false,
+    })
     state = new OsmData(dialog, logs)
   }
   dialog.open()
@@ -94,6 +102,16 @@ class OsmData {
   stop() {
     clearTimeout(this.timer)
     this.timer = 0
+  }
+
+  /**
+   * Escape: cancel the area being drawn and stop drawing, leaving the dialog open. False lets the
+   * key fall through to the shell, which closes the dialog as usual (ui/shell.ts).
+   */
+  cancelDraw(): boolean {
+    if (!this.map.cancelDraw()) return false
+    toast('Drawing cancelled', 'info', 2500)
+    return true
   }
 
   async load() {
@@ -300,7 +318,7 @@ class OsmData {
         'p',
         'dim osm-build-hint',
         this.map.drawing
-          ? 'Click the map to add corners. Close on the first corner, double-click, or press Enter. Backspace removes the last corner. Click the instance again to stop drawing and pan.'
+          ? 'Click the map to add corners. Close on the first corner, double-click, or press Enter. Backspace removes the last corner; right-, middle- or Ctrl-drag pans the map; Escape cancels the shape.'
           : 'Click an instance above to start drawing.',
       ),
     )

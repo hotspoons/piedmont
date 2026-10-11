@@ -4,7 +4,8 @@
 // ITS OWN SMALL CANVAS, ON THE MAIN MAP'S PROJECTION. `MapView` (map.ts) is the world-drawing map:
 // a ring editor, a road picker and a tile loader, wired to the page's world state. This needs none
 // of that and must not disturb it, so it borrows map.ts's Web Mercator (`project`) and draws its own
-// handful of polygons. Pan with a drag, zoom with the wheel about the cursor.
+// handful of polygons. Pan with a drag — right, middle or Ctrl/Cmd-left pans even while a shape is
+// being drawn — and zoom with the wheel about the cursor.
 //
 // HOW A PROBLEM LOOKS. A world is filled with the colour of the instance that serves it. A world no
 // single instance holds is outlined in red and hatched. And while a `#s/w/n/e` fence is still on a
@@ -62,44 +63,61 @@ export class CoverageMap {
     canvas.tabIndex = 0
     new ResizeObserver(() => this.resize()).observe(canvas)
     canvas.addEventListener('pointerdown', (e) => {
-      if (this.drawing) {
-        // a press while drawing is a vertex, not a pan — which one it was is decided on release
-        this.down = { x: e.clientX, y: e.clientY, moved: false }
-        canvas.focus()
+      // Middle and right start a pan even while drawing: the shape and the ground beneath it are
+      // separate questions, and a person mid-polygon often needs to shift the map without losing
+      // corners. preventDefault keeps the middle button from autoscrolling and the right button
+      // from opening its menu over the drag. Ctrl/Cmd-left pans too, as on the main map (map.ts).
+      if (e.button === 1 || e.button === 2 || (e.button === 0 && (e.ctrlKey || e.metaKey))) {
+        e.preventDefault()
+        this.startPan(e)
         return
       }
-      const [cx, cy] = project(this.centre)
-      this.drag = { x: e.clientX, y: e.clientY, cx, cy }
-      canvas.setPointerCapture(e.pointerId)
+      if (!this.drawing) {
+        // not drawing: a plain drag pans, the same as everywhere else in the editor
+        this.startPan(e)
+        return
+      }
+      // a press while drawing is a vertex, not a pan — which one it was is decided on release
+      this.down = { x: e.clientX, y: e.clientY, moved: false }
+      canvas.focus()
     })
     canvas.addEventListener('pointermove', (e) => {
+      // the rubber band follows the cursor whenever drawing, pan or no pan
       if (this.drawing) {
         const r = canvas.getBoundingClientRect()
         this.cursor = { x: e.clientX - r.left, y: e.clientY - r.top }
-        if (this.down && (Math.abs(e.clientX - this.down.x) > 4 || Math.abs(e.clientY - this.down.y) > 4)) this.down.moved = true
+      } else {
+        this.cursor = null
+      }
+      if (this.drag) {
+        const s = 2 ** this.zoom
+        this.centre = unproject(this.drag.cx - (e.clientX - this.drag.x) / s, this.drag.cy - (e.clientY - this.drag.y) / s)
         this.draw()
         return
       }
-      this.cursor = null
-      if (!this.drag) return
-      const s = 2 ** this.zoom
-      this.centre = unproject(this.drag.cx - (e.clientX - this.drag.x) / s, this.drag.cy - (e.clientY - this.drag.y) / s)
-      this.draw()
+      if (this.drawing) {
+        if (this.down && (Math.abs(e.clientX - this.down.x) > 4 || Math.abs(e.clientY - this.down.y) > 4)) this.down.moved = true
+        this.draw()
+      }
     })
     const end = () => {
+      if (this.drag) {
+        this.drag = null
+        return
+      }
       if (this.drawing) {
         const d = this.down
         this.down = null
         // a release that did not move is a click: put a vertex here (or close on the first one)
         if (d && !d.moved) this.tap(d.x, d.y)
         this.draw()
-        return
       }
-      this.drag = null
     }
     canvas.addEventListener('pointerup', end)
     canvas.addEventListener('pointercancel', end)
     canvas.addEventListener('pointerleave', () => { this.cursor = null; this.draw() })
+    // right-drag is a pan here, so the browser's own menu must not land on top of it
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault())
     // a double-click closes the shape; the two taps it fires first add two vertices at the same
     // spot, which `closeRing` drops before it closes
     canvas.addEventListener('dblclick', () => { if (this.drawing) this.closeRing() })
@@ -154,6 +172,14 @@ export class CoverageMap {
     return [this.w / 2 + (x - cx) * s, this.h / 2 + (y - cy) * s]
   }
 
+  /** Begin a pan: remember where the pointer and the centre projection started. */
+  private startPan(e: PointerEvent) {
+    const [cx, cy] = project(this.centre)
+    this.drag = { x: e.clientX, y: e.clientY, cx, cy }
+    this.canvas.setPointerCapture(e.pointerId)
+    this.canvas.focus()
+  }
+
   /** A click while drawing: close on the first vertex, otherwise drop a corner here. */
   private tap(clientX: number, clientY: number) {
     const r = this.canvas.getBoundingClientRect()
@@ -202,6 +228,21 @@ export class CoverageMap {
     this.draw()
   }
 
+  /**
+   * Escape: throw the drawn area away and stop drawing — the end state of clicking the instance
+   * again, but with the ring gone. True when there was something to cancel, so the caller knows
+   * Escape was its to consume (osmdata.ts, ui/shell.ts).
+   */
+  cancelDraw(): boolean {
+    if (!this.drawing && !this.ring.length) return false
+    this.drawing = false
+    this.down = null
+    this.ring = []
+    this.onRing?.(this.ring, false)
+    this.draw()
+    return true
+  }
+
   private path(g: CanvasRenderingContext2D, polys: Ring[][]) {
     g.beginPath()
     for (const poly of polys) {
@@ -238,7 +279,7 @@ export class CoverageMap {
 
   private paint() {
     const g = this.ctx
-    this.canvas.style.cursor = this.drawing ? 'crosshair' : 'grab'
+    this.canvas.style.cursor = this.drag ? 'grabbing' : this.drawing ? 'crosshair' : 'grab'
     const css = getComputedStyle(document.documentElement)
     const tok = (n: string, d: string) => css.getPropertyValue(n).trim() || d
     g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)

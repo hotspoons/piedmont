@@ -169,6 +169,14 @@ export interface DialogOpts {
    * into a form loses it to whichever one they happen to use.
    */
   beforeClose?: () => boolean | Promise<boolean>
+  /**
+   * First refusal on Escape, before the dialog closes.
+   *
+   * Returning true means the panel has dealt with it — a shape being drawn is cancelled, a
+   * selection dropped — and the dialog stays open, so one Escape means "undo what I am doing",
+   * not "throw away the panel". Returning false (or leaving this off) closes as it always did.
+   */
+  onEscape?: () => boolean
 }
 
 export class Dialog {
@@ -406,6 +414,11 @@ export class Dialog {
     return stack.includes(this)
   }
 
+  /** Ask the panel whether Escape is its business. True means it was consumed and we stay open. */
+  escape(): boolean {
+    return this.o.onEscape?.() ?? false
+  }
+
   toggle() {
     if (this.isOpen) this.close()
     else this.open()
@@ -634,7 +647,9 @@ export function installShellKeys(drawer: () => Drawer | null) {
         openLightbox()
         e.stopPropagation()
       } else if (top()) {
-        top()!.close()
+        // the panel gets first refusal — Escape cancels a shape before it closes the dialog
+        const t = top()!
+        if (!t.escape()) t.close()
         e.stopPropagation()
       } else if (d?.open) {
         d.set(false)
