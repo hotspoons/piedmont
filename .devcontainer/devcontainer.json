@@ -35,9 +35,9 @@
 	},
 	// Runs on the HOST before the container exists, on any host OS: cmd.exe/PowerShell on Windows, or
 	// the `sh` fallback everywhere else. It makes every bind-mount source, so Docker never creates them
-	// root-owned (or fails on a missing file): ~/.kube, ~/.claude, ~/.claude.json, opencode's config and
-	// state, and the data directory ~/piedmont-data.
-	"initializeCommand": "cmd.exe /c powershell -NoProfile -Command \"$ErrorActionPreference='SilentlyContinue'; New-Item -ItemType Directory -Force -Path $env:USERPROFILE\\.kube, $env:USERPROFILE\\.claude, $env:USERPROFILE\\.config\\opencode, $env:USERPROFILE\\.local\\share\\opencode, $env:USERPROFILE\\piedmont-data | Out-Null; if (!(Test-Path $env:USERPROFILE\\.claude.json)) { Set-Content -Path $env:USERPROFILE\\.claude.json -Value '{}' }\" || sh -c 'mkdir -p \"$HOME/.kube\" \"$HOME/.claude\" \"$HOME/.config/opencode\" \"$HOME/.local/share/opencode\" \"$HOME/piedmont-data\" && touch \"$HOME/.claude.json\"'",
+	// root-owned (or fails on a missing file): ~/.kube, ~/.claude, ~/.claude.json, opencode's config,
+	// data and state (~/.config, ~/.local/share and ~/.local/state /opencode), and ~/piedmont-data.
+	"initializeCommand": "cmd.exe /c powershell -NoProfile -Command \"$ErrorActionPreference='SilentlyContinue'; New-Item -ItemType Directory -Force -Path $env:USERPROFILE\\.kube, $env:USERPROFILE\\.claude, $env:USERPROFILE\\.config\\opencode, $env:USERPROFILE\\.local\\share\\opencode, $env:USERPROFILE\\.local\\state\\opencode, $env:USERPROFILE\\piedmont-data | Out-Null; if (!(Test-Path $env:USERPROFILE\\.claude.json)) { Set-Content -Path $env:USERPROFILE\\.claude.json -Value '{}' }\" || sh -c 'mkdir -p \"$HOME/.kube\" \"$HOME/.claude\" \"$HOME/.config/opencode\" \"$HOME/.local/share/opencode\" \"$HOME/.local/state/opencode\" \"$HOME/piedmont-data\" && touch \"$HOME/.claude.json\"'",
 	"containerEnv": {
 		// the bake's caches and sites, the world editor's volume in development: the bind mount below
 		"PIEDMONT_DATA": "${containerWorkspaceFolder}/data"
@@ -63,8 +63,17 @@
 		// The binary itself is reinstalled by post-create.sh, so it is NOT mounted (a host binary
 		// would be the wrong architecture on macOS/Windows anyway).
 		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.config/opencode,target=/home/node/.config/opencode,type=bind,consistency=cached",
-		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.local/share/opencode,target=/home/node/.local/share/opencode,type=bind,consistency=cached"
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.local/share/opencode,target=/home/node/.local/share/opencode,type=bind,consistency=cached",
+		// ~/.local/state/opencode: opencode's runtime state (the TUI's and the server's), which OpenChamber
+		// shares with a host-side opencode when both point at the same sessions
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.local/state/opencode,target=/home/node/.local/state/opencode,type=bind,consistency=cached"
 	],
+	// OpenChamber (the VS Code UI for opencode) starts and talks to the `opencode` binary from the
+	// EXTENSION HOST, which does not read ~/.bashrc — so the PATH entry post-create.sh adds there never
+	// reaches it, and the extension reports opencode missing. The install dir goes on the remote PATH.
+	"remoteEnv": {
+		"PATH": "${containerEnv:PATH}:/home/node/.opencode/bin"
+	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -75,7 +84,9 @@
 				"ms-python.python",
 				"redhat.vscode-yaml",
 				"ms-kubernetes-tools.vscode-kubernetes-tools",
-				"ms-azuretools.vscode-docker"
+				"ms-azuretools.vscode-docker",
+				// OpenChamber: a UI for opencode inside the editor (opencode itself: post-create.sh)
+				"FedaykinDev.openchamber"
 			],
 			"settings": {
 				"editor.formatOnSave": false,
