@@ -332,7 +332,8 @@ test('create -> pull -> start -> running -> exit 0 -> succeeded; logs come back 
     await s.jobs.deleteJob('j1')
     await assert.rejects(s.jobs.getJob('j1'), (e) => e.status === 404)
     await until(() => !s.docker.state.containers.has(pods[0].metadata.name), 5000, 'the container to be removed')
-    assert.ok(s.docker.state.volumesRemoved.includes('j1-0-scratch'), 'the pod-scoped emptyDir volume went with it')
+    // the runner removes the pod's volume after its container, a beat later on a slow runner
+    await until(() => s.docker.state.volumesRemoved.includes('j1-0-scratch'), 5000, 'the pod-scoped emptyDir volume to go with it')
   } finally {
     await s.done()
   }

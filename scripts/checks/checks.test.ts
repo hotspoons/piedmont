@@ -17,13 +17,27 @@ const suites = ['services/worldeditor', 'services/assetsvc', 'scripts'].flatMap(
     .map((f) => `${dir}/${f}`),
 )
 
-function run(cmd: string, args: string[]): Promise<{ code: number | null; out: string }> {
+/**
+ * A child that outlives `killAfterMs` is killed and reported with its output so far. A suite whose
+ * tests all pass but whose process never exits (a server or timer left open) is otherwise invisible:
+ * node's --test-timeout is per TEST, and vitest only says "timed out in 180000ms" with no name
+ * (CI, 2026-10-11, twice).
+ */
+function run(cmd: string, args: string[], killAfterMs = 165_000): Promise<{ code: number | null; out: string; hung: boolean }> {
   return new Promise((resolve) => {
     const p = spawn(cmd, args, { cwd: root, env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' } })
     let out = ''
+    let hung = false
+    const t = setTimeout(() => {
+      hung = true
+      p.kill('SIGKILL')
+    }, killAfterMs)
     p.stdout.on('data', (d) => (out += d))
     p.stderr.on('data', (d) => (out += d))
-    p.on('close', (code) => resolve({ code, out }))
+    p.on('close', (code) => {
+      clearTimeout(t)
+      resolve({ code, out, hung })
+    })
   })
 }
 
@@ -42,7 +56,9 @@ describe.concurrent('service tests (node --test)', () => {
       // block this test reports, instead of vitest timing out the whole file anonymously (CI,
       // 2026-10-11: "Test timed out in 180000ms" and no way to tell which suite)
       const r = await run(process.execPath, ['--test', '--test-reporter=tap', '--test-timeout=150000', file])
-      expect(r.code, report(r.out)).toBe(0)
+      const tail = r.out.split('\n').slice(-40).join('\n')
+      expect(r.hung, `${file} did not exit within 165 s; the last of its output:\n${tail}`).toBe(false)
+      expect(r.code, `${file}\n${report(r.out)}`).toBe(0)
     })
   }
 })
