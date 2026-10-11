@@ -647,7 +647,7 @@ async function api(req, res, seg, q) {
       limits: {
         min_radius_m: worlds.MIN_M,
         warn_radius_m: worlds.WARN_M,
-        max_radius_m: worlds.MAX_M,
+        // no max: a world too big for one Job is sharded by the runner (runs.mjs #shouldShard)
         // The client sizes its road requests from these rather than hard-coding a zoom level.
         max_span_lat: MAX_SPAN_LAT,
         max_span_lon: MAX_SPAN_LON,
@@ -1519,14 +1519,16 @@ async function api(req, res, seg, q) {
   if (seg[0] === 'worlds' && seg.length === 1) {
     if (req.method === 'GET') {
       const baked = await store.bakedSlugs()
-      const list = (await store.listWorlds()).map((w) => ({ ...w, baked: baked.get(w.slug) ?? null }))
+      // the blocks the sharded runner would use, so the Bake panel can show (and cap) them
+      const shard = (w) => (Number.isFinite(Number(w.radius_m)) ? worlds.shardPlan(Number(w.radius_m), runs.cfg) : null)
+      const list = (await store.listWorlds()).map((w) => ({ ...w, baked: baked.get(w.slug) ?? null, shard: shard(w) }))
       // a bake on the volume with no definition beside it is still a world a person can open
-      for (const [slug, b] of baked) if (!list.some((w) => w.slug === slug)) list.push({ slug, source: 'bake-only', baked: b })
+      for (const [slug, b] of baked) if (!list.some((w) => w.slug === slug)) list.push({ slug, source: 'bake-only', baked: b, shard: null })
       return json(res, 200, { worlds: list })
     }
     if (req.method === 'POST') {
       const world = worlds.fromDraw(await readJson(req))
-      const v = worlds.validate(world)
+      const v = worlds.validate(world, runs.cfg)
       if (!v.ok) return json(res, 400, { error: v.errors.join('; '), ...v })
       if (await store.getWorld(world.slug)) return json(res, 409, { error: `a world called "${world.slug}" already exists` })
       return json(res, 201, { world: await store.putWorld(world), ...v })
@@ -1537,7 +1539,7 @@ async function api(req, res, seg, q) {
     const ring = (body.boundary ?? []).map((p) => (Array.isArray(p) ? { lon: p[0], lat: p[1] } : p))
     const circle = body.centre && body.radius_m ? { ...body.centre, radius_m: Number(body.radius_m) } : ring.length >= 3 ? circleFor(ring) : null
     if (!circle) return json(res, 400, { error: 'give a boundary of at least three points, or a centre and a radius' })
-    const v = worlds.validate({ slug: 'preview-x', kind: null, ...circle })
+    const v = worlds.validate({ slug: 'preview-x', kind: null, ...circle }, runs.cfg)
     if (!v.ok) return json(res, 400, { error: v.errors.join('; '), circle, ...v })
     // The bake's own box, as near as this service will claim: a geodetic square of side 2R. The
     // bake's is the geodetic bbox of a UTM square, which is LARGER — see overpass.mjs.
@@ -1562,7 +1564,7 @@ async function api(req, res, seg, q) {
       const body = await readJson(req)
       const prev = await store.getWorld(slug)
       const world = { ...(prev ?? {}), ...body, slug }
-      const v = worlds.validate(world)
+      const v = worlds.validate(world, runs.cfg)
       if (!v.ok) return json(res, 400, { error: v.errors.join('; '), ...v })
       return json(res, 200, { world: await store.putWorld(world), ...v, movedM: prev ? worlds.centreMoveM(prev, world) : 0 })
     }

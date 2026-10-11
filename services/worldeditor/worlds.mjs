@@ -25,12 +25,18 @@ import { circleFor, haversineM, lengthM, pointInRing, slugify } from './geo.mjs'
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,47}$/
 
 /**
- * A half-width the bake will survive.
+ * A half-width the bake will survive, and what to say about a big one.
  *
  * Every source scales with AREA — Overpass, the DEM tiles, NAIP, and worst of all the lidar
- * octree — and the bake takes a square of side 2r, so doubling this quadruples the work. Above
- * `WARN_M` the editor states the area rather than silently accepting it. `MAX_M` is a refusal
- * rather than a warning because the failure mode is a Job that fills the volume and then dies.
+ * octree — and an unsharded bake takes a square of side 2r, so doubling this quadruples the work.
+ * Above `WARN_M` the editor states the area rather than silently accepting it.
+ *
+ * THERE IS NO MAXIMUM ANY MORE. There used to be a `MAX_M = 20000` half-width refusal ("bake it in
+ * pieces") from when one Job owned the whole bbox. The runner shards a world automatically now
+ * (runs.mjs `#shouldShard`: above `shardAboveM` it fans plan → N shard Jobs → finalize, in blocks
+ * of at most `shardSideM`), so the pieces are the runner's to choose and the ceiling is the volume
+ * and the scheduler, not this file. What is left is the cost: when a world is big enough that the
+ * runner will shard it, the warning names the grid it becomes so the hours are not a surprise.
  *
  * The warning used to compare against a named world that shipped in the image. It no longer does,
  * on both counts: the image ships empty, so the comparison was to something the reader had never
@@ -38,9 +44,31 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,47}$/
  */
 export const MIN_M = 150
 export const WARN_M = 4000
-export const MAX_M = 20000
 
-export function validate(world) {
+/**
+ * The grid the sharded runner would cut a world into, for the size warning. A mirror of
+ * `piedmont_bake.shards.partition` for the square an un-shaped world bakes: blocks of at most
+ * `shardSideM` a side, merged on the longer axis until there are no more than `maxShards`.
+ */
+export function shardPlan(radius_m, sharding = {}) {
+  const sideM = Number(sharding.shardSideM) > 0 ? Number(sharding.shardSideM) : 10000
+  const cap = Number(sharding.maxShards) > 0 ? Number(sharding.maxShards) : 36
+  const span = Math.max(1, 2 * radius_m)
+  let nx = Math.max(1, Math.ceil(span / sideM))
+  let ny = nx
+  while (nx * ny > cap) {
+    if (nx > 1 && nx <= ny) nx--
+    else if (ny > 1) ny--
+    else break
+  }
+  return { nx, ny, count: nx * ny, sideM: span / Math.max(1, Math.min(nx, ny)) }
+}
+
+/**
+ * `sharding` is the runs config (`runs.cfg`): `shardAboveM`, `shardSideM`, `maxShards`. Optional —
+ * a caller that does not know it (a test, the probe) still validates, just without the shard count.
+ */
+export function validate(world, sharding = {}) {
   const errors = []
   const warnings = []
   if (!SLUG_RE.test(world.slug ?? '')) errors.push('slug must be lower-case letters, digits and hyphens, 2–48 characters')
@@ -48,8 +76,18 @@ export function validate(world) {
   if (!Number.isFinite(world.lon) || Math.abs(world.lon) > 180) errors.push('lon must be a number within ±180')
   const r = Number(world.radius_m)
   if (!Number.isFinite(r) || r < MIN_M) errors.push(`radius_m must be at least ${MIN_M} m`)
-  else if (r > MAX_M) errors.push(`radius_m ${Math.round(r)} m is over the ${MAX_M} m ceiling — bake it in pieces`)
-  else if (r > WARN_M) warnings.push(`${((r * 2 / 1000) ** 2).toFixed(0)} km² to bake — every source scales with area, so expect hours`)
+  else if (r > WARN_M) {
+    const km2 = ((r * 2 / 1000) ** 2).toFixed(0)
+    const above = Number(sharding.shardAboveM)
+    if (Number.isFinite(above) && above > 0 && r > above) {
+      const p = shardPlan(r, sharding)
+      warnings.push(
+        `${km2} km² to bake — ${(r * 2 / 1000).toFixed(0)} km across, cut into ${p.count} block${p.count === 1 ? '' : 's'} of about ${(p.sideM / 1000).toFixed(0)} km and baked in parallel. Every source scales with area and the lidar and surface stages are the long poles — expect many hours.`,
+      )
+    } else {
+      warnings.push(`${km2} km² to bake — every source scales with area, so expect hours`)
+    }
+  }
 
   if (world.kind === 'network') {
     const roads = world.roads ?? []

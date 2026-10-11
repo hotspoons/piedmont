@@ -76,6 +76,13 @@ export class Runs {
       namespace: this.k8s.namespace,
       localPython: this.cfg.python,
       localCwd: this.cfg.cwd,
+      // The shard thresholds, so the Bake panel can say how a world will be cut and let a person
+      // cap it (0 = the runner shards nothing; the client shows no control then).
+      shard: {
+        aboveM: Number(this.cfg.shardAboveM) || 0,
+        sideM: Number(this.cfg.shardSideM) || 0,
+        maxShards: Number(this.cfg.maxShards) || 0,
+      },
     }
   }
 

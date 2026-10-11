@@ -1430,6 +1430,7 @@ async function boot() {
     for (const l of config.layers ?? []) map.bands.set(l.id, { minZoom: l.minZoom, maxZoom: l.maxZoom })
     runsPanel.bucket = config.bucket
     runsPanel.runner = config.runs.runner
+    runsPanel.shard = config.runs.shard ?? { aboveM: 0, sideM: 0, maxShards: 0 }
     if (config.adoptedRuns.length) toast(`picked ${config.adoptedRuns.length} run(s) back up after a restart`, 'info', 5000)
   } catch (e) {
     toast(`the world editor service is not answering: ${(e as Error).message}`, 'danger', 0)

@@ -2,7 +2,8 @@
 
 **Status:** Phase 0 (the two hangs) shipped. Phase 1 (plan → shard → finalize) shipped: the
 road band engine (`piedmont_bake plan|shard|finalize`, `piedmont_bake/shards.py`) and the worldeditor
-orchestration (`runs.bake` fans plan → N shard Jobs → finalize above `shardAboveM`). **Default since 2026-10-10:** `shardAboveM` 5000 (a world more than 10 km across), blocks of ≤ 10 km (`shardSideM`), up to 36 of them (`maxShards`); env `PIEDMONT_EDITOR_SHARD_ABOVE_M=0` turns it off, a request's `sharded: false` opts one bake out, and the MCP `run_bake` takes `sharded`. Phase 2
+orchestration (`runs.bake` fans plan → N shard Jobs → finalize above `shardAboveM`). **Default since 2026-10-10:** `shardAboveM` 5000 (a world more than 10 km across), blocks of ≤ 10 km (`shardSideM`), up to 36 of them (`maxShards`); env `PIEDMONT_EDITOR_SHARD_ABOVE_M=0` turns it off, a request's `sharded: false` opts one bake out, and the MCP `run_bake` takes `sharded`. **Removed 2026-10-11:** the `MAX_M` refusal — a large world is
+sharded and the editor warns with the shard grid. Phase 2
 (cluster-aware sizing) is partially shipped — shards spread by `topologySpreadConstraints`, request
 sizing is still the one 384 Gi request.
 
@@ -192,9 +193,10 @@ Each shard is a Job sized to a memory budget (Phase 2), started by the same Serv
   packs. Add `topologySpreadConstraints` on `kubernetes.io/hostname` (labelSelector on the run's
   own label, `maxSkew: 1`, `whenUnsatisfiable: ScheduleAnyway`) to each shard Job, or the eight
   shards land on one 573 GiB node and the whole exercise is a slower single bake.
-- **Raise or remove `MAX_M`.** Once shards exist, the 20 km ceiling in `worlds.mjs` is the editor
-  refusing a world the backend can actually bake; replace the error with the shard count and the
-  area estimate.
+- ~~**Raise or remove `MAX_M`.**~~ **Done 2026-10-11.** The 20 km refusal is gone from
+  `services/worldeditor/worlds.mjs`; `validate(world, runs.cfg)` returns the shard count and the
+  area as a warning instead (the editor shows it before a world is saved), and a world too big for
+  one Job is sharded by the runner as usual.
 - The `worldeditor` ServiceAccount already has exactly the verbs this needs for `batch/jobs`
   (`create`, `get`, `list`, `watch`, `delete`) plus `pods` and `pods/log` — see
   `deploy/helm/worldeditor/templates/rbac.yaml`. No new grant is required to start N Jobs.

@@ -21,13 +21,16 @@ So the viewer can already walk a big world. What it cannot do is **bake** one.
 
 ## The gate
 
-`MAX_M` is capped at 43 000 m and cannot be raised yet. Two things hold it:
+The editor's `MAX_M` ceiling is **gone** (removed 2026-10-11 — `worlds.validate` no longer refuses a
+large world; it warns with the shard count and the area, and a world too big for one Job is sharded
+automatically, `PLAN-SHARDED-BAKE.md`). What gates a world now is how big a single shard may be, and
+two things hold that:
 
-1. **Shard memory is unbudgeted.** `partition` caps at 16 shards of 8 km, and a shard peaks around
+1. **Shard memory is unbudgeted.** `partition` caps at 36 shards of 10 km, and a shard peaks around
    **139 GiB** on the Capital Beltway because the whole block's root rasters (1 m DEM, 30 cm–1 m
-   NAIP, lidar) are held at once. Widening the world widens the blocks past what a node has.
-   THIS IS THE GATE — `PLAN-SHARDED-BAKE.md` Phase 2 (size shards from a measured peak, spread them
-   with `topologySpreadConstraints`).
+   NAIP, lidar) are held at once. A world wider than the cap allows grows the blocks past what a node
+   has. THIS IS THE GATE — `PLAN-SHARDED-BAKE.md` Phase 2 (size shards from a measured peak, spread
+   them with `topologySpreadConstraints`).
 2. **The finalizer still merges.** `export_tiles` / `pyramid.bake` / `overview` run in the
    finalizer over the merged site rather than per shard, so the merge it was all meant to avoid is
    still on the path. Phase 1's remaining item: each shard runs its own `export_tiles` /

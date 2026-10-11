@@ -118,6 +118,8 @@ export interface World {
   /** role -> material id. An absent role uses the viewer's default. */
   surfaces?: Partial<Record<SurfaceRole, string>>
   baked?: { slug: string; fetched: string | null; frame: { kind?: string; epsg?: number; anchor?: { lon: number; lat: number } } | null; seconds: number | null; web: boolean } | null
+  /** the blocks the sharded runner would cut this world into (worlds.shardPlan); null if no radius */
+  shard?: { nx: number; ny: number; count: number; sideM: number } | null
 }
 
 export interface Selection {
@@ -228,11 +230,11 @@ export interface UpstreamHealth {
 export interface Config {
   data: string
   overpass: { urls: string[]; cache: string }
-  runs: { runner: string; image: string; claim: string; namespace: string }
+  runs: { runner: string; image: string; claim: string; namespace: string; shard: { aboveM: number; sideM: number; maxShards: number } }
   assetsvc: string | null
   bucket: { bucket: string; endpoint: string; prefix: string } | null
   authored: string[]
-  limits: { min_radius_m: number; warn_radius_m: number; max_radius_m: number; max_span_lat: number; max_span_lon: number }
+  limits: { min_radius_m: number; warn_radius_m: number; max_span_lat: number; max_span_lon: number }
   layers: { id: string; label: string; minZoom: number; maxZoom: number; tile: number; kind: 'points' | 'lines' }[]
   adoptedRuns: string[]
 }
@@ -282,8 +284,8 @@ export interface Ready {
  * Every failure carries the server's own words.
  *
  * The backend answers a refusal with `{error}` and a real status, and the useful half of the
- * message is always the second half ("radius_m 31000 m is over the 20000 m ceiling — bake it in
- * pieces"). A client that throws `HTTP 400` loses exactly the part a person needed.
+ * message is always the second half ("slug must be lower-case letters, digits and hyphens, 2–48
+ * characters"). A client that throws `HTTP 400` loses exactly the part a person needed.
  */
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(path, {
@@ -652,7 +654,7 @@ export const api = {
 
   runs: () => call<{ runs: Run[]; runner: string }>('/api/runs'),
   run: (id: string) => call<{ run: Run }>(`/api/runs/${id}`),
-  bake: (slug: string, opts: { skip?: string } = {}) => call<{ run: Run }>('/api/runs/bake', { method: 'POST', body: JSON.stringify({ slug, ...opts }) }),
+  bake: (slug: string, opts: { skip?: string; sharded?: boolean; maxShards?: number; maxSide?: number } = {}) => call<{ run: Run }>('/api/runs/bake', { method: 'POST', body: JSON.stringify({ slug, ...opts }) }),
   publish: (slug: string, opts: { dryRun?: boolean } = {}) => call<{ run: Run }>('/api/runs/publish', { method: 'POST', body: JSON.stringify({ slug, ...opts }) }),
 
   /* ---- deploy: a world (or several) to Cloudflare — R2 for the data, a Worker for the app ----

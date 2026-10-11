@@ -496,6 +496,11 @@ body.worldedit .inspector {
   gap: var(--s2);
   margin-top: var(--s1);
 }
+/* The Bake panel's shard row: a readout above the block control, stacked like the group body. */
+.run-shard {
+  display: grid;
+  gap: var(--s3);
+}
 .explore {
   display: grid;
   gap: var(--s3);

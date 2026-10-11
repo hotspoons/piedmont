@@ -11,7 +11,7 @@
 // The poll also survives a reload and a pod restart: the log is a file on the volume, so the tail
 // picks up from byte 0 of whatever is there.
 import { Dialog, button, confirm, el, toast } from '../../ui/shell'
-import { bodyOf, empty, group, readout } from '../../ui/controls'
+import { bodyOf, empty, group, readout, select } from '../../ui/controls'
 import { icon } from '../../ui/icons'
 import { api, type Run, type World } from './api'
 import { downloadBakeGroup } from './transfer'
@@ -150,11 +150,17 @@ export class RunsPanel {
   /** Set once config arrives; null means publishing is off and the panel says why. */
   bucket: { bucket: string; endpoint: string; prefix: string } | null = null
   runner = 'local'
+  /** The runner's shard thresholds, from /api/config (`runs.shard`). 0 = it shards nothing. */
+  shard = { aboveM: 0, sideM: 0, maxShards: 0 }
 
   private o: RunsOpts
   private runs: Run[] = []
   private live = new Set<string>()
   private timer = 0
+  /** 0 = automatic (the runner's own plan), 1 = one Job, N = at most N blocks. */
+  private blocks = 0
+  /** the world `blocks` was chosen for, so picking another world starts back at automatic */
+  private blocksFor = ''
 
   constructor(o: RunsOpts) {
     this.o = o
@@ -220,6 +226,8 @@ export class RunsPanel {
        * tab you were last in.
        */
       const num = (v: number | undefined, f: (n: number) => string) => (Number.isFinite(v) ? f(v as number) : '—')
+      // the shard choice belongs to a world, not to the panel: pick another and start back at automatic
+      if (this.blocksFor !== world.slug) { this.blocksFor = world.slug; this.blocks = 0 }
       sb.append(
         readout('centre', Number.isFinite(world.lat) && Number.isFinite(world.lon)
           ? `${world.lat.toFixed(5)}, ${world.lon.toFixed(5)}`
@@ -242,6 +250,8 @@ export class RunsPanel {
           sb.append(warn('No frame stamp — re-bake.'))
         }
       }
+      // sharding only bites on a runner that submits Jobs; a local subprocess ignores it
+      if (this.runner !== 'local' && this.shard.sideM > 0) sb.append(this.shardRow(world))
       const acts = el('div', 'panel-actions')
       acts.append(
         button({
@@ -250,7 +260,7 @@ export class RunsPanel {
           variant: 'primary',
           onClick: async () => {
             try {
-              const { run } = await api.bake(world.slug)
+              const { run } = await api.bake(world.slug, this.bakeOpts(world))
               toast(`${run.label} started`, 'ok')
               await this.refresh()
               void this.o.logs.open(run.id)
@@ -371,6 +381,60 @@ export class RunsPanel {
       hb.append(row)
     }
     host.append(hist)
+  }
+
+  /**
+   * Sharding: what the bake becomes, and a cap.
+   *
+   * A world past the runner's `shardAboveM` is baked by the sharded runner automatically — a plan
+   * Job, then blocks in parallel, then a finalizer. `world.shard` is the plan the server already
+   * worked out (`worlds.shardPlan`, mirroring the bake's own `partition`). The control overrides
+   * it: **One Job** turns sharding off, **N** asks for at most N blocks — naming both the cap and a
+   * matching block size, because the count is the side and the cap together. Fewer, bigger blocks
+   * ask for more memory per Job; more, smaller ones fan out wider. A local subprocess ignores it.
+   */
+  private shardRow(world: World): HTMLElement {
+    const plan = world.shard ?? null
+    const auto = Number.isFinite(world.radius_m) && this.shard.aboveM > 0 && world.radius_m > this.shard.aboveM
+    const km = plan ? Math.max(1, Math.round(plan.sideM / 1000)) : 0
+    const what =
+      this.blocks === 1
+        ? 'one Job (you chose)'
+        : this.blocks >= 2
+          ? `up to ${this.blocks} blocks (you chose)`
+          : auto && plan
+            ? `automatic — ${plan.count} block${plan.count === 1 ? '' : 's'} of ≤ ${km} km`
+            : 'one Job — below the shard threshold'
+    const wrap = el('div', 'run-shard')
+    wrap.append(readout('sharding', what))
+    wrap.append(
+      select({
+        label: 'blocks',
+        value: String(this.blocks),
+        options: [
+          { value: '0', label: auto && plan ? `Automatic (${plan.count})` : 'Automatic' },
+          { value: '1', label: 'One Job' },
+          { value: '4', label: '4' },
+          { value: '9', label: '9' },
+          { value: '16', label: '16' },
+          { value: '36', label: '36' },
+        ],
+        note: auto
+          ? 'fewer, bigger blocks use more memory per Job; more, smaller blocks fan out wider'
+          : 'small enough for one Job unless you ask for blocks',
+        onChange: (v) => { this.blocks = Number(v); this.render() },
+      }),
+    )
+    return wrap
+  }
+
+  /** The shard fields a bake request carries from the control above (empty = the runner decides). */
+  private bakeOpts(world: World): { sharded?: boolean; maxShards?: number; maxSide?: number } {
+    if (this.runner === 'local' || this.blocks === 0) return {}
+    if (this.blocks === 1) return { sharded: false }
+    const span = 2 * (Number.isFinite(world.radius_m) ? world.radius_m : 0)
+    const side = span > 0 ? span / Math.ceil(Math.sqrt(this.blocks)) : 0
+    return { sharded: true, maxShards: this.blocks, ...(side > 0 ? { maxSide: Math.round(side) } : {}) }
   }
 
   private async drop(run: Run) {

@@ -36,8 +36,9 @@ Backspace removes the selected point). **Use the current view** takes whatever i
 the world is saved. A description is optional.
 
 **Extent.** For a square, the **half-width** slider sets half the side of the square the bake takes
-(150 m to 12 km). A drawn polygon is baked as that shape, and ground outside it is not fetched. The
-API accepts half-widths up to 20 km.
+(150 m to 12 km). A drawn polygon is baked as that shape, and ground outside it is not fetched.
+There is no size ceiling: a world too big for one bake is sharded automatically (see **Bake**
+below), and the editor states the area and the grid it will become.
 
 **Contents** reports how many road ways and kilometres of road the bake will take.
 
@@ -78,8 +79,11 @@ area. Everything downloaded is cached on the volume, so a re-bake is much faster
 **Large worlds are sharded.** A world more than 10 km across (half-width over 5 km) is baked in
 pieces: a plan step, then blocks of up to 10 km a side baked in parallel (up to 36 of them), then a
 finalize step that joins them. This happens automatically when bakes run as containers or
-Kubernetes Jobs. With the `local` runner, keep worlds small. The thresholds are settings
-(`PIEDMONT_EDITOR_SHARD_ABOVE_M`, `PIEDMONT_EDITOR_SHARD_SIDE_M`, `PIEDMONT_EDITOR_MAX_SHARDS`).
+Kubernetes Jobs. The **Bake** panel shows what the selected world will become and lets you cap it:
+**One Job** bakes it whole, or pick a block count for fewer, larger blocks (more memory each) or
+more, smaller ones (wider spread). With the `local` runner, keep worlds small. The thresholds come
+from the environment (`PIEDMONT_EDITOR_SHARD_ABOVE_M`, `PIEDMONT_EDITOR_SHARD_SIDE_M`,
+`PIEDMONT_EDITOR_MAX_SHARDS`).
 
 **Download** saves the baked world as a `.zip` (*viewer files only* leaves out the source rasters
 and is much smaller) to import on another install.
