@@ -38,7 +38,10 @@ describe.concurrent('service tests (node --test)', () => {
   })
   for (const file of suites) {
     it(file, async () => {
-      const r = await run(process.execPath, ['--test', '--test-reporter=tap', file])
+      // node's own per-test limit, under vitest's 180 s: a hung test then fails BY NAME in the TAP
+      // block this test reports, instead of vitest timing out the whole file anonymously (CI,
+      // 2026-10-11: "Test timed out in 180000ms" and no way to tell which suite)
+      const r = await run(process.execPath, ['--test', '--test-reporter=tap', '--test-timeout=150000', file])
       expect(r.code, report(r.out)).toBe(0)
     })
   }

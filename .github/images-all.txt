@@ -1,2 +1,3 @@
-Changing this file and pushing it to main runs .github/workflows/images-all.yml, which dispatches
-every image build once. First full build of piedmont's images: 2026-10-11.
+Changing this file and pushing it to main runs .github/workflows/images-all.yml, which builds
+every image once, in dependency order (Blender -> editor -> core). First full build of piedmont's
+images: 2026-10-11 (second attempt, with the chain).

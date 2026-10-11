@@ -77,7 +77,19 @@ jobs:
             -e PIEDMONT_ROOT=/srv/piedmont -e PIEDMONT_SERVICES="worldeditor assetsvc" \
             -e GHCR_USER -e GHCR_TOKEN \
             piedmont-core:smoke
-          fail() { echo "::error::$1"; docker logs --tail 200 core; docker exec core tail -n 60 /var/log/piedmont/dockerd.log || true; exit 1; }
+          # The annotations are what can be read without a token, so the evidence goes there too:
+          # the inner stack's state and the editor's last lines, one annotation each.
+          fail() {
+            echo "::error::$1"
+            docker logs --tail 200 core; docker exec core tail -n 60 /var/log/piedmont/dockerd.log || true
+            ps_out=$(docker exec core docker compose -p piedmont ps -a --format '{{.Service}} {{.State}} {{.Status}} {{.Image}}' 2>&1 | tr '\n' ';' | cut -c1-900)
+            echo "::error title=inner stack::$ps_out"
+            ed=$(docker exec core docker compose -p piedmont logs --tail 25 worldeditor 2>&1 | tr '\n' ';' | cut -c1-1500)
+            echo "::error title=worldeditor log::$ed"
+            core=$(docker logs --tail 25 core 2>&1 | tr '\n' ';' | cut -c1-1500)
+            echo "::error title=core log::$core"
+            exit 1
+          }
           for _ in $(seq 1 60); do if docker exec core docker info >/dev/null 2>&1; then break; fi; sleep 2; done
           docker exec core docker info --format 'inner dockerd {{.ServerVersion}} on {{.Driver}}' || fail "the inner dockerd never answered"
           docker exec core docker run --rm busybox:1.36 echo "a nested container ran" || fail "the inner daemon cannot run a container"

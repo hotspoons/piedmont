@@ -2,8 +2,13 @@ name: Build every image
 
 # Every image workflow builds on a push that touches its own paths. On a fresh repository, or after
 # a long gap, that leaves images that were never built: piedmont's first push ran only the editor's,
-# and it failed for want of the Blender image it copies from. This dispatches all of them once.
-# The editor is not in the list: it builds when the Blender image succeeds (its `workflow_run`).
+# which failed for want of the Blender image it copies from.
+#
+# THE ORDER MATTERS, AND THIS JOB OWNS IT. The editor image copies Blender from piedmont-blender, and
+# the core image's smoke test starts the editor image. A workflow_run trigger would chain them, but a
+# run this job dispatches with GITHUB_TOKEN does not raise workflow_run (2026-10-11: Blender built,
+# the editor never followed). So: the independent images at once, then Blender -> editor -> core,
+# each waited for.
 #
 # Run it from the Actions tab, or change .github/images-all.txt and push.
 on:
@@ -19,13 +24,36 @@ permissions:
 jobs:
   dispatch:
     runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
     steps:
-      - name: Dispatch every image build
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
+      - name: The images nothing else depends on
         run: |
-          for wf in blender-image.yml bake-image.yml assetsvc-image.yml recon-image.yml core-image.yml; do
+          for wf in bake-image.yml assetsvc-image.yml recon-image.yml; do
             echo "dispatching $wf"
             gh workflow run "$wf" --repo "$REPO" --ref main
           done
+      - name: Blender, then the editor, then the core — each waited for
+        run: |
+          set -euo pipefail
+          build() {
+            local wf=$1 since id
+            since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            gh workflow run "$wf" --repo "$REPO" --ref main
+            id=""
+            for _ in $(seq 1 30); do
+              id=$(gh run list --repo "$REPO" --workflow "$wf" --event workflow_dispatch --limit 5 \
+                --json databaseId,createdAt --jq "[.[] | select(.createdAt >= \"$since\")][0].databaseId // empty")
+              [ -n "$id" ] && break
+              sleep 10
+            done
+            [ -n "$id" ] || { echo "::error::$wf was dispatched but no run appeared"; exit 1; }
+            echo "$wf -> run $id"
+            gh run watch "$id" --repo "$REPO" --exit-status --interval 60 >/dev/null \
+              || { echo "::error::$wf (run $id) failed; the images after it were not built"; exit 1; }
+          }
+          build blender-image.yml
+          build worldeditor-image.yml
+          build core-image.yml
