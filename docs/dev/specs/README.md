@@ -27,6 +27,7 @@ For how things work now, read the pages in [docs/dev](../README.md) and the code
 
 | Doc | About |
 |---|---|
+| [PLAN-PORTABLE-ENGINE.md](PLAN-PORTABLE-ENGINE.md) | one simulation, many targets: a wasm game loop with a host/guest API, a native host, and more dynamics than driving |
 | [PLAN-WORLD-SCALE.md](PLAN-WORLD-SCALE.md) | the map from a road band to a world of any size; points at the three below |
 | [PLAN-OPEN-WORLD.md](PLAN-OPEN-WORLD.md) | from a road band to a world: trees and ground not tied to roads |
 | [PLAN-STREAMING-WORLD.md](PLAN-STREAMING-WORLD.md) | from a compiled site to a streamed world |

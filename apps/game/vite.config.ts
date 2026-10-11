@@ -190,7 +190,15 @@ export default defineConfig({
   // The arcade packages are linked in (vendor/arcade -> ext/siomporas-arcade or .cache/arcade/<ref>),
   // so their imports resolve from wherever the link points. If that checkout has a node_modules of
   // its own, `three` would load twice and every instanceof across the seam would fail. One copy.
-  resolve: { dedupe: ['three', 'postprocessing', '@dimforge/rapier3d-compat'] },
+  //
+  // NOT rapier. The engine keeps its own 0.21 copy under
+  // vendor/arcade/packages/engine/node_modules, and the root only has an older 0.12 that
+  // `@types/three` drags in (types-only — see apps/game/src/game/world/physics.ts). Deduping to the
+  // root gave the runtime 0.12, whose `TriMeshFlags` is undefined, so every road deck threw on
+  // `addSurface` the moment physics built: pressing *drive* failed with
+  // "Cannot read properties of undefined (reading 'FIX_INTERNAL_EDGES_TWO_SIDED')". Only the
+  // engine's physics loader imports it at runtime, and it resolves from the engine's own copy.
+  resolve: { dedupe: ['three', 'postprocessing'] },
   server: {
     // Keep in sync with the justfile (game viewer = 5185). PIEDMONT_PORT lets a second dev
     // server run this same app on another port — the world-editor lane runs it on 5212 against a
