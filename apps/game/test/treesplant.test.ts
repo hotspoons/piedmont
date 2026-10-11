@@ -166,4 +166,35 @@ describe('crescent replant', () => {
     expect(t.stats().walked).toBe(0)
     expect(t.patch().removed).toEqual([])
   })
+
+  it('fills the drawn radius before the hidden spare ring when the budget caps', () => {
+    // A budget smaller than the drawn disc must be spent on trees the driver can see, not on the
+    // far `spare` ring that is uploaded but never drawn. Before 2026-10-11 the crescent cursor
+    // walked in from the context edge, so a capped budget landed on the far, mostly-spare rim and
+    // left the near annulus until a replant freed the slots.
+    knobs.TREE_PLANT_RADIUS_M = 150
+    knobs.TREE_SPARE_M = 150
+    const chm = new Float32Array(4)
+    const t = treesFromCanopy(chm, [2, 2], [-1000, -1000, 1000, 1000], 10, () => 0, 500, 3, () => false, undefined, {
+      canopyAt: () => 8,
+      centre: [0, 0],
+      cellM: 10,
+      radius: 150,
+      seedM: 30,
+    })
+    // a capped planter never reaches pending 0 at a fixed eye (no slot ever frees), so pump a
+    // generous fixed number of times rather than draining on `pending`
+    for (let k = 0; k < 40; k++) t.pump(1000)
+    const s = t.stats()
+    expect(s.capped).toBe(true)
+    // capacity went into the drawn disc, by CELL distance: not one tree beyond the draw radius
+    // (the hidden spare ring) took a slot ahead of a drawn one
+    const finite = t.records.filter((r) => Number.isFinite(r.x))
+    // allow one cell of slack: a tree is jittered up to 0.45*cellM off its cell centre
+    expect(finite.filter((r) => Math.hypot(r.x, r.z) > 150 + 10).length).toBe(0)
+    expect(finite.length).toBeGreaterThan(400)
+    // and almost all of what it holds is drawn, not carried as hidden spare
+    expect(s.drawn).toBeGreaterThan(300)
+    expect(s.drawn).toBeLessThanOrEqual(500)
+  })
 })

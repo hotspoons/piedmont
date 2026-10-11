@@ -738,9 +738,15 @@ export function treesFromCanopy(
   let settled: [number, number] | null = null
   let settledR = 0
   const liveKeys = new Set<string>()
+  /** one interval of a crescent row: its cell range and which way `nextCell` walks it (inward out) */
+  type ScanSpan = { lo: number; hi: number; dir: number }
   /**
    * The crescent still to measure. A capped wood can leave a thick unplanted ring, so this is a
    * cursor, not a list: `pump` walks a few rows a frame instead of allocating every cell at once.
+   *
+   * It walks NEAREST-FIRST and DRAWN BEFORE SPARE (see `nextCell`). The rows are precomputed once
+   * per plant, nearest the eye's row first, so a budget that runs out is spent on the ground the
+   * driver can see rather than on the far, hidden `spare` ring.
    */
   let scan: {
     cx: number
@@ -751,14 +757,16 @@ export function treesFromCanopy(
     ox: number
     oy: number
     settled2: number
-    j: number
-    jEnd: number
-    jStep: number
-    iStep: number
+    /** drawR squared, from the plant. Pass 0 fills inside it, pass 1 the spare ring beyond. */
+    drawR2: number
+    /** 0 = the drawn disc, 1 = the hidden spare ring; spare cells never take a slot ahead of drawn */
+    phase: number
+    /** the crescent's rows in index space, nearest the eye's row first (ahead-of-travel breaks ties) */
+    rows: number[]
+    rowPos: number
     row: number
     y0: number
-    dy2: number
-    spans: [number, number][]
+    spans: ScanSpan[]
     span: number
     i: number
   } | null = null
@@ -918,17 +926,29 @@ export function treesFromCanopy(
     // empty are in the cache. Either way the walk does not rebuild the list it has already passed.
     const j0 = Math.floor((cy - contextR) / cellM)
     const j1 = Math.ceil((cy + contextR) / cellM)
-    const dj = cy - oy, di = cx - ox
-    // walk the side the eye is moving toward first, so a full budget spends its slots on the
-    // woods ahead rather than on the ring being left behind
-    const jStep = dj >= Math.abs(di) ? -1 : 1
-    const iStep = di >= Math.abs(dj) ? -1 : 1
+    const dj = cy - oy
+    // NEAREST-FIRST, AND DRAWN BEFORE SPARE. The crescent is the new context disc minus the old
+    // one, so every cell in it sits at or just beyond the old boundary; measuring outward from the
+    // eye fills the ground the driver is about to reach before the ground behind. The old cursor
+    // started at the context edge and walked in, so a budget that ran out was spent on the far,
+    // mostly `spare` (hidden) ring while the near annulus was never reached until a replant freed
+    // those slots (Rich, 2026-10-11: "drive up and the missing near trees get planted"). Rows are
+    // ordered by distance from the eye's row and cells by distance from its column; the direction
+    // of travel only breaks ties, so the woods ahead still fill first. Two passes keep `spare`
+    // cells from taking a slot ahead of a drawn one.
+    const rows: number[] = []
+    for (let j = j0; j <= j1; j++) rows.push(j)
+    rows.sort((a, b) => {
+      const da = Math.abs((a + 0.5) * cellM - cy)
+      const db = Math.abs((b + 0.5) * cellM - cy)
+      if (da !== db) return da - db
+      return (b - a) * dj || a - b // equally near: the row ahead of travel first
+    })
     scan = {
       cx, cy, contextR, context2, cellM, ox, oy, settled2,
-      j: jStep < 0 ? j1 : j0,
-      jEnd: jStep < 0 ? j0 : j1,
-      jStep, iStep,
-      row: 0, y0: 0, dy2: 0, spans: [], span: 0, i: 0,
+      drawR2: drawR * drawR, phase: 0,
+      rows, rowPos: 0,
+      row: 0, y0: 0, spans: [], span: 0, i: 0,
     }
     hold = null
     patchNote = { rebuilt, changed: [], removed, removedAt, shown, hidden }
@@ -942,38 +962,52 @@ export function treesFromCanopy(
     if (!s) return null
     for (;;) {
       if (s.span < s.spans.length) {
-        const [lo, hi] = s.spans[s.span]
-        const past = s.iStep > 0 ? s.i > hi : s.i < lo
-        if (!past) {
-          const i = s.i
-          s.i += s.iStep
-          return { i, j: s.row, x0: (i + 0.5) * s.cellM, y0: s.y0 }
+        const sp = s.spans[s.span]
+        if (s.i < sp.lo || s.i > sp.hi) {
+          s.span++
+          if (s.span < s.spans.length) {
+            const nx = s.spans[s.span]
+            s.i = nx.dir > 0 ? nx.lo : nx.hi
+          }
+          continue
         }
-        s.span++
-        if (s.span < s.spans.length) {
-          const [nlo, nhi] = s.spans[s.span]
-          s.i = s.iStep > 0 ? nlo : nhi
-        }
-        continue
+        const i = s.i
+        s.i += sp.dir
+        const x0 = (i + 0.5) * s.cellM
+        const d2 = (x0 - s.cx) * (x0 - s.cx) + (s.y0 - s.cy) * (s.y0 - s.cy)
+        // pass 0 is the drawn disc, pass 1 the hidden spare ring beyond it. Never yield a spare
+        // cell while a drawn one is still queued, so a capped budget always lands on what is seen.
+        if (s.phase === 0 ? d2 > s.drawR2 : d2 <= s.drawR2) continue
+        return { i, j: s.row, x0, y0: s.y0 }
       }
-      if (s.jStep > 0 ? s.j > s.jEnd : s.j < s.jEnd) {
+      if (s.rowPos >= s.rows.length) {
+        if (s.phase === 0) {
+          s.phase = 1
+          s.rowPos = 0
+          s.span = 0
+          s.spans = []
+          continue
+        }
         scan = null
         return null
       }
-      const y0 = (s.j + 0.5) * s.cellM
+      const j = s.rows[s.rowPos++]
+      const y0 = (j + 0.5) * s.cellM
       const dy = y0 - s.cy
       const dy2 = dy * dy
-      s.row = s.j
-      s.j += s.jStep
+      s.row = j
+      s.y0 = y0
       s.spans = []
       s.span = 0
       s.i = 0
       if (dy2 > s.context2) continue
+      if (s.phase === 0 && dy2 > s.drawR2) continue // no drawn cells on this row
       const half = Math.sqrt(s.context2 - dy2)
       const iLo = Math.floor((s.cx - half) / s.cellM - 0.5) - 1
       const iHi = Math.ceil((s.cx + half) / s.cellM - 0.5) + 1
       const old2 = s.settled2 - (y0 - s.oy) * (y0 - s.oy)
-      if (!(old2 > 0)) s.spans.push([iLo, iHi])
+      const raw: [number, number][] = []
+      if (!(old2 > 0)) raw.push([iLo, iHi])
       else {
         const oh = Math.sqrt(old2)
         // shrink the skipped span by a cell so the boundary is decided by the distance test
@@ -981,15 +1015,23 @@ export function treesFromCanopy(
         const oHi = Math.floor((s.ox + oh) / s.cellM - 0.5) - 1
         const leftHi = Math.min(iHi, oLo - 1)
         const rightLo = Math.max(iLo, oHi + 1)
-        if (iLo <= leftHi) s.spans.push([iLo, leftHi])
-        if (rightLo <= iHi) s.spans.push([rightLo, iHi])
+        if (iLo <= leftHi) raw.push([iLo, leftHi])
+        if (rightLo <= iHi) raw.push([rightLo, iHi])
       }
-      if (s.iStep < 0) s.spans.reverse()
-      if (!s.spans.length) continue
-      s.y0 = y0
-      s.dy2 = dy2
-      const sp = s.spans[0]
-      s.i = s.iStep > 0 ? sp[0] : sp[1]
+      if (!raw.length) continue
+      // nearest the eye's column first, each interval walked from its inner edge outward; the
+      // direction of travel only breaks a tie, so the woods ahead still fill first
+      const c = s.cx / s.cellM - 0.5
+      const di = s.cx - s.ox
+      const spans = raw.map(([lo, hi]): ScanSpan => (Math.abs(lo - c) <= Math.abs(hi - c) ? { lo, hi, dir: 1 } : { lo, hi, dir: -1 }))
+      const near = (sp: ScanSpan) => Math.min(Math.abs(sp.lo - c), Math.abs(sp.hi - c))
+      spans.sort((a, b) => {
+        const da = near(a), db = near(b)
+        if (da !== db) return da - db
+        return ((b.dir > 0 ? b.lo : b.hi) - (a.dir > 0 ? a.lo : a.hi)) * di || a.lo - b.lo
+      })
+      s.spans = spans
+      s.i = spans[0].dir > 0 ? spans[0].lo : spans[0].hi
     }
   }
   /**
@@ -1398,7 +1440,7 @@ export function treesFromCanopy(
     }
     return out
   }
-  return { crowns, trunks, count: liveCount, records, refresh, plant, pump, patch: () => patchNote, forget, invalidateRegion, invalidateAll, recheck, cull, diagnose, stats: () => ({ count: liveCount, cellM: Math.max(1, T.TREE_CELL_M || opts.cellM || 6), radius: T.TREE_PLANT_RADIUS_M, centre, capped, spare: spareCount, drawn: liveCount - spareCount, changed: lastChanged, evicted: lastEvicted, pending: (scan ? Math.abs(scan.jEnd - scan.j) + 1 : 0) + (hold ? 1 : 0), walked: lastWalked, movedMs: +lastMovedMs.toFixed(2), blocks: blocks.size, records: records.length, rechecks, staleFixed, culled, pump: { ...pumpStats } }) }
+  return { crowns, trunks, count: liveCount, records, refresh, plant, pump, patch: () => patchNote, forget, invalidateRegion, invalidateAll, recheck, cull, diagnose, stats: () => ({ count: liveCount, cellM: Math.max(1, T.TREE_CELL_M || opts.cellM || 6), radius: T.TREE_PLANT_RADIUS_M, centre, capped, spare: spareCount, drawn: liveCount - spareCount, changed: lastChanged, evicted: lastEvicted, pending: (scan ? scan.rows.length - scan.rowPos + (scan.phase === 0 ? scan.rows.length : 0) : 0) + (hold ? 1 : 0), walked: lastWalked, movedMs: +lastMovedMs.toFixed(2), blocks: blocks.size, records: records.length, rechecks, staleFixed, culled, pump: { ...pumpStats } }) }
 }
 
 /**
