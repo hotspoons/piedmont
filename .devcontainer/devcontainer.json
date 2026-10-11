@@ -4,13 +4,18 @@
 	// initializeCommand, post-create.sh and Blender build volume), extended for everything piedmont
 	// builds and tests: Docker-in-Docker for the compose stack and the images, kubectl + Helm for the
 	// cluster, and the bake's Python/GDAL/PDAL toolchain (post-create.sh).
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+	// Node 24, the active LTS (22 is maintenance-only, to April 2027). The image is Debian trixie.
+	"image": "mcr.microsoft.com/devcontainers/typescript-node:24",
 	"features": {
 		"ghcr.io/devcontainers/features/git:1": {},
 		// A Docker daemon of our own inside the container: `docker build` for the five images and
 		// `docker compose up` for the local stack (deploy/docker), without touching the host's.
+		//
+		// "moby": false, i.e. Docker CE from Docker's own apt repository. The base image now builds on
+		// Debian trixie, which has no moby-cli packages, and the feature refuses "moby": true there
+		// (Rich's first container build, 2026-10-11).
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {
-			"moby": true,
+			"moby": false,
 			"installDockerBuildx": true,
 			"installDockerComposeSwitch": true
 		}
