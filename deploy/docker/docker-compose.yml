@@ -9,7 +9,7 @@
 # One privileged container (`core`) runs its own Docker daemon. On that daemon it runs the services
 # in core/stack.yml, and the world editor starts bake containers there too. Everything that must
 # outlive a restart is under ONE host directory, PIEDMONT_HOST_DIR: ./data beside this file unless set
-# (no sudo, and inside Docker Desktop's default file sharing). docs/DOCKER.md has the
+# (no sudo, and inside Docker Desktop's default file sharing). docs/deploy/docker.md has the
 # design, the volume layout, GPUs, backups and upgrades.
 #
 # GPUs (for splat training, or anything else that asks for one):

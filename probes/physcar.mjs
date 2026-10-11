@@ -2,7 +2,7 @@
 //
 //   node probes/physcar.mjs [site]
 //
-// Step 2 of docs/PLAN-PHYSICS.md. `test/physics.test.ts` already proves each profile
+// Step 2 of docs/dev/specs/PLAN-PHYSICS.md. `test/physics.test.ts` already proves each profile
 // accelerates, turns and brakes — on a flat 1 km cuboid. This is the other question: a road band
 // site has camber, a crown, a verge the grip drops on, kerbs, and a heightfield built from the
 // site's own sampler rather than from a plane. A car that drives beautifully on a test slab and

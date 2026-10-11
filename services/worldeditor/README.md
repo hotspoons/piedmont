@@ -33,7 +33,7 @@ node services/worldeditor/probe.mjs --api http://localhost:8780 --ui http://loca
 | `geo.mjs` | lon/lat only. Web Mercator, and the smallest circle containing a polygon |
 | `runs.mjs` | a bake or a publish, as a Job or a subprocess, and its log |
 | `k8s.mjs` | the two Kubernetes calls this makes, by hand |
-| `docker.mjs` | the Docker runner: the same Job calls answered by a Docker Engine on one host ([docs/DOCKER.md](../../docs/DOCKER.md)) |
+| `docker.mjs` | the Docker runner: the same Job calls answered by a Docker Engine on one host ([docs/deploy/docker.md](../../docs/deploy/docker.md)) |
 | `probe.mjs` | every claim below, and a negative for every check |
 
 It does **not** rebuild the asset pipeline (`services/assetsvc` owns that and is proxied), the bake
@@ -255,7 +255,7 @@ Environment only, so the chart and a laptop run the same code.
 | `PIEDMONT_EDITOR_GEOFABRIK_URL` `_CHECK_MS` | where the Geofabrik index (the outlines) is read from (`https://download.geofabrik.de/index-v1.json`), and how often the editor checks whether its copy needs fetching again (3 h; it fetches when the copy is a week old, or an hour after a failure) |
 | `PIEDMONT_EDITOR_OVERPASS_TIMEOUT` `_DEADLINE` `_DOWN_FOR` | per attempt (120 s), for the whole call (240 s), and how long a failed upstream is skipped (60 s) |
 | `PIEDMONT_EDITOR_ASSETSVC` | the assetsvc base URL, e.g. `http://assetsvc.default.svc` |
-| `PIEDMONT_EDITOR_RUNNER` | force `local`, or `docker` for the Docker runner (`PIEDMONT_EDITOR_DOCKER_*`, [docs/DOCKER.md](../../docs/DOCKER.md)); otherwise Kubernetes when a service-account token is mounted |
+| `PIEDMONT_EDITOR_RUNNER` | force `local`, or `docker` for the Docker runner (`PIEDMONT_EDITOR_DOCKER_*`, [docs/deploy/docker.md](../../docs/deploy/docker.md)); otherwise Kubernetes when a service-account token is mounted |
 | `PIEDMONT_EDITOR_BAKE_IMAGE` `_CLAIM` `_BAKE_RESOURCES` | what the Job runs, on which PVC, with what |
 | `PIEDMONT_EDITOR_NAMESPACE` | default: the pod's own |
 | `PIEDMONT_EDITOR_S3_BUCKET` `_ENDPOINT` `_REGION` `_PREFIX` `_S3_SECRET` | the publish target |
@@ -348,7 +348,7 @@ a superseded request's `finally` wiped the message its own replacement had just 
 error: a success with nothing in it, byte-identical to a legitimately empty answer over the sea. A
 rotation that turns on an exception or a non-2xx does not fire, so a regional instance placed first
 silently reports that Italy has no roads. Found and measured by the overpass lane
-(`docs/OVERPASS-PLANET.md`); guarded here two ways — an upstream may declare what it holds
+(`docs/dev/specs/OVERPASS-PLANET.md`); guarded here two ways — an upstream may declare what it holds
 (`#south/west/north/east`) and is skipped for anything else, and, needing no configuration at all,
 **an empty answer from an upstream that is not the last one is treated as inconclusive** and the
 next one is tried before it is believed.

@@ -5,7 +5,7 @@ Rig a reconstructed car: free the wheels from the body, and give each one a bone
     blender --background --factory-startup --python pipelines/rigging/rig_vehicle.py -- \
         --in mesh.finished.glb --out rigged.glb [--renders shots/]
 
-WHAT THIS IS FOR. `docs/PLAN-RIGGING.md`: the engine has never needed bones — it places
+WHAT THIS IS FOR. `docs/dev/specs/PLAN-RIGGING.md`: the engine has never needed bones — it places
 four raycast wheels from the wheelbase and the track — so this is a VISUAL feature. An unrigged car
 drives exactly as well; its wheel meshes just do not turn. Nothing in here may make an unrigged car
 worse, and the script refuses rather than half-rigging.

@@ -5,7 +5,7 @@ memory: every 1 km lidar tile, the 408 k-feature OSM set, the 62187 m primary pr
 chains. It OOMs `network_tiles.lidar_tiled`, and when it does not it runs for hours on one node
 while seven sit idle.
 
-THE SHAPE. The same plan `PLAN-SHARDED-BAKE.md` describes:
+THE SHAPE. The same plan `docs/dev/specs/PLAN-SHARDED-BAKE.md` describes:
 
   * PLAN — run `roads()`/`dead_ends()` once, choose a grid of rectangular blocks, and write, for
     every block, the 1 km tiles and the chains that belong to it. One cheap Job.

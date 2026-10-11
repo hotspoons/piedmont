@@ -1498,7 +1498,7 @@ export let HEADLIGHT_BOUNCE = 3
  */
 export let WET_STREAK = 0.15
 export let WET_SPREAD = 1.25
-// --- splat road bands (splats.ts, docs/PLAN-SPLAT-ROUTES.md) -----------------------
+// --- splat road bands (splats.ts, docs/dev/specs/PLAN-SPLAT-ROUTES.md) -----------------------
 /** 0 turns the captured world off entirely and leaves the built one */
 /** show the name of the road you are on while driving; 0 hides it */
 export let HUD_ROAD_NAME = 1
@@ -1869,7 +1869,7 @@ export let DRESS_WINDOW_WALLS = 3
 export let BUILDING_FACADES = 1
 export let FACADE_TEXTURE_PX = 512
 
-// --- physics (docs/PLAN-PHYSICS.md) ------------------------------------------------------
+// --- physics (docs/dev/specs/PLAN-PHYSICS.md) ------------------------------------------------------
 /**
  * Rapier, on or off.
  *

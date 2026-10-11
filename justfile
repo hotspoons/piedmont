@@ -4,7 +4,7 @@
 #   bake/                  the world baker (Python, `python -m piedmont_bake`)
 #   services/worldeditor   the world editor's backend + MCP                                            :8780
 #   services/assetsvc      AI asset generation (flux, TRELLIS) behind one API                         :8770
-#   vendor/arcade          the shared engine packages, linked by `npm run setup` (docs/ARCADE.md)
+#   vendor/arcade          the shared engine packages, linked by `npm run setup` (docs/dev/arcade.md)
 #
 # First time on a machine: `npm run setup`. It links the arcade packages, clones gaussworks, and
 # installs the Node and Python dependencies.

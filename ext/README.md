@@ -10,4 +10,4 @@ Other repositories checked out beside this one. Everything here except this file
 With `ext/siomporas-arcade` present, `npm run setup` links `vendor/arcade` to it instead of to the
 ref pinned in `arcade.json`, so an edit to `ext/siomporas-arcade/packages/engine` shows up in the
 dev server without a reinstall. Remove it (and re-run setup) to go back to the pin. See
-[docs/ARCADE.md](../docs/ARCADE.md).
+[docs/dev/arcade.md](../docs/dev/arcade.md).

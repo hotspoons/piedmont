@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // No trace of the project's old name in this repository: not in a path, an identifier, a string,
-// an env var, a package, an image, an API, a storage key, a comment or a doc (docs/ORIGIN.md says
+// an env var, a package, an image, an API, a storage key, a comment or a doc (docs/dev/project/ORIGIN.md says
 // what the name was and why it went). Case-insensitive. Run by CI and by `npx vitest run`
 // (scripts/checks/checks.test.ts).
 //

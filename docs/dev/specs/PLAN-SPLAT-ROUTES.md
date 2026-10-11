@@ -35,7 +35,7 @@ infer from the gaussians.
 
 **The viewer** brings the other half:
 
-- a **geodetic frame** (`docs/FRAME.md`): WGS84 authority, ENU render about
+- a **geodetic frame** (`docs/dev/frames.md`): WGS84 authority, ENU render about
   `manifest.frame.anchor = {lon, lat, h}`, floating origin. Two ENU frames compose through ECEF
   exactly, and `vendor/arcade/packages/engine/src/geo/wgs84.ts` is tested against pyproj rather than itself.
 - **streaming by locality** that already works for 1 km packs and KTX2 imagery

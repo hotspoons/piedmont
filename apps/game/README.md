@@ -52,7 +52,7 @@ the bar back. `#<world>?ui=game` / `?ui=dev` force either; the dev server opens 
 The gamepad works in both (triggers pedals, left stick steers, Start pauses; the sticks fly the
 free camera), with rumble. Double-clicking the inset map drops the car there. A program may take
 the developer view, the teleport, the transport switch, and any settings tab or control away:
-`api.ui.*`. See `docs/GAME-MODE.md`; probe: `PORT=5185 node probes/gamemode.mjs`.
+`api.ui.*`. See `docs/dev/specs/GAME-MODE.md`; probe: `PORT=5185 node probes/gamemode.mjs`.
 
 Controls (the driving keys are rebindable in the Escape menu → Settings → Controls; these are the
 defaults). **Fly** (trailworks scheme, `src/fly.ts`): WASD/arrows move along the view heading (speed

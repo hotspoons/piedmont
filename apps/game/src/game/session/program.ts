@@ -127,7 +127,7 @@ export interface ProgramHost {
    * still LOADS where there is none instead of throwing on its first line. Every method on
    * `api.physics` answers harmlessly when this is missing.
    *
-   * See docs/PLAN-EDITOR-IDE.md §4. The engine's side of this lives in
+   * See docs/dev/specs/PLAN-EDITOR-IDE.md §4. The engine's side of this lives in
    * `vendor/arcade/packages/engine/src/physics/`; nothing in this file imports it, because the boundary is what
    * keeps the program layer testable.
    */

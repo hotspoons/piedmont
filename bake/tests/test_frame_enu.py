@@ -24,7 +24,7 @@ from piedmont_bake.geo import Frame  # noqa: E402
 
 # dc-metro-take-2's anchor, the world the bug was measured on.
 ANCHOR_LON, ANCHOR_LAT = -77.005045, 38.911621
-N = 6_386_615.0  # the prime-vertical radius at ~39 N, the number FRAME.md uses
+N = 6_386_615.0  # the prime-vertical radius at ~39 N, the number docs/dev/frames.md uses
 
 
 class ToEnu3(unittest.TestCase):

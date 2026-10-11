@@ -7,7 +7,7 @@ used in the game, not the full library… support world multiplexing too so you 
 multiple worlds to one URL."*
 
 What the Cloudflare account needs first — R2 added, the token's permissions, the cache switches — is
-in [CLOUDFLARE.md](CLOUDFLARE.md).
+in [CLOUDFLARE.md](../../guide/cloudflare.md).
 
 ## From the world editor
 

@@ -1,6 +1,6 @@
 // A SYNTHETIC SPLAT WORLD, laid along a site's own road.
 //
-// The viewer half of the splat work (docs/PLAN-SPLAT-ROUTES.md, Track B) must not wait
+// The viewer half of the splat work (docs/dev/specs/PLAN-SPLAT-ROUTES.md, Track B) must not wait
 // for a capture to be trained: the frame composition, the fit, the streaming, the crossfade and
 // the depth interaction are all testable against gaussians we make ourselves — and unlike a
 // photoreal capture, a made-up world is deterministic, so a probe can assert pixels against it for

@@ -17,7 +17,7 @@
 #
 # Paths: everything persistent is under ${PIEDMONT_ROOT} (the host's shared volume, bound into the core
 # at the same path). A Kubernetes claim <name> is ${PIEDMONT_ROOT}/volumes/<name>; the bake's claim is
-# ${PIEDMONT_ROOT}/data. See docs/DOCKER.md, "The shared volume".
+# ${PIEDMONT_ROOT}/data. See docs/deploy/docker.md, "The shared volume".
 #
 # Pulls: every service is `pull_policy: always`, as every image in the cluster is (Rich, 2026-10-10:
 # "Policy should be always, always"). Each `compose up` — every core start — pulls each image.

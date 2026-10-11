@@ -23,7 +23,7 @@
 #            /v1/images/edits.
 #   trellis  services/recon (ghcr.io/hotspoons/piedmont-recon), TRELLIS.2-4B — the cluster's `recon`.
 #            POST /reconstruct, GET /jobs/<id>, GET /jobs/<id>/asset, /readyz.
-# Anything else that speaks those APIs can stand in (docs/DOCKER.md, "The AI services").
+# Anything else that speaks those APIs can stand in (docs/deploy/docker.md, "The AI services").
 #
 # ONE GPU PER MODEL is the common case, and each is pinned with device_ids so the two never share.
 # FLUX.2-dev in bf16 needs an 80 GB-class card (it ran on a GH200 480 GB); on a smaller card use a

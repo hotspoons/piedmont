@@ -560,7 +560,7 @@ step of a resting pile) and the pile itself on the GPU; both are bounded now.
 - **Deploy.** World editor mode 9: token (env or typed, in memory only) → worlds (one or several,
   one URL) → query Cloudflare → worker name, workers.dev and/or a hostname in a zone, bucket (or a
   new one), prefix `piedmont/<world>-<stamp>`, prune older copies → plan → deploy as a run.
-  `services/worldeditor/{cloudflare,deploy}.mjs`, `deploy/worker.mjs`; `docs/DEPLOY.md`.
+  `services/worldeditor/{cloudflare,deploy}.mjs`, `deploy/worker.mjs`; `docs/dev/specs/DEPLOY.md`.
   Only what the worlds use goes up, measured by following ids through the documents and builds
   (Route 3: 254 objects, 129 MB, 11 of the library's cars). No real deploy has been run: there is
   no token here. Probes: `stages-lights.mjs`; tests: `cloudflare.test.mjs`, `deploy.test.mjs`.

@@ -98,7 +98,7 @@ export class Runs {
    * adding one would re-export every site on the volume.
    */
   async bake(slug, opts = {}) {
-    // A WORLD TOO BIG FOR ONE JOB GOES PLAN -> SHARD -> FINALIZE (docs/PLAN-SHARDED-BAKE.md).
+    // A WORLD TOO BIG FOR ONE JOB GOES PLAN -> SHARD -> FINALIZE (docs/dev/specs/PLAN-SHARDED-BAKE.md).
     // The three phases are three sets of Jobs in one run: one cheap plan Job, N shard Jobs fanned
     // across the cluster, one cheap finalizer. `run.phase`/`run.jobs` carry the state so a pod
     // restart resumes at the phase it was in (reconcile below).

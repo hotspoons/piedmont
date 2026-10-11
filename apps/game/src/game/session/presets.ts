@@ -14,7 +14,7 @@
 // is not a settings file, it is a KEYFRAME. So this is not a loader — it is a library of snapshots
 // plus an animator that moves the live knobs between them.
 //
-// THREE LAYERS, ONE RESOLVE (docs/PLAN-GAME-PIPELINE.md):
+// THREE LAYERS, ONE RESOLVE (docs/dev/specs/PLAN-GAME-PIPELINE.md):
 //
 //     world defaults   worlds/<slug>.json#look     "this place looks like this"
 //          ↓ overridden by

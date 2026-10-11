@@ -629,7 +629,7 @@ def encode_twins(web, out: dict) -> dict:
 
     The frame a pyramid tile's photo first draws was a 10–12 ms `render` on the jpg path: the
     decode, the upload of a full RGBA image and three's mipmap pass, on the main thread, on one
-    frame (PERF-RIG.md). A ktx2 carries its mip chain and uploads as compressed blocks — no decode,
+    frame (docs/dev/specs/PERF-RIG.md). A ktx2 carries its mip chain and uploads as compressed blocks — no decode,
     no mipmap pass, a quarter of the memory — and `ktx2.py` already makes the twins for the flat
     `tiles` layer. Here it runs over `web/pyr` ONCE, in the parent, after the workers have written
     every level: the serial loop and the forked pool both land here, and so does a shard's bake

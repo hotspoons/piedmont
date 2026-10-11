@@ -1,6 +1,6 @@
 // The game's physics world: one owner, bound to the site the renderer is already drawing.
 //
-// docs/PLAN-PHYSICS.md §2. The engine module (`@apex/engine/physics/*`) knows nothing
+// docs/dev/specs/PLAN-PHYSICS.md §2. The engine module (`@apex/engine/physics/*`) knows nothing
 // about this app; this file is the whole of what the two know about each other, and it is
 // deliberately small.
 //

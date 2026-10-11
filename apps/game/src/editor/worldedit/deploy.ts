@@ -363,7 +363,7 @@ export class DeployPanel {
     host.append(where)
 
     /* 5 · the plan, then the deploy */
-    const go = group('5 · Deploy', { note: st.app ? `app: ${st.app} · setup: docs/CLOUDFLARE.md` : 'setup: docs/CLOUDFLARE.md' })
+    const go = group('5 · Deploy', { note: st.app ? `app: ${st.app} · setup: docs/guide/cloudflare.md` : 'setup: docs/guide/cloudflare.md' })
     const gb = bodyOf(go)
     gb.append(button({ label: this.planning ? 'Planning…' : 'Plan (dry run)', icon: 'beaker', variant: 'ghost', disabled: this.planning || !this.worlds.length, onClick: () => void this.makePlan() }))
     const p = this.plan

@@ -1,8 +1,8 @@
 # Architecture
 
-What lives where in piedmont, and how the pieces talk. The design rules the code is built on are in
-[DESIGN.md](DESIGN.md); the bake's stages in [PIPELINE.md](PIPELINE.md); the coordinate frame in
-[FRAME.md](FRAME.md).
+What lives where in piedmont, and how the pieces talk. Each part has its own page in
+[docs/dev](README.md): the [coordinate frames](frames.md), [terrain streaming](terrain.md),
+[rendering](rendering.md), [the bake](bake.md), [the services](services.md) and the rest.
 
 ```
                        public data (OSM via Overpass, USGS 3DEP DEM + lidar, NAIP, LANDFIRE, Macrostrat)
@@ -25,7 +25,7 @@ never knows two.
 
 ## The game — `apps/game`
 
-One Vite app, three pages ([README](../apps/game/README.md)):
+One Vite app, three pages ([README](../../apps/game/README.md)):
 
 | Page | What it is |
 |---|---|
@@ -33,14 +33,14 @@ One Vite app, three pages ([README](../apps/game/README.md)):
 | `editor.html` | the site editor: areas, placements, structures, autogen, stunts, races, zones, programs (Monaco) |
 | `world.html` | the world editor: draw a world on a map, bake it, publish it, deploy it, the asset library, splat runs, the in-browser agent and shell |
 
-The address is the hash, `/#<world>?k=v&flag` ([GAME-MODE.md](GAME-MODE.md)). The console surface is
+The address is the hash, `/#<world>?k=v&flag` ([traffic and game](traffic-and-game.md)). The console surface is
 `window.piedmont`; the dev bridge context is `apex` (from `@apex/engine`). Its tests are
 `apps/game/test/*.test.ts` (vitest project `game`).
 
 ## The bake — `bake/`
 
-`python -m piedmont_bake` ([README](../bake/README.md)): `fetch` a site or network, `export` its web
-layers, `plan`/`shard`/`finalize` a sharded bake of a large world ([PLAN-SHARDED-BAKE.md](PLAN-SHARDED-BAKE.md)),
+`python -m piedmont_bake` ([README](../../bake/README.md)): `fetch` a site or network, `export` its web
+layers, `plan`/`shard`/`finalize` a sharded bake of a large world ([the bake](bake.md#sharded-bakes)),
 `publish` to S3/R2. It reads `sites.json` (`$PIEDMONT_SITES`) and writes `$PIEDMONT_DATA`. Unit tests:
 `cd bake && python -m unittest discover -s tests`. Image: `ghcr.io/hotspoons/piedmont-bake`; chart
 `deploy/helm/bake` for a one-off Job (the world editor normally launches bake Jobs itself).
@@ -49,16 +49,16 @@ layers, `plan`/`shard`/`finalize` a sharded bake of a large world ([PLAN-SHARDED
 
 | Service | Port | Page | Image |
 |---|---|---|---|
-| world editor + MCP | 8780 | [services/worldeditor](../services/worldeditor/README.md), MCP: [MCP.md](../services/worldeditor/MCP.md) | `piedmont-worldeditor` |
-| asset service | 8770 | [services/assetsvc](../services/assetsvc/README.md) | `piedmont-assetsvc` |
-| Overpass (our own OSM API) | 80 | [services/overpass](../services/overpass/README.md), [OVERPASS-PLANET.md](OVERPASS-PLANET.md) | upstream `wiktorn/overpass-api` |
-| recon (TRELLIS.2, GPU) | 8000 | [services/recon](../services/recon/README.md) | `piedmont-recon` |
-| the Docker install's core (DinD; runs the rows above on one host) | 8780 | [deploy/docker](../deploy/docker/README.md), [DOCKER.md](DOCKER.md) | `piedmont-core` |
+| world editor + MCP | 8780 | [services/worldeditor](../../services/worldeditor/README.md), MCP: [MCP.md](../../services/worldeditor/MCP.md) | `piedmont-worldeditor` |
+| asset service | 8770 | [services/assetsvc](../../services/assetsvc/README.md) | `piedmont-assetsvc` |
+| Overpass (our own OSM API) | 80 | [services/overpass](../../services/overpass/README.md), [services](services.md#overpass) | upstream `wiktorn/overpass-api` |
+| recon (TRELLIS.2, GPU) | 8000 | [services/recon](../../services/recon/README.md) | `piedmont-recon` |
+| the Docker install's core (DinD; runs the rows above on one host) | 8780 | [deploy/docker](../../deploy/docker/README.md), [docs/deploy/docker.md](../deploy/docker.md) | `piedmont-core` |
 
 - **The world editor** (`services/worldeditor`, Node, no framework) owns the worlds, levels, runs and
   the data volume. It runs bakes as Kubernetes Jobs (or local processes), OSM region imports into an
   Overpass instance, splat training runs (gaussworks, by image), publishes to a bucket and deploys a
-  world to Cloudflare ([DEPLOY.md](DEPLOY.md), [CLOUDFLARE.md](CLOUDFLARE.md)), keeps the volume in a
+  world to Cloudflare ([services](services.md#the-cloudflare-deploy), [user guide](../guide/cloudflare.md)), keeps the volume in a
   git repository, supervises a headless Blender for rigging, and serves an MCP endpoint
   (`/api/agent/mcp`, server name `piedmont-world-editor`) through which an agent can do everything
   the page can. Its suites are `services/worldeditor/*.test.mjs` (node:test, run by the `checks`
@@ -75,25 +75,25 @@ layers, `plan`/`shard`/`finalize` a sharded bake of a large world ([PLAN-SHARDED
 
 | Pipeline | Page | What it makes |
 |---|---|---|
-| `pipelines/assetgen` | [README](../pipelines/assetgen/README.md) | specs → flux prompts → images; `finish.mjs` (simplify, Draco) used by the asset service |
-| `pipelines/assetlib` | [README](../pipelines/assetlib/README.md) | the asset library's rosters (`specs/`) and the draw → key → reconstruct → finish build |
-| `pipelines/rigging` | [README](../pipelines/rigging/README.md) | Blender riggers for vehicles and characters, and the bridge the world editor drives |
-| `pipelines/blender` | [README](../pipelines/blender/README.md) | the headless Blender image the world editor copies from |
-| `pipelines/surfaces` | [README](../pipelines/surfaces/README.md) | tileable ground and road textures (`gen.py`) |
-| `pipelines/sky` | [README](../pipelines/sky/README.md) | the star catalogue and Milky Way assets the sky draws |
-| `pipelines/sounds` | [README](../pipelines/sounds/README.md) | the CC0 sound bank cut into `apps/game/public/sounds` ([SOUNDS.md](SOUNDS.md)) |
+| `pipelines/assetgen` | [README](../../pipelines/assetgen/README.md) | specs → flux prompts → images; `finish.mjs` (simplify, Draco) used by the asset service |
+| `pipelines/assetlib` | [README](../../pipelines/assetlib/README.md) | the asset library's rosters (`specs/`) and the draw → key → reconstruct → finish build |
+| `pipelines/rigging` | [README](../../pipelines/rigging/README.md) | Blender riggers for vehicles and characters, and the bridge the world editor drives |
+| `pipelines/blender` | [README](../../pipelines/blender/README.md) | the headless Blender image the world editor copies from |
+| `pipelines/surfaces` | [README](../../pipelines/surfaces/README.md) | tileable ground and road textures (`gen.py`) |
+| `pipelines/sky` | [README](../../pipelines/sky/README.md) | the star catalogue and Milky Way assets the sky draws |
+| `pipelines/sounds` | [README](../../pipelines/sounds/README.md) | the CC0 sound bank cut into `apps/game/public/sounds` ([traffic and game](traffic-and-game.md#audio)) |
 
 ## Shared code from the arcade
 
 `@apex/engine`, `@apex/enginesim`, `@apex/stunt-pieces` — linked in by `npm run setup` from the ref
-in `arcade.json` or from `ext/siomporas-arcade` ([ARCADE.md](ARCADE.md)).
+in `arcade.json` or from `ext/siomporas-arcade` ([arcade.md](arcade.md)).
 
 ## Deploy
 
 Helm charts in `deploy/helm/`, per-cluster values in `deploy/<cluster>/` with the namespace as a
-value, applied by `just deploy <cluster>` ([deploy/README.md](../deploy/README.md)). Every image
+value, applied by `just deploy <cluster>` ([deploy/README.md](../../deploy/README.md)). Every image
 pulls with policy `Always`, enforced by `scripts/check-pull-policy.mjs`. The Docker/DinD compose
-stack is [deploy/docker](../deploy/docker/README.md) (design: [DOCKER.md](DOCKER.md)): one privileged
+stack is [deploy/docker](../../deploy/docker/README.md) (design: [docs/deploy/docker.md](../deploy/docker.md)): one privileged
 `piedmont-core` container runs its own Docker daemon, the services on it, and the world editor's
 Jobs as containers through `services/worldeditor/docker.mjs` (`PIEDMONT_EDITOR_RUNNER=docker`).
 

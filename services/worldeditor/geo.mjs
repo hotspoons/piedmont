@@ -161,7 +161,7 @@ export function slugify(s) {
 
 /**
  * East/north metres on a local tangent plane about an anchor — the render frame of every bake
- * since the frame went geodetic (docs/FRAME.md). Good to a few centimetres over a bake.
+ * since the frame went geodetic (docs/dev/frames.md). Good to a few centimetres over a bake.
  */
 export function enuProjector(lon0, lat0, h0 = 0) {
   const A = 6378137, F = 1 / 298.257223563, E2 = F * (2 - F)

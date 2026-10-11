@@ -1,5 +1,5 @@
 // THE FIRST QUESTION ABOUT SPLATS IN THIS VIEWER: does a gaussian splat obey the depth buffer in a
-// renderer built with logarithmicDepthBuffer? Everything in docs/PLAN-SPLAT-ROUTES.md
+// renderer built with logarithmicDepthBuffer? Everything in docs/dev/specs/PLAN-SPLAT-ROUTES.md
 // rests on the answer.
 //
 // It is asked on a page with three objects and no time (apps/game/splatdepth.html): an opaque

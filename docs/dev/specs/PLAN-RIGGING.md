@@ -261,7 +261,7 @@ face gets almost none. Cropping that portrait to the head and reconstructing it 
 on the cluster's `recon` service, `POST /reconstruct` with one image — gives 252,757 vertices of
 head, with **actual eyeballs sitting in sockets** and a clear lip line:
 
-![the head reconstructed on its own](img/kestrel-head-recon.png)
+![the head reconstructed on its own](../../img/kestrel-head-recon.png)
 
 Compare that with the face on the full-body mesh, whose lids are sculpted flat and fused. This is
 the single highest-value change available to the character pipeline, and it needs no new art: the

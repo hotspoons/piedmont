@@ -8,7 +8,7 @@
 | [`helm/recon`](helm/recon/values.yaml) | TRELLIS.2 reconstruction (GPU) |
 | [`helm/bake`](helm/bake/values.yaml) | a one-off bake Job (the world editor normally launches its own) |
 | [`gh200-1/`](gh200-1/cluster.yaml) | the gh200-1 cluster: its namespace and the releases on it |
-| [`docker/`](docker/README.md) | the Docker / DinD compose stack: everything on one host ([docs/DOCKER.md](../docs/DOCKER.md)) |
+| [`docker/`](docker/README.md) | the Docker / DinD compose stack: everything on one host ([docs/deploy/docker.md](../docs/deploy/docker.md)) |
 
 Every cluster install is a values file in here plus one command. Nothing is applied with
 `helm --set` from somebody's shell, because a flag typed once is a deployment nobody else can

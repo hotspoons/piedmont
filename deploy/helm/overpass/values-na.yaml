@@ -45,7 +45,7 @@ resources:
 
 # Not exposed, and it goes into NO client's rotation until services/overpass/verify.sh passes against
 # it. An extract that answers confidently for ground it does not hold is the worst failure mode in
-# this system — see "The silent empty" in docs/OVERPASS-PLANET.md.
+# this system — see "The silent empty" in docs/dev/specs/OVERPASS-PLANET.md.
 ingress:
   enabled: false
 

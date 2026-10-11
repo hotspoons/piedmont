@@ -1,6 +1,6 @@
 // A captured world inside the built one: gaussian splat tiles, streamed by locality.
 //
-// The design is docs/PLAN-SPLAT-ROUTES.md. What this file does is the middle of it:
+// The design is docs/dev/specs/PLAN-SPLAT-ROUTES.md. What this file does is the middle of it:
 // take a gaussworks world (`world.json` + its envelope file + tiles), put it exactly where the
 // capture was, stream the tiles near the eye, and expose the one scalar the seam needs — how much
 // of this point belongs to the splat rather than to the bake.
@@ -50,7 +50,7 @@ interface SplatWorld {
  * The envelope's file name inside a gaussworks world: where the camera actually was. gaussworks
  * writes `envelope.json` since 2026-10-10; a capture made before that has the envelope under an
  * older name, and needs gaussworks' `scripts/rename-envelope.py` before it is published here
- * (docs/PLAN-SPLAT-ROUTES.md). Only this name is read.
+ * (docs/dev/specs/PLAN-SPLAT-ROUTES.md). Only this name is read.
  */
 export const ENVELOPE_FILE = 'envelope.json'
 

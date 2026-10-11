@@ -102,7 +102,7 @@ export const LAYER_GROUPS: { title: string; layers: { id: string; label: string;
  * from. `frame.kind` is the ONLY field that distinguishes the two, and reading it wrong rotates
  * the world by the grid convergence — about 55 m at 3 km, and it looks plausible. So the panel
  * says which, names the anchor, and gives the convergence that separates the two norths.
- * See docs/FRAME.md.
+ * See docs/dev/frames.md.
  */
 function frameReadouts(m: Manifest): HTMLElement[] {
   const f = m.frame

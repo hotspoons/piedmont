@@ -508,7 +508,7 @@ describe('what the editor placed', () => {
 /*
  * PHYSICS, INCLUDING WHEN THERE IS NONE.
  *
- * `api.physics` is the seam the editor and the engine meet at (PLAN-EDITOR-IDE.md §4). The rule
+ * `api.physics` is the seam the editor and the engine meet at (docs/dev/specs/PLAN-EDITOR-IDE.md §4). The rule
  * that makes it safe is that a dry run has no physics world — `program.ts` holds no wasm on
  * purpose — so every call has to do nothing rather than throw. A program written against physics
  * must still LOAD and STEP where there is none, or the toolkit that checks levels cannot check

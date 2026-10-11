@@ -133,7 +133,7 @@ export const Health = { hp: u16(), max: u16() }
  * How something exists in the PHYSICS world, if it does at all.
  *
  * `mode` is the field that decides whether a busy road is affordable, and it is worth the paragraph
- * (docs/PLAN-PHYSICS.md §2.5):
+ * (docs/dev/specs/PLAN-PHYSICS.md §2.5):
  *
  *   NONE       no body. Scenery, distant traffic, anything outside the physics radius.
  *   KINEMATIC  a collider things bounce off, moved by the ECS. **This is what traffic is.**

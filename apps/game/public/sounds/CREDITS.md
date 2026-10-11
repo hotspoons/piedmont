@@ -25,4 +25,4 @@ Every clip under this directory is cut by `pipelines/sounds/build.py` from eithe
   - #fireworks-launch WHSH-FIREWORKS Fireworks launching swooshes <https://archive.org/download/SSE_Library_SWOOSHES/WHOOSH/WHSH-FIREWORKS_Fireworks%20launching%20swooshes_CS_USC.wav>
 - **Rich's own recordings (pipelines/sounds/own/README.md): the Lotus pirouette at an autocross, the Subaru's speed scrub and squeal** — Rich Siomporas, all rights held by the author; used in this project with his permission (not CC0 — do not lift these for anything else). <https://www.youtube.com/watch?v=qUrz6KlLzkc>
 
-The slot each clip serves is in `bank.json`; a world, vehicle or actor may replace any slot with its own clips (see docs/SOUNDS.md).
+The slot each clip serves is in `bank.json`; a world, vehicle or actor may replace any slot with its own clips (see docs/dev/specs/SOUNDS.md).

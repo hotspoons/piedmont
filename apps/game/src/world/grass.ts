@@ -335,7 +335,7 @@ export class Grass {
   /*
    * THE ELIGIBILITY QUESTIONS, COUNTED — since boot, so a probe can take a difference over a run.
    *
-   * PERF-RIG.md proposed baking "may grass grow here" per pyramid tile so the generator stops
+   * docs/dev/specs/PERF-RIG.md proposed baking "may grass grow here" per pyramid tile so the generator stops
    * asking the road field, the canopy, the slope and the shelf of the same ground every time a
    * tile is planted. Measured before building it (probes/bakephases.mjs --phase cpu,
    * 2026-10-10, 78 m/s on crofton-triangle): the questions are 25 % of the generator — 13 µs a

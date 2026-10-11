@@ -402,7 +402,7 @@ export class PyramidStream {
           // The ktx2 twin when the bake made one, the jpg otherwise — and the jpg if the twin
           // fails, inside the loader. A ktx2 carries its mip chain and uploads as blocks: the
           // frame it first draws pays no decode and no mipmap pass, which on the jpg path was
-          // the 10–12 ms `render` frame of PERF-RIG.md. The compressed texture cannot be
+          // the 10–12 ms `render` frame of docs/dev/specs/PERF-RIG.md. The compressed texture cannot be
           // flipped on upload, so the bake writes it bottom-up (ktx2.py) to match the jpg's
           // flipY — measured, not assumed: probes/bakephases.mjs --phase ktx2.
           const tex = loadBakedTexture('', choice, this.o.renderer, () => {

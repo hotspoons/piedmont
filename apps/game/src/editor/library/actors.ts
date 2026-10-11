@@ -1,6 +1,6 @@
 // The Actors screen, and the Behaviour group on a character's detail pane.
 //
-// docs/PLAN-VEHICLES-ACTORS.md §2. The document, the defaults, the validation and the
+// docs/dev/specs/PLAN-VEHICLES-ACTORS.md §2. The document, the defaults, the validation and the
 // arithmetic live in `src/actorspecs.ts` where they can be tested without a browser; the workflow
 // is `ui/buildscreen.ts`, shared with vehicles and weapons.
 //

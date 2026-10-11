@@ -55,7 +55,7 @@ describe('lint', () => {
 })
 
 describe.concurrent('repository checks', () => {
-  // scripts/check-names.mjs: the project's old name nowhere in the repository (docs/ORIGIN.md)
+  // scripts/check-names.mjs: the project's old name nowhere in the repository (docs/dev/project/ORIGIN.md)
   it('names', async () => {
     const r = await run(process.execPath, ['scripts/check-names.mjs'])
     expect(r.code, r.out).toBe(0)

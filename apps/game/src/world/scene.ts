@@ -585,7 +585,7 @@ export async function buildSite(manifestIn: Manifest, rawStatus: (s: string) => 
 
   // The site's geodetic anchor: the origin of the ENU tangent frame everything is rendered in.
   // Absent on a manifest baked before the geodetic frame, and then every raster falls back to
-  // flat-plane arithmetic and the site draws as it always did — see `framed`, docs/FRAME.md.
+  // flat-plane arithmetic and the site draws as it always did — see `framed`, docs/dev/frames.md.
   const fa = manifest.frame?.anchor
   const anchor = fa ? new Anchor(fa.lon, fa.lat, fa.h ?? 0) : null
   if (!anchor) console.warn(`${manifest.slug}: no frame.anchor — drawing on a flat plane`)
@@ -652,7 +652,7 @@ export async function buildSite(manifestIn: Manifest, rawStatus: (s: string) => 
   /**
    * THE GROUND IS A RASTER, NOT A FORMULA, on a graded bake: `physGroundAt` and the strips read
    * the pyramid height directly instead of running `gradedHeight` per sample (~4 µs each, and a
-   * physics tile asks 1,089 times; PERF-RIG.md § "For the bake"). The raster was written with the
+   * physics tile asks 1,089 times; docs/dev/specs/PERF-RIG.md § "For the bake"). The raster was written with the
    * same formula, so this is a lookup of the answer rather than a different answer.
    *
    * Two things keep the run-time path: `?grade=runtime`, so a probe can hold the raster against
@@ -2510,7 +2510,7 @@ if (uLodOn > 0.5) {
      * branch once and give every genuinely elevated run the concrete the spine's bridges get: a
      * slab under the deck, an edge beam beneath each shoulder, and a parapet on top. The deck the
      * car drives is still the road ribbon; this is only what makes it a bridge to the road below
-     * (case 2, docs/PLAN-GRADE-SEPARATION-RENDER.md). Rich, 2026-10-06.
+     * (case 2, docs/dev/specs/PLAN-GRADE-SEPARATION-RENDER.md). Rich, 2026-10-06.
      */
     const branchBridgeMat = new THREE.MeshStandardMaterial({ color: 0xb9b6ae, roughness: 0.9 })
     const bridgeYaw = (d: THREE.Vector3) => Math.atan2(d.x, d.z)
@@ -3168,7 +3168,7 @@ if (uLodOn > 0.5) {
     // NOT a child of `trees`. It was, and so the trees checkbox turned off all ground cover with
     // them — you could not hide the trees to look at the grass, which is most of what looking at
     // grass involves. Its own group, its own layer toggle.
-    // a world bake covers everything, so the ground decides where grass grows (PLAN-OPEN-WORLD.md)
+    // a world bake covers everything, so the ground decides where grass grows (docs/dev/specs/PLAN-OPEN-WORLD.md)
     grass.world = manifest.world === true
     group.add(grass.mesh)
     grassRef = grass

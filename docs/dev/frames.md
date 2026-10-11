@@ -1,9 +1,18 @@
-# The frame: geodetic authority, ENU rendering, a floating origin
+# Coordinate frames: geodetic authority, ENU rendering, a floating origin
 
-*Rich, 2026-09-21: "let's go geodetic … and let's go full in on designing this for scale."*
+The coordinate design of the game and the bake, why each piece is the way it is, and what was
+measured to decide it. The geodesy lives in the shared engine (`@apex/engine/geo/wgs84.ts`, see
+[arcade.md](arcade.md)); the bake's side is `bake/piedmont_bake/geo.py`, and the viewer places
+rasters through `RasterFrame` (`@apex/engine/geo/raster`).
 
-This is the coordinate design the game is moving to, why each piece is the way it is, and what was
-measured to decide it. Every number here comes from `vendor/arcade/packages/engine/test/wgs84*.test.ts`, which
+**In one paragraph:** WGS84 longitude, latitude and height are the authority: world definitions,
+tile addresses and every site's anchor are geodetic. A baked site's metres are true east/north/up (ENU) about
+the site's geodetic anchor (`manifest.frame.anchor`, `frame.kind = "enu"`), and three.js world
+space is `(x, y, z) = (east, up, −north)`. Authored documents (placements, zones, points) are in
+site metres and are stamped with the frame they were written in. The world editor's own records
+(boundaries, searches, world definitions) are degrees end to end.
+
+Every number here comes from `vendor/arcade/packages/engine/test/wgs84*.test.ts`, which
 check the implementation against pyproj/PROJ rather than against itself.
 
 ## The three frames

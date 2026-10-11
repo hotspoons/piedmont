@@ -361,7 +361,7 @@ def fhp_species(frame: Frame, road_band: Polygon, grid: dict, cache: Path) -> di
 
     One exportImage per species, `multidimensionalDefinition` pinning the variable and the year.
     The obvious cheaper call — `getSamples` with `processAsMultidimensional` — is a trap; see the
-    module docstring's companion in docs/FLORA.md.
+    module docstring's companion in docs/dev/specs/FLORA.md.
     """
     bbox, w, h = _grid(road_band.bounds)
     want = {v: y for v, y in fhp_catalog(frame, bbox, cache).items() if not _ROLLUP.search(v)}

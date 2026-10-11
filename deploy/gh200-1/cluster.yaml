@@ -6,7 +6,7 @@ cluster:
   name: gh200-1
   # Where every release below goes. A VALUE, not a convention: the charts name no namespace and
   # address each other by short service names, so the whole stack moves by changing this line.
-  # `piedmont` is the new namespace the split is accepted in (docs/ACCEPTANCE.md); the arcade-era
+  # `piedmont` is the new namespace the split is accepted in (docs/dev/project/ACCEPTANCE.md); the arcade-era
   # releases stay in `default` until they are retired.
   namespace: piedmont
   # The charts do not name a storage class — the cluster's default applies, which is what its

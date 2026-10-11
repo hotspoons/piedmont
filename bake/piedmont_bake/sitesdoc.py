@@ -1,6 +1,6 @@
-"""docs/SITES.md, generated from the bakes — never typed.
+"""docs/dev/project/SITES.md, generated from the bakes — never typed.
 
-    .venv/bin/python -m piedmont_bake.sitesdoc [--log <newbakes.log>] [--out docs/SITES.md]
+    .venv/bin/python -m piedmont_bake.sitesdoc [--log <newbakes.log>] [--out docs/dev/project/SITES.md]
 
 Per site directory under data/sites: the road OSM identified, the lidar project (name, year,
 which ASPRS classes the vendor actually populated, whether class 17 was trusted), the DEM source
@@ -239,7 +239,7 @@ def render(rows: list[dict], log: Path | None) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--log", type=Path, default=None)
-    ap.add_argument("--out", type=Path, default=ROOT / "docs" / "SITES.md")
+    ap.add_argument("--out", type=Path, default=ROOT / "docs" / "dev" / "project" / "SITES.md")
     a = ap.parse_args()
     entries = {s["slug"]: s for s in json.loads(SITES.read_text())} if SITES.exists() else {}
     slugs = sorted(set(entries) | {d.name for d in (DATA / "sites").glob("*") if d.is_dir()})

@@ -85,7 +85,7 @@ today, so no existing site changes underneath anyone.
 | 2 | clip imagery and EVT to `region` instead of `road_band` | `network.py`, `flora.py` | **done** — a world bake reports its region and covers it |
 | 2b | canopy over the region, from the GLOBAL model rather than the point cloud | `network.py` + `canopy.py` | a probe finds canopy 1 km from the nearest road |
 | 3 | re-bake `crofton-world` as a new slug, leaving `crofton-triangle` alone | — | the two sit side by side and can be compared |
-| 4 | raise `radius_m` so the network is not cut mid-junction | `sites.json` | the US 3 × Johns Hopkins junction is in the road graph (`docs/LANES-AND-SIGNALS.md`) |
+| 4 | raise `radius_m` so the network is not cut mid-junction | `sites.json` | the US 3 × Johns Hopkins junction is in the road graph (`docs/dev/specs/LANES-AND-SIGNALS.md`) |
 | 5 | grass follows the EYE, not the road | `tuning.ts` `GRASS_MAX_FROM_ROAD` | walking into a field does not walk out of the grass |
 | 6 | trees plant across the region, not the road band | `scene.ts` `treesFromCanopy` | a wood away from any road has trees in it |
 

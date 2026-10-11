@@ -14,7 +14,7 @@ zones have no common metre frame at all, and even inside one zone UTM north is n
 So UTM is where the data is STORED, and WGS84 geodetic is what it MEANS. The render frame is a
 true ENU tangent plane about a declared geodetic anchor, which is also what gaussworks (Rich's
 splat pipeline) aligns to. `manifest_frame` below emits everything the viewer needs to get there.
-See docs/FRAME.md and vendor/arcade/packages/engine/src/geo/wgs84.ts.
+See docs/dev/frames.md and vendor/arcade/packages/engine/src/geo/wgs84.ts.
 """
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ class Frame:
     #
     # UTM is a plane. It has no curvature, its north is not true north, and it has a scale factor.
     # The authoritative frame is WGS84 geodetic and the render frame is a true ENU tangent plane
-    # about a geodetic anchor -- see docs/FRAME.md and vendor/arcade/packages/engine/src/geo/wgs84.ts.
+    # about a geodetic anchor -- see docs/dev/frames.md and vendor/arcade/packages/engine/src/geo/wgs84.ts.
     #
     # These give the viewer everything it needs to place this site on the ellipsoid WITHOUT a
     # projection library in the browser: where the origin is in lon/lat, and the rigid

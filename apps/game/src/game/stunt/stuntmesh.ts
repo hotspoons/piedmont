@@ -12,7 +12,7 @@
 // faking a grid position, a level and a link table for a thing that has none of them. The honest
 // options are to extract its ribbon generator so both games share one, or to write the simple
 // version here first and find out what is actually missing. This is the second, and the note in
-// `docs/PLAN-RACES-TRAFFIC.md` says so.
+// `docs/dev/specs/PLAN-RACES-TRAFFIC.md` says so.
 //
 // THE FRAME IS THE FIDDLY PART. `Pose` is the road band site frame — x east, y north, z up — and
 // three is x east, y UP, z SOUTH. Every vertex crosses that boundary, so the conversion happens in

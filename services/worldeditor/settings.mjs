@@ -109,7 +109,7 @@ export const SCHEMA = [
     note: 'Empty means discovered from the nodes (nvidia.com/gpu on gh200-1).',
   },
 
-  /* ---- the Docker runner (PIEDMONT_EDITOR_RUNNER=docker; docs/DOCKER.md) ----
+  /* ---- the Docker runner (PIEDMONT_EDITOR_RUNNER=docker; docs/deploy/docker.md) ----
    * One host has no scheduler to queue a bake until a node is free, so the runner does it: a bake
    * pod waits until fewer than this many are running. A shard peaks near 139 GiB on dc-metro, so the
    * right number is the host's memory over that, and 1 is the safe default. Read at every start, so

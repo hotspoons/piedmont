@@ -10,7 +10,7 @@
 // `preserveDrawingBuffer`), and from then on every frame is two cheap passes on the app's own
 // renderer: that copy, blurred and darkened, as the backdrop; and the turntable over it. So the
 // screen costs LESS GPU than the game it replaces — the world's thousands of draw calls stop, and
-// what is left is a full-screen quad and one car. (Measured numbers: docs/GAME-MODE.md,
+// what is left is a full-screen quad and one car. (Measured numbers: docs/dev/specs/GAME-MODE.md,
 // "Finishing".) The alternative, a CSS blur over the live world, keeps paying for the world every
 // frame and blurs the car with it.
 //

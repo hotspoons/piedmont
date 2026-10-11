@@ -19,7 +19,7 @@ import { param } from '../url'
  * whole raster and 3x3 for a 1 km tile.
  *
  * It also means the browser never learns which CRS the bake used, so a future source in some other
- * projection just emits its own lattice. See docs/FRAME.md.
+ * projection just emits its own lattice. See docs/dev/frames.md.
  */
 export interface GeoLattice {
   n: number
@@ -190,7 +190,7 @@ export interface Manifest {
    * True when this site was baked as a WORLD: imagery, lidar and vegetation cover the whole
    * rectangle the network spans, not a buffer around each road. Where it is false, there is no
    * data past the verge and distance-from-a-road is a fair stand-in for "is there anything here".
-   * Where it is true, it is not, and the ground itself decides. See PLAN-OPEN-WORLD.md.
+   * Where it is true, it is not, and the ground itself decides. See docs/dev/specs/PLAN-OPEN-WORLD.md.
    */
   world?: boolean
   slug: string
@@ -198,7 +198,7 @@ export interface Manifest {
   /**
    * Where this site is, and what its stored metres mean. `epsg`/`origin` are the UTM the bake
    * writes; `anchor` is the same origin in WGS84 and is the geodetic authority — see
-   * docs/FRAME.md. `kind` is absent on a manifest baked before the geodetic frame
+   * docs/dev/frames.md. `kind` is absent on a manifest baked before the geodetic frame
    * existed, which is how the viewer knows it cannot place that site on the ellipsoid.
    */
   frame: {

@@ -119,7 +119,7 @@ export class Overpass {
      * success with nothing in it. The rotation below turns on an exception or a non-2xx and
      * neither fires, so a regional instance placed first silently reports that Italy has no roads
      * and the editor draws an empty map over the Alps. Measured by the overpass lane on
-     * 2026-09-22; see docs/OVERPASS-PLANET.md.
+     * 2026-09-22; see docs/dev/specs/OVERPASS-PLANET.md.
      *
      * So a regional upstream declares what it holds and is SKIPPED for a box it does not contain.
      * Nothing is inferred: an upstream with no declared coverage is assumed to hold everything,

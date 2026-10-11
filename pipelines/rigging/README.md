@@ -8,7 +8,7 @@ Three scripts, all run inside Blender:
 | `rig_character.py` | a Rigify control rig with bone-heat weights for a reconstructed character (below) |
 | `bridge.py` | drives a long-lived headless Blender over the blender-mcp socket and gets renders back; the world editor's Blender supervisor (`services/worldeditor/blender.mjs`) and its MCP tools use the same transport |
 
-The plan and the state of each is [docs/PLAN-RIGGING.md](../../docs/PLAN-RIGGING.md).
+The plan and the state of each is [docs/dev/specs/PLAN-RIGGING.md](../../docs/dev/specs/PLAN-RIGGING.md).
 
 ## rig_character.py
 

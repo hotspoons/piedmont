@@ -43,7 +43,7 @@ async function visit(facades) {
     c.time?.setLocal?.('2026-06-21', '16:30')
     const [x, y] = xy ?? c.project(lon, lat)
     // THE CAR, not the camera: the builders rank their work by a focus ahead of the car
-    // (PERF-RIG.md), so a camera flown to Tysons with the car left at the start streams the start
+    // (docs/dev/specs/PERF-RIG.md), so a camera flown to Tysons with the car left at the start streams the start
     const dropped = c.chrome.teleport(x, y)
     return { x, y, dropped }
   }, [LON, LAT, XY])

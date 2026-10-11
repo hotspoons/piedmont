@@ -179,7 +179,7 @@ width tables accumulated here and every one was wrong, some by a factor of sixte
 - **`pipelines/assetgen/HANDOFF.md`** — the state of the world, what has been measured, and what each
   finding cost to learn.
 
-Then: `docs/PIPELINE.md` §Part 3 for where props slot into the game, and
+Then: `docs/dev/specs/PIPELINE.md` §Part 3 for where props slot into the game, and
 `services/recon/README.md` for the service itself.
 
 ---
@@ -195,7 +195,7 @@ This is **not decided**, and it is worth asking Rich rather than assuming.
 - **The game**, the driving world, has a **procedural** car — `apps/game/src/car.ts` builds a
   4.4m silhouette in code. No generated car is loaded there, and the catalog at
   `apps/game/public/assets/catalog.json` has **no `car` or `vehicle` category** yet. The game
-  is also about to grow a traffic system (`docs/PLAN-TRAFFIC-AND-RAGE.md`), which wants
+  is also about to grow a traffic system (`docs/dev/specs/PLAN-TRAFFIC-AND-RAGE.md`), which wants
   many cheap car bodies and one detailed player car.
 
 The two targets want different things: coast wants sprite-bakeable models at many yaws, the game

@@ -1,4 +1,4 @@
-# The arcade dependency
+# The shared engine (the arcade dependency)
 
 Three packages piedmont builds on live in [siomporas-arcade](https://github.com/hotspoons/siomporas-arcade),
 because the arcade's other games use them too:
@@ -13,15 +13,68 @@ They keep their `@apex/*` names (they are the arcade's) and are consumed exactly
 games consume them: as **TypeScript source**, through `"exports": {"./*": "./src/*.ts"}`. No build
 step, no registry, no token.
 
+## What is in the engine, and what is not
+
+`@apex/engine` is the part of piedmont's runtime that is not about real places:
+
+| Module | What piedmont uses |
+|---|---|
+| `render/` | `createRenderer` and the depth-buffer choice (`depth.ts`: reversed float depth with a logarithmic fallback, and the render-list sorts that go with it), the sky, particles, render stats, presentation styles |
+| `geo/` | WGS84 and the local ENU anchor (`wgs84.ts`), raster placement on the ellipsoid (`raster.ts`), the geographic tile quadtree (`pyramid.ts`) |
+| `physics/` | Rapier: the world, the terrain heightfield, the vehicle, drive profiles (`profiles.ts`), destruction, deformation (dents), ragdolls |
+| `input/` | keyboard and gamepad sources (including non-standard pads read into the standard layout), bindings, haptics |
+| `app/` | the game loop, menus (`MenuStack`, which the Escape menu is built on), the settings store, the tuning panel |
+| `dev/` | the dev bridge and its Vite plugin |
+
+Everything that knows about a baked world (the site, the roads, traffic, levels, programs, the
+editor) is in `apps/game`. That is the line to keep: the engine knows nothing about piedmont.
+
+## When to change it
+
+Change the engine when the fix or feature belongs to the shared layer: the renderer setup, the
+geodesy, physics, input, menus or the bridge, and the arcade's other games would want it too. A
+recent example is the reversed depth buffer, which started in the game and was moved into
+`render/depth.ts` so every game gets early-Z back. Change `apps/game` instead when the code is about
+worlds, roads or the editor; do not reach into the engine to special-case piedmont.
+
+## How to change it
+
+1. Check the arcade out beside piedmont and let setup link it:
+
+   ```bash
+   git clone https://github.com/hotspoons/siomporas-arcade ext/siomporas-arcade
+   npm run setup        # prints: linking vendor/arcade -> ext/siomporas-arcade
+   ```
+
+2. Edit `ext/siomporas-arcade/packages/engine/src/...`. Piedmont's dev server picks the change up on
+   the next reload, and `npx tsc -b` and `npx vitest run` use it on the next run; nothing is
+   reinstalled.
+3. Run piedmont's gate, and the arcade's own tests in the arcade (the engine's tests run there,
+   not here).
+4. Land the change in the arcade (its own branch, review and merge).
+5. Back in piedmont, move the pin to the arcade commit and commit `arcade.json`:
+
+   ```bash
+   npm run arcade:bump <sha|tag|branch>
+   npm run setup && npx tsc -b && npx vitest run
+   ```
+
+CI and the images always build against the pinned ref, never against `ext/`, so a piedmont change
+that needs an unmerged engine change fails CI until the pin moves. Keep the two commits paired: the
+piedmont change and the `arcade.json` bump that makes it build.
+
+To go back to the pinned packages, remove (or move) `ext/siomporas-arcade` and run `npm run setup`
+again, or run `npm run setup -- --fetch`.
+
 ## How they get here
 
-[`arcade.json`](../arcade.json) pins them:
+[`arcade.json`](../../arcade.json) pins them:
 
 ```json
 { "repo": "https://github.com/hotspoons/siomporas-arcade.git", "ref": "<full sha>", "packages": ["engine", "enginesim", "stunt-pieces"] }
 ```
 
-`npm run setup` ([`scripts/setup.mjs`](../scripts/setup.mjs)) makes `vendor/arcade` (gitignored) a
+`npm run setup` ([`scripts/setup.mjs`](../../scripts/setup.mjs)) makes `vendor/arcade` (gitignored) a
 link to one of two places:
 
 1. **`ext/siomporas-arcade`, if it exists** — a checkout of the arcade you made yourself, to edit both

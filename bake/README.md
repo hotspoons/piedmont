@@ -38,9 +38,9 @@ bake/.venv/bin/python -m piedmont_bake flora all     # backfill flora.json onto 
 | `web/manifest.json` `buildings` / `landuse` / `pois` | per-footprint minimum rotated rectangle, height (OSM → lidar DSM−DTM → 6 m) with its source, along-track `s` and signed lateral `lat`, tags enriched from POIs inside; for the editor agent's autogen (AUTOGEN.md §10) | derived (`piedmont_bake/buildings.py`) |
 | `web/` | browser-decodable layers + `manifest.json` for `apps/game` and the R2 publish: RGB-encoded height PNGs, 1 m imagery JPEG, canopy PNG, spine/structures/profile/surface in metres from the origin | derived |
 | `geology.json` + `geology.geojson` | Macrostrat map units under the spine, with lithology and description | Macrostrat |
-| `flora.json` + `flora_evt.npy` | what grows here: LANDFIRE vegetation classes with their share of the road band, a ranked tree-species mix per class with genus and a lidar-measured canopy height, a ground-cover class per vegetation type, and Daymet monthly climate (`piedmont_bake/flora.py`; sources, fallbacks and traps in `docs/FLORA.md`) | LANDFIRE + USFS FIA/FHP + Daymet |
+| `flora.json` + `flora_evt.npy` | what grows here: LANDFIRE vegetation classes with their share of the road band, a ranked tree-species mix per class with genus and a lidar-measured canopy height, a ground-cover class per vegetation type, and Daymet monthly climate (`piedmont_bake/flora.py`; sources, fallbacks and traps in `docs/dev/specs/FLORA.md`) | LANDFIRE + USFS FIA/FHP + Daymet |
 | `preview.png` | imagery + spine (yellow), siblings (orange), crossings (red over / blue under), structures (cyan overpass / magenta bridge), photo (white ring), canopy (green) | derived |
-| `cuts.json` | cut faces beside the road from 1 m DTM transects: interval, side, `artificial`/`natural`, toe/top/height/slope, rock type, toe+top `[x,y,z]` every 10 m (`piedmont_bake/cuts.py`; rules and measurements in `docs/DESIGN.md` §5) | derived |
+| `cuts.json` | cut faces beside the road from 1 m DTM transects: interval, side, `artificial`/`natural`, toe/top/height/slope, rock type, toe+top `[x,y,z]` every 10 m (`piedmont_bake/cuts.py`; rules and measurements in `docs/dev/specs/DESIGN.md` §5) | derived |
 | `rock.json` | exposed rock polygons: slope > 40° with ≥ 3 m relief, bare or inside a cut, with lithology, intensity and NAIP colour (`piedmont_bake/rock.py`) | derived |
 | `water.json` | OSM waterways snapped to the DTM low line with heights, culverts flagged, falls/rapids; ponds flat at their median ground (`piedmont_bake/water.py`) | OSM + derived |
 | `branches.json` | network sites only: every non-primary road chain with its own lidar profile and structures (`piedmont_bake/network.py`) | derived |
@@ -105,7 +105,7 @@ with `layers.pyramid.texture_ktx2 = "ktx2"`. The viewer prefers the twin when th
 and keeps the jpg path for a bake without it — `pyramidstream.ts` goes through the same
 `loadBakedTexture` the overview uses, which also falls back to the jpg if a twin fails to load.
 What it buys: the frame a tile's photo first draws no longer decodes a JPEG, uploads a full RGBA
-image and generates its mipmaps on the main thread (PERF-RIG.md's 10–12 ms `render` frame on the
+image and generates its mipmaps on the main thread (docs/dev/specs/PERF-RIG.md's 10–12 ms `render` frame on the
 Beltway); a ktx2 uploads as blocks it already carries, at a quarter of the GPU memory. Measured
 headlessly on crofton-triangle's 512² tiles, `renderer.initTexture` (upload + mips) p50 1.7 ms
 on the jpg against 0.2 ms on the twin, p90 3.0 against 0.3.
@@ -142,8 +142,8 @@ A `sites.json` entry with `kind: "network"`, a `roads` list (OSM names or refs),
 a centre and `radius_m` bakes one interconnected region as one site: every road chained, the
 primary as the spine, every other road as a branch with junctions, rasters clipped to the union
 of the roads buffered 150 m, and — over 6 km a side — 1 km web tiles instead of single images.
-`docs/PIPELINE.md` §1.12 has the detail; `python -m piedmont_bake.sitesdoc` regenerates
-`docs/SITES.md` from every bake.
+`docs/dev/specs/PIPELINE.md` §1.12 has the detail; `python -m piedmont_bake.sitesdoc` regenerates
+`docs/dev/project/SITES.md` from every bake.
 
 ## Why these sources, and the traps in them
 
@@ -223,7 +223,7 @@ the pavement by construction, and LANDFIRE has a 30 m class for pavement. Vegeta
 SHARES over the whole road-band polygon, the way land use already was. The other traps in the flora
 sources — a multidimensional `getSamples` that silently truncates at 100 rasters and drops red
 spruce at Acadia, 2002 genus rollups that double-count against the 2011 species, basal-area rasters
-that are dense in the East and 3 % populated at Big Sur — are written up in `docs/FLORA.md`.
+that are dense in the East and 3 % populated at Big Sur — are written up in `docs/dev/specs/FLORA.md`.
 
 **Overpass is a shared free server.** Every query is cached by hash under `data/cache/overpass/`,
 so a re-run is offline; a 504 is retried with backoff. Do not point `all` at it in a loop.

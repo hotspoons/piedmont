@@ -1,6 +1,6 @@
 // The same car, driven by Rapier instead of by the hand-written model.
 //
-// docs/PLAN-PHYSICS.md §2.2. `PHYS_CAR` picks which of the two the viewer is driving, and
+// docs/dev/specs/PLAN-PHYSICS.md §2.2. `PHYS_CAR` picks which of the two the viewer is driving, and
 // BOTH STAY — at least until the Stunts profile has been driven back to back with the model it was
 // ported from, because that comparison is the only real test of the port and no screenshot can make
 // it.

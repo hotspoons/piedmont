@@ -16,8 +16,8 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
       `node -v && python3 -c 'import venv' && gdalinfo --version && docker info && kubectl version --client && helm version && ls ~/.kube ~/.claude ~/.config/opencode "$PIEDMONT_DATA"`
       (`pdal --version` where Debian packages PDAL — not on arm64; the bake does not use it).
       *Not proved:* needs a host with Docker to build the container. The configuration is
-      [.devcontainer/devcontainer.json](../.devcontainer/devcontainer.json) and
-      [post-create.sh](../.devcontainer/post-create.sh).
+      [.devcontainer/devcontainer.json](../../../.devcontainer/devcontainer.json) and
+      [post-create.sh](../../../.devcontainer/post-create.sh).
 - [x] **`npm run setup` fetches the pinned arcade packages (no `ext/siomporas-arcade`), clones
       gaussworks into `ext/gaussworks`, and installs Node and Python dependencies, from nothing.**
       Prove: `rm -rf vendor .cache node_modules ext/gaussworks bake/.venv && npm run setup`.
@@ -37,7 +37,7 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
 - [x] **`npx tsc -b`, `npx vitest run` (including the services' suites, oxlint and the names check),
       the bake's unit tests and `npm run build` all pass locally and in CI.**
       Prove: `npx tsc -b && npx vitest run && (cd bake && python -m unittest discover -s tests) && npm run build`;
-      CI: [.github/workflows/ci.yml](../.github/workflows/ci.yml).
+      CI: [.github/workflows/ci.yml](../../../.github/workflows/ci.yml).
       *Proved locally* (each exit 0; vitest 76 files / 991 tests: the game, 33 node:test suites,
       oxlint, names, pull policy, links; bake 249 tests). *CI:* runs on the first push.
 - [x] **`scripts/check-names.mjs` reports zero references to the old name in tracked files.**
@@ -74,7 +74,7 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
       2026-10-10, which lists `us/maryland` with an empty outline, and the editor recorded the
       Maryland instance as holding nothing. Fixed — outlines are checked region by region and filled
       from the previous copy or the seed, and a fetch failure is reported in `/api/osm/coverage`
-      ([services/overpass](../services/overpass/README.md#where-the-osm-comes-from),
+      ([services/overpass](../../../services/overpass/README.md#where-the-osm-comes-from),
       `services/worldeditor/coverage-fresh.test.mjs`); proved on a scratch volume against the live
       index: Crofton → `overpass`, Arlington → `overpass-na`, Paris → `overpass-eu`),
       3DEP DEM, NOAA lidar (10.3 M points), NAIP, flora, geology, water — in 27 s on a warm cache,
@@ -87,12 +87,12 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
 
 - [ ] **CI builds and pushes every image under its new name.** `piedmont-bake`,
       `piedmont-worldeditor`, `piedmont-assetsvc`, `piedmont-recon`, `piedmont-blender` —
-      [.github/workflows](../.github/workflows). *Waits on the first push* (no Docker daemon where
+      [.github/workflows](../../../.github/workflows). *Waits on the first push* (no Docker daemon where
       the port was made).
 - [ ] **A fresh deployment in a NEW namespace on the cluster (Helm, Rich runs or approves it) brings
       up the world editor, asset service and at least one Overpass instance, all healthy.**
       Prove: `just deploy-check gh200-1` then `just deploy gh200-1` (namespace `piedmont`,
-      [deploy/gh200-1/cluster.yaml](../deploy/gh200-1/cluster.yaml)), then
+      [deploy/gh200-1/cluster.yaml](../../../deploy/gh200-1/cluster.yaml)), then
       `kubectl -n piedmont get pods` and `curl <editor>/api/health`. *Waits on the images and on
       Rich.* Before it: `just deploy-bump gh200-1` to pin the first `sha-` tags.
 - [ ] **From that deployment: draw a small world, bake it (single Job, and sharded), publish it, play
@@ -101,8 +101,8 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
       *Waits on the deployment.*
 - [ ] **The Docker/DinD compose stack comes up on a host with one `docker compose up` and bakes a
       small world.** *Built and statically validated, awaiting a host run.* Ported from the arcade's
-      `agent/docker` ([ORIGIN.md](ORIGIN.md)) into [deploy/docker](../deploy/docker/README.md),
-      `services/worldeditor/docker.mjs` and [DOCKER.md](DOCKER.md); on 2026-10-10, with docker
+      `agent/docker` ([ORIGIN.md](ORIGIN.md)) into [deploy/docker](../../../deploy/docker/README.md),
+      `services/worldeditor/docker.mjs` and [DOCKER.md](../../deploy/docker.md); on 2026-10-10, with docker
       28.5.1 and compose v2.40.0 static binaries and no daemon: `docker compose config -q` passed on
       `docker-compose.yml`, `+ docker-compose.gpu.yml`, `core/stack.yml` with no profile, each of
       `overpass-na`, `overpass-eu`, `minio` and all three, and `ai/docker-compose.yml` with and
@@ -110,20 +110,21 @@ Proof runs so far: in the arcade's dev container (aarch64, no GPU, no Docker dae
       `shellcheck deploy/docker/core/entrypoint.sh` and `actionlint .github/workflows/core-image.yml`
       reported nothing; the runner's suite (`docker.test.mjs`, 18 tests against a fake Engine on a
       unix socket) passes in `npx vitest run`.
-      Prove: on a host with Docker, the smoke test in [DOCKER.md](DOCKER.md#bring-it-up-and-smoke-test-a-tiny-bake)
+      Prove: on a host with Docker, the smoke test in [DOCKER.md](../../deploy/docker.md#bring-it-up-and-smoke-test-a-tiny-bake)
       (`docker compose up -d`, `/api/ready` says `runner: docker`, a 600 m world bakes single and
       sharded). The core image itself is first published by `core-image.yml` on the first push.
 
 ## Docs
 
-- [ ] **README quick start works as written on a fresh machine.** Steps 2–4 of
-      [README.md](../README.md) were run here (setup, the checks, the game against deployed data);
+- [ ] **README quick start works as written on a fresh machine.** (The developer quick start
+      now lives in [DEVELOPING.md](../../../DEVELOPING.md); the README is the end-user overview.)
+      Steps 2–4 of the quick start were run here (setup, the checks, the game against deployed data);
       step 1 (the container) and step 5 on a fresh machine are not yet proved.
 - [x] **Every service, pipeline and deploy path has its page; the link check passes; no page names
       the old name or points into the arcade for anything piedmont now owns.**
-      Pages: [ARCHITECTURE.md](ARCHITECTURE.md) links one per service and pipeline,
-      [deploy/README.md](../deploy/README.md), [deploy/docker](../deploy/docker/README.md), the MCP
-      reference [services/worldeditor/MCP.md](../services/worldeditor/MCP.md).
+      Pages: [ARCHITECTURE.md](../architecture.md) links one per service and pipeline,
+      [deploy/README.md](../../../deploy/README.md), [deploy/docker](../../../deploy/docker/README.md), the MCP
+      reference [services/worldeditor/MCP.md](../../../services/worldeditor/MCP.md).
       Prove: `node scripts/check-links.mjs && node scripts/check-names.mjs`. *Proved*; the link
       check also refuses links into `vendor/` and `ext/` and was proved to fail on a planted broken
       link. Links that remain into the arcade are for what the arcade still owns (the engine

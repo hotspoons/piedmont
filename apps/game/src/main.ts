@@ -1500,7 +1500,7 @@ async function loadSite(slug: string) {
   transport ??= new TransportControls(camera, orbit, canvas, (x, z) => site?.groundAt(x, z) ?? null)
 
   // the captured world, if this site has one attached (or ?splats=<world> named one). It is a
-  // skin over the bake, never the ground: see docs/PLAN-SPLAT-ROUTES.md.
+  // skin over the bake, never the ground: see docs/dev/specs/PLAN-SPLAT-ROUTES.md.
   for (const f of splats) f.dispose()
   splats = []
   {
@@ -1594,7 +1594,7 @@ async function loadSite(slug: string) {
    * knob, then the world's tuning.json — and not read off the live knobs, because by the time
    * this runs the panel has already restored whatever this browser was last playing with, and a
    * ground state that includes somebody's scratch values is not a ground state. See
-   * docs/PLAN-GAME-PIPELINE.md.
+   * docs/dev/specs/PLAN-GAME-PIPELINE.md.
    */
   {
     const doc = await loadSiteTuning(slug)

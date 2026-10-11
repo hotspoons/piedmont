@@ -2,7 +2,7 @@
 # Maryland release, which kept serving the whole time.
 #
 # Recorded here because this was assembled on the command line the first time and the flags are
-# not guessable: see docs/OVERPASS-PLANET.md for what each one cost in hours.
+# not guessable: see docs/dev/specs/OVERPASS-PLANET.md for what each one cost in hours.
 #
 #   helm upgrade --install overpass-eu deploy/helm/overpass -n "$NAMESPACE" -f deploy/helm/overpass/values-eu.yaml
 #

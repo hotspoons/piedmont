@@ -2,7 +2,7 @@
 //
 // The viewer builds its renderer with `logarithmicDepthBuffer: true`, and a splat
 // renderer that writes ordinary depth would z-fight or draw straight over the world. Everything in
-// docs/PLAN-SPLAT-ROUTES.md rests on the answer, so it deserves a test that answers it
+// docs/dev/specs/PLAN-SPLAT-ROUTES.md rests on the answer, so it deserves a test that answers it
 // and nothing else.
 //
 // Measuring it inside the viewer was the wrong instrument: differencing two frames of a living

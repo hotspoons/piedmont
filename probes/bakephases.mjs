@@ -1,4 +1,4 @@
-// What the three bake-side precomputes of PERF-RIG.md ("For the bake") cost the frame, measured
+// What the three bake-side precomputes of docs/dev/specs/PERF-RIG.md ("For the bake") cost the frame, measured
 // under the test rig on this box — the CPU half, because the agent box has no GPU.
 //
 //   node probes/bakephases.mjs <site> --phase cpu   [--port 5193] [--secs 40] [--speed 78]

@@ -1,23 +1,21 @@
 # The backend on Docker
 
-Rich, 2026-10-10: *"design a docker version of the entire world baking, asset svc, world editor,
-map API, etc — everything we use in the kube version — and make a core container with DinD that can
-spawn and run the cadre of containers the kube version runs, then provide a docker compose to launch
-the whole setup. It will need a shared volume mount from the host."* And then: *"For the AI services
-(trellis and flux2) make those separate from the main docker setup so we can outsource those if
-people don't have multiple GPUs."*
+The whole piedmont backend on one Docker host: the world editor, the asset service, Overpass and
+the bake runner in one `docker compose up`, with the AI inference (FLUX.2, TRELLIS.2) in a separate,
+optional stack so it can run elsewhere or be outsourced. The quick start is in the user guide,
+[Running piedmont](../guide/running.md); this is the operator reference.
 
 This document is for someone who knows Docker and not this repository. It describes what runs on
 gh200-1 today, what each piece becomes on one Docker host, how the pieces talk, where the data
 lives, and how to run, upgrade and back it up.
 
-> **Status, 2026-10-10.** Everything here is validated statically only: `docker compose config`
+> **Status.** Everything here is validated statically only: `docker compose config`
 > on every compose file and profile, hadolint on the Dockerfile, shellcheck on the entrypoint,
 > actionlint on the core image's workflow, and node:test suites for the runner against a fake
 > Docker Engine API (`services/worldeditor/docker.test.mjs`, in `npx vitest run`). The machines it
 > was written and ported on have no Docker daemon, so **nothing has run end to end yet.** The first
 > real run is the [smoke test](#bring-it-up-and-smoke-test-a-tiny-bake) below; it is the open
-> criterion in [ACCEPTANCE.md](ACCEPTANCE.md).
+> criterion in [ACCEPTANCE.md](../dev/project/ACCEPTANCE.md).
 
 ```
 deploy/docker/
@@ -470,7 +468,7 @@ belong to the old daemon.
 ## Where this came from
 
 The stack was built on the arcade's `agent/docker` branch and ported here rather than merged there
-([ORIGIN.md](ORIGIN.md)). Everything Docker-specific is under `deploy/docker/`, plus
+([ORIGIN.md](../dev/project/ORIGIN.md)). Everything Docker-specific is under `deploy/docker/`, plus
 `services/worldeditor/docker.mjs` and its test; the core image's build reads
 `deploy/helm/overpass/files/` and nothing else from the tree, so the Overpass scripts the chart's
 ConfigMap carries and the ones the core lays out cannot drift.

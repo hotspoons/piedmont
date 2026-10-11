@@ -3,7 +3,7 @@
 #
 # THE ONLY QUESTION THAT MATTERS IS COVERAGE, and a status code cannot answer it. A regional
 # extract answers an out-of-area bbox with HTTP 200 and zero ways — not an error, not a 404, a
-# success with nothing in it (docs/OVERPASS-PLANET.md, "the silent empty"). So this
+# success with nothing in it (docs/dev/specs/OVERPASS-PLANET.md, "the silent empty"). So this
 # asserts NON-ZERO WAYS for boxes on three continents, and "no exception" is not a pass.
 #
 #   services/overpass/verify.sh http://host/api/interpreter

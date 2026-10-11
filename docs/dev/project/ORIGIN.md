@@ -19,12 +19,12 @@ file or path.
 | Ported on top | `94da86e` — the world editor's `writeAtomic` takes a unique temp name per write (`services/worldeditor/store.mjs`, `store-atomic.test.mjs`) |
 | | `4f45a7c` — every image pulls with policy `Always` (overpass and recon chart values, the OSM import Job, `runs.mjs`'s OSM import Job, `training.mjs`'s assert-code and gaussworks containers) |
 | | `agent/docker` at `9ca9fb0` — `b75199e` (the Docker runner, `deploy/docker`, the design doc) and `9ca9fb0` (data beside the compose file, AI ports on 127.0.0.1 behind the keyed gateway, the core image's workflow, `pull_policy: always` everywhere). Its `ed371b6` is a cherry-pick of `4f45a7c` and its `d1689be` is `94da86e`, both already above. Renames in [the Docker lane's names](#the-docker-lanes-names) |
-| | `agent/full-world` at `b1845aa` — a tiled network bake reads and rasterises the point cloud over its whole region; the streets stay the road band (`bake/piedmont_bake/{export,lidar,lidar_sources,network,network_tiles,shards}.py`, `bake/tests/test_full_world_lidar.py`, the "Superseded 2026-10-10" note in [PLAN-OPEN-WORLD.md](PLAN-OPEN-WORLD.md)) |
+| | `agent/full-world` at `b1845aa` — a tiled network bake reads and rasterises the point cloud over its whole region; the streets stay the road band (`bake/piedmont_bake/{export,lidar,lidar_sources,network,network_tiles,shards}.py`, `bake/tests/test_full_world_lidar.py`, the "Superseded 2026-10-10" note in [PLAN-OPEN-WORLD.md](../specs/PLAN-OPEN-WORLD.md)) |
 | | `9c250f2` — `fetch_site` no longer clobbers the spine with the flora summary. The same change as piedmont's own `100d2f8` (found here first, below), line for line; nothing further to port |
 | History | not carried over: piedmont starts with one import commit (the files moved, contents unchanged), then the rename. `git log` in the arcade has the history of every file below. |
 
 The engine packages are not copied: they are still the arcade's, and piedmont links them at a
-pinned ref ([ARCADE.md](ARCADE.md)).
+pinned ref ([ARCADE.md](../arcade.md)).
 
 ## Where each path went
 
@@ -39,9 +39,9 @@ pinned ref ([ARCADE.md](ARCADE.md)).
 | `tools/{assetlib,assetgen,blender,rigging,surfaces,sky,sounds}` | `pipelines/<same>` |
 | `tools/sf2-probe/rigging/{rig_character.py,README.md}` | `pipelines/rigging/` (copied: the arcade's fighter keeps its own) |
 | `tools/ci` | `scripts/checks` |
-| `docs/<old>/*` | `docs/*` (`PLAN-SPLAT-…` → `PLAN-SPLAT-ROUTES.md`) |
-| `docs/sessions/*` | `docs/history/*` (`2026-09-21-<old>.md` → `2026-09-21-poc.md`) |
-| `docs/assets/HANDOFF-CAR-LIBRARY.md` | `docs/HANDOFF-CAR-LIBRARY.md` |
+| `docs/<old>/*` | `docs/*` (`PLAN-SPLAT-…` → `PLAN-SPLAT-ROUTES.md`); since reorganised: design notes in `docs/dev/specs/`, the records in `docs/dev/project/`, the rest rewritten as `docs/guide/` and `docs/dev/` |
+| `docs/sessions/*` | `docs/dev/history/*` (`2026-09-21-<old>.md` → `2026-09-21-poc.md`) |
+| `docs/assets/HANDOFF-CAR-LIBRARY.md` | `docs/dev/specs/HANDOFF-CAR-LIBRARY.md` |
 | `probes/<old>-*.mjs`, `*.py` | `probes/*` (prefix dropped; no name collided) |
 | `probes/{editor,worldedit,worldeditor}-*`, `_spice-*` and the other game probes | `probes/*` (`_spice-*` → `spice-*`) |
 | `scripts/{bridge,check-lockfile,ci-failures,deploy,devproxy,gen-program-types,heroicons}.mjs`, `ci-failures.test.mjs`, `build-agent-shell-vendor.sh`, `tunnel.sh`, `probe.mjs` | `scripts/` |
@@ -49,7 +49,7 @@ pinned ref ([ARCADE.md](ARCADE.md)).
 | `deploy/gh200-1/*`, `deploy/README.md` | `deploy/gh200-1/*`, `deploy/README.md` |
 | `.github/workflows/<old>-image.yml` | `.github/workflows/bake-image.yml` |
 | `.github/workflows/apex-core-image.yml` (branch `agent/docker`) | `.github/workflows/core-image.yml` |
-| `deploy/docker/*`, `docs/<old>/DOCKER.md` (branch `agent/docker`) | `deploy/docker/*`, `docs/DOCKER.md` |
+| `deploy/docker/*`, `docs/<old>/DOCKER.md` (branch `agent/docker`) | `deploy/docker/*`, `docs/deploy/docker.md` |
 | `.github/workflows/{worldeditor,assetsvc,recon,blender}-image.yml` | same names |
 | `.github/workflows/lint.yml` | `.github/workflows/ci.yml` (extended) |
 | `.devcontainer/*` | `.devcontainer/*` (extended; see below) |
@@ -106,7 +106,7 @@ gaussworks now writes `envelope.json` (and still reads the old name itself), and
 `envelope.json` only — `ENVELOPE_FILE` in `apps/game/src/visuals/splats.ts` and the synthetic world
 writer `bake/splats/synth.mjs` are plain strings, and the names check has no special case.
 **Captures made by the old deployment need gaussworks' `scripts/rename-envelope.py` before
-piedmont reads them** ([PLAN-SPLAT-ROUTES.md](PLAN-SPLAT-ROUTES.md)).
+piedmont reads them** ([PLAN-SPLAT-ROUTES.md](../specs/PLAN-SPLAT-ROUTES.md)).
 
 ### What does not carry over (a clean break)
 
@@ -128,7 +128,7 @@ Worlds, levels and assets move between deployments with the editor's own export 
 
 | Arcade path | Why it stays |
 |---|---|
-| `packages/engine`, `packages/enginesim`, `packages/stunt-pieces` | shared with the arcade's other games; piedmont links them ([ARCADE.md](ARCADE.md)) |
+| `packages/engine`, `packages/enginesim`, `packages/stunt-pieces` | shared with the arcade's other games; piedmont links them ([ARCADE.md](../arcade.md)) |
 | `apps/{arcade,coast,conduit,stuntin,fighter,drivin-redirect}` | the other games |
 | `tools/photogrammetry`, `tools/sf2-probe`, `tools/t3-probe` | the fighter's 3D and ROM tooling (piedmont copied only `sf2-probe/rigging`'s character rigger, which the world editor runs) |
 | `probes/enginesim-*.mjs` | measurements of the enginesim package itself |
@@ -194,6 +194,6 @@ needed code to change:
 ## Branches ported after the import
 
 Open against the arcade when the split began, and ported here rather than merged there (rows in
-[The source](#the-source)): `agent/docker` (the compose stack, [deploy/docker](../deploy/docker/README.md),
-[DOCKER.md](DOCKER.md)) and `agent/full-world` (the point cloud over the whole region). None are
+[The source](#the-source)): `agent/docker` (the compose stack, [deploy/docker](../../../deploy/docker/README.md),
+[DOCKER.md](../../deploy/docker.md)) and `agent/full-world` (the point cloud over the whole region). None are
 left.

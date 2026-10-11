@@ -40,7 +40,7 @@ from .geo import Frame
 # Everything the bake writes as "site metres" goes through one of these. The stored world is a
 # true ENU tangent plane about the site's geodetic anchor, not the UTM plane it is measured on --
 # UTM north is not true north (1.06 deg at Crofton, and it differs per site), UTM has a scale
-# factor, and a plane has no curvature at all. See docs/FRAME.md.
+# factor, and a plane has no curvature at all. See docs/dev/frames.md.
 #
 # Rasters do NOT come through here: a raster is a regular grid on the UTM plane and in ENU that
 # grid is rotated, scaled and curved. They carry a geodetic control lattice instead
@@ -1862,10 +1862,10 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
         # A WORLD, not a road band: imagery, lidar and vegetation cover the whole rectangle the
         # network spans rather than a 150 m buffer around each road, so the viewer can stop
         # treating distance-from-a-road as a stand-in for "is there any data here".
-        # See docs/PLAN-OPEN-WORLD.md.
+        # See docs/dev/specs/PLAN-OPEN-WORLD.md.
         "world": bool(site.get("world")),
         # the geodetic frame, so the viewer can place this site on the ellipsoid without a
-        # projection library — see docs/FRAME.md
+        # projection library — see docs/dev/frames.md
         "frame": frame.manifest_frame(),
         "bbox": rel_bbox(bbox),
         "layers": layers,

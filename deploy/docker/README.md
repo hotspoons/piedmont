@@ -3,11 +3,11 @@
 The world editor, the asset service, an Overpass instance and the bake runner on one host with one
 `docker compose up`, plus a separate, optional stack for the AI inference (flux.2, TRELLIS.2)
 reached by URL so it can run elsewhere or be outsourced. The design, the volume layout, GPUs,
-upgrades, backups and the traps are in [docs/DOCKER.md](../../docs/DOCKER.md).
+upgrades, backups and the traps are in [docs/deploy/docker.md](../../docs/deploy/docker.md).
 
 > **Status:** built and statically validated (`docker compose config` on every file and profile,
 > hadolint, shellcheck, actionlint, the runner's node:test suite), **not yet run on a host** —
-> see [ACCEPTANCE.md](../../docs/ACCEPTANCE.md). The first run is the smoke test in DOCKER.md.
+> see [ACCEPTANCE.md](../../docs/dev/project/ACCEPTANCE.md). The first run is the smoke test in DOCKER.md.
 
 | File | What |
 |---|---|

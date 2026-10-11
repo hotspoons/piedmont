@@ -15,7 +15,7 @@ viewer can look it up. It is deliberately a port, not a redesign: every threshol
 of operations and every oddity (a sibling's own `s` indexed against the spine's bridge list, a
 lone station being a disc) is reproduced, because the measurement that proves this correct is
 "the baked raster agrees with the run-time formula", and that measurement is only meaningful if
-the two are the same formula. PERF-RIG.md § "For the bake" is the brief.
+the two are the same formula. docs/dev/specs/PERF-RIG.md § "For the bake" is the brief.
 
 ## The frame
 
@@ -1145,7 +1145,7 @@ def enu_to_utm(frame, e, n, iterations: int = 3) -> tuple[np.ndarray, np.ndarray
     ENU metres about the site anchor -> UTM easting/northing, the inverse of `Frame.to_enu`.
 
     `Frame` only goes forward (the viewer never needs the inverse; the bake stores UTM). Over one
-    site the forward map is an affine to a few decimetres (FRAME.md: 0.34 m at 25 km on axis), so
+    site the forward map is an affine to a few decimetres (docs/dev/frames.md: 0.34 m at 25 km on axis), so
     the inverse is that affine, fitted from four probes, refined by fixed-point steps on the exact
     forward map. Three steps are millimetres anywhere a site reaches.
     """

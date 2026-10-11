@@ -18,7 +18,7 @@
 // `web/` are immutable for a year; the documents for a minute, so an edit and a redeploy under
 // the same prefix show up. Rich, 2026-09-30: "is there a way we can use their CDN as a pull
 // through cache to minimize the cost?" — this is it; the rest is a dashboard switch (see
-// docs/CLOUDFLARE.md).
+// docs/guide/cloudflare.md).
 
 const DATA = ['/sites/', '/levels/', '/assetsvc/', '/api/']
 

@@ -1,4 +1,4 @@
-// Gates, circuits and stages: the second of the three primitives in PLAN-RACES-TRAFFIC.md.
+// Gates, circuits and stages: the second of the three primitives in docs/dev/specs/PLAN-RACES-TRAFFIC.md.
 //
 // Rich, 2026-09-29: *"in the placement editor, we need to be able to define circuits and stages.
 // Circuits have a start/finish line, stages have a start and end line and checkpoints that need to

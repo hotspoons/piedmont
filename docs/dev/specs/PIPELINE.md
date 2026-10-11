@@ -190,7 +190,7 @@ is green. Bixby Bridge takes 2 mm of rain in June–August (0.2 % of its year), 
 
 Out: `flora.json` + `flora_evt.npy` (the class index per 30 m pixel), a `flora` block in
 `web/manifest.json` and `web/flora_30m.png`. The sources, the fallback chain, the readouts at every
-test site and the traps are in `docs/FLORA.md`.
+test site and the traps are in `docs/dev/specs/FLORA.md`.
 
 ### 1.8 The point cloud (`lidar.py`)
 

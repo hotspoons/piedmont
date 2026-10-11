@@ -1,7 +1,7 @@
 // What a vehicle IS, as a document — and the arithmetic that turns it into something the engine can
 // drive.
 //
-// docs/PLAN-VEHICLES-ACTORS.md, from Rich: "Vehicles should be a combination of a vehicle
+// docs/dev/specs/PLAN-VEHICLES-ACTORS.md, from Rich: "Vehicles should be a combination of a vehicle
 // model, a rig (if we defined it), and vehicle physics dynamics that will impact each game type
 // differently, but roll stiffness, grip front/rear/side to side, other things like this - plus we
 // want to be able to assign an engine simulator setup and local config for the audio, as well as

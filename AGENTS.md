@@ -1,19 +1,22 @@
 # Working in this repository
 
 This file is for agents (and people) working in piedmont, and above all for running long tests
-against the game. Start with [README.md](README.md) (quick start) and
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (what lives where). The design documents are under
-[docs/](docs/); the game's own README is [apps/game/README.md](apps/game/README.md).
+against the game. Start with [DEVELOPING.md](DEVELOPING.md) (set-up, dev servers, the gate) and
+[docs/dev/architecture.md](docs/dev/architecture.md) (what lives where). The developer docs are under
+[docs/dev/](docs/dev/README.md), the design notes and plans under [docs/dev/specs/](docs/dev/specs/README.md),
+and the user guide under [docs/guide/](docs/guide/README.md); the game's own README is
+[apps/game/README.md](apps/game/README.md). When a change alters something a user sees (a UI label,
+a route, a setting), update the guide page that describes it.
 
 ## Ground rules
 
 - **`npm run setup` first** on a fresh clone. The arcade's engine packages are npm workspaces linked
   in by setup (`vendor/arcade`), so `npm install` alone fails and says so. See
-  [docs/ARCADE.md](docs/ARCADE.md).
+  [docs/dev/arcade.md](docs/dev/arcade.md).
 - **Name paths when you commit.** Never `git add -A`; check `git status` for anything large or secret
   first (`.mcp.json`, kube configs, tokens and R2/Cloudflare credentials never go in).
 - **The names check is strict.** `scripts/check-names.mjs` fails on the project's old name anywhere
-  (docs/ORIGIN.md); `scripts/check-pull-policy.mjs` fails on any image pull policy but `Always`.
+  (docs/dev/project/ORIGIN.md); `scripts/check-pull-policy.mjs` fails on any image pull policy but `Always`.
   Both run in `npx vitest run`.
 - **Gate claims on exit status.** `npx tsc -b`, `npx vitest run` and the bake's
   `python -m unittest discover -s tests` (from `bake/`) are the gates; read their summaries.

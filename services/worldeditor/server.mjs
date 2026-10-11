@@ -151,7 +151,7 @@ if (seedFrom) {
 // query about the Alps came back empty after 240 s and the emptiness was cached. The guard for
 // that is a coverage box on the URL (`#south/west/north/east`) — so if you want ours in the list,
 // declare what it holds, and the rotation will use it where it helps and skip it where it lies.
-// When it holds the planet (docs/OVERPASS-PLANET.md) it needs no box and should be first.
+// When it holds the planet (docs/dev/specs/OVERPASS-PLANET.md) it needs no box and should be first.
 const overpassUpstreams = () => settings.get('overpass.url').split(',').map((s) => s.trim()).filter(Boolean)
 const configured = overpassUpstreams()
 const described = parseRegions(settings.get('overpass.regions'))
@@ -208,7 +208,7 @@ const geocoder = new Geocoder(store, {
 })
 /*
  * WHERE JOBS GO: the Kubernetes API in a cluster, or — PIEDMONT_EDITOR_RUNNER=docker — the Docker Engine
- * of the host this runs on (deploy/docker, docs/DOCKER.md). Same calls, same shapes, so
+ * of the host this runs on (deploy/docker, docs/deploy/docker.md). Same calls, same shapes, so
  * `runs`, `training` and `models` below take either without knowing which. Named `k8s` still,
  * because that is what every call site already calls it.
  */
@@ -240,7 +240,7 @@ const runs = new Runs(store, k8s, {
   // ON BY DEFAULT since 2026-10-10 (Rich: "We should be defaulting to sharded, at least per 10 x 10
   // km grid or something like that"): a world more than 10 km across is cut into ≤ 10 km blocks.
   // dc-metro has baked this way twice. `PIEDMONT_EDITOR_SHARD_ABOVE_M=0` turns it off; a request body
-  // `{"sharded": false}` opts one bake out. See docs/PLAN-SHARDED-BAKE.md.
+  // `{"sharded": false}` opts one bake out. See docs/dev/specs/PLAN-SHARDED-BAKE.md.
   shardAboveM: env.PIEDMONT_EDITOR_SHARD_ABOVE_M !== undefined ? Number(env.PIEDMONT_EDITOR_SHARD_ABOVE_M) : 5000,
   shardSideM: Number(env.PIEDMONT_EDITOR_SHARD_SIDE_M ?? 10000),
   // enough blocks that the side, not the count, decides: 36 covers a 60 km square at 10 km

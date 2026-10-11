@@ -2,7 +2,7 @@
 //
 //   node probes/physground.mjs [site]
 //
-// This is step 1 of docs/PLAN-PHYSICS.md, and it is the only question worth asking before
+// This is step 1 of docs/dev/specs/PLAN-PHYSICS.md, and it is the only question worth asking before
 // there is a car on it. Every bug this app has ever had of the form "the car shakes" or "green
 // stuff on the road" has been two surfaces modelling the same ground at different samplings, and
 // the physics heightfield is a third opportunity to do exactly that. `site.groundAt` is the one

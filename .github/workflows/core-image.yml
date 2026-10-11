@@ -1,5 +1,5 @@
 # Build and publish the Docker install's core image (deploy/docker/core): Docker-in-Docker that runs
-# the world editor, assetsvc, Overpass and the bake containers on one host. docs/DOCKER.md.
+# the world editor, assetsvc, Overpass and the bake containers on one host. docs/deploy/docker.md.
 #
 # THE CONTEXT IS THE REPOSITORY ROOT: the image copies the Overpass regions scripts from
 # deploy/helm/overpass/files, the same files the chart's ConfigMap is made of.

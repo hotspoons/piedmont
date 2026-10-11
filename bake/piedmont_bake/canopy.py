@@ -12,7 +12,7 @@ Meta and WRI publish the same product, precomputed, for the whole world, at the 
 
 One tile covers the Stelvio AND Trafoi; another covers Crofton. So this is not a Europe workaround
 — it is a candidate replacement for the US lidar CHM too, and the argument for that is in
-DATA-OUTSIDE-US.md rather than in this docstring.
+docs/dev/specs/DATA-OUTSIDE-US.md rather than in this docstring.
 
 WHAT IT DOES NOT REPLACE. `lidar.py` also produces the DTM/DSM, bridge-deck heights, building
 density and the along-track profile with its cut-and-fill measurements. Those come from the

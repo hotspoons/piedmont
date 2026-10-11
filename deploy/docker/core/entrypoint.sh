@@ -5,7 +5,7 @@
 # dockerd (Docker-in-Docker, so the host only needs Docker and one privileged container), lays out
 # the shared volume, starts the services in /opt/piedmont/stack.yml on that daemon, and then keeps
 # them up. The world editor, one of those services, creates the bake containers on the same daemon
-# through its socket. See docs/DOCKER.md.
+# through its socket. See docs/deploy/docker.md.
 #
 # Order matters, and each step says why:
 #   1. cgroups and securityfs     what dockerd needs to run nested (moby's hack/dind does the same)

@@ -16,7 +16,7 @@ const roots: Record<string, string> = {
   '/sites/': resolve(DATA, 'sites'),
   '/photos/': resolve(here, '../../ext/ref-driving/small'),
   // gaussian splat worlds: a capture is not part of a site's bake, it is attached to one
-  // (docs/PLAN-SPLAT-ROUTES.md)
+  // (docs/dev/specs/PLAN-SPLAT-ROUTES.md)
   '/splats/': resolve(DATA, 'splats'),
   // levels: a world dressed and given something to do. The world editor writes these to its
   // volume; in dev they are beside the sites, and without this line a fetch for one gets the

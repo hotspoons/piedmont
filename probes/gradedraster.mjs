@@ -10,7 +10,7 @@
 //
 //   --compare   load the site twice — `?grade=runtime` (the formula, as an old bake runs it) and
 //               plain (the raster) — and report the error distribution of raster − formula, on the
-//               pavement, across the verge, beyond it, and on decks. The targets (PERF-RIG.md) are
+//               pavement, across the verge, beyond it, and on decks. The targets (docs/dev/specs/PERF-RIG.md) are
 //               2 cm on the pavement, 10 cm across the verge, zero beyond the verge and on decks.
 //   --dump      write the formula's answers (and the bare earth, the edge distance, the level that
 //               answered) at every point to a JSON file, so the Python port can be held against the

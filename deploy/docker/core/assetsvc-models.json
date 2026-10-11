@@ -11,7 +11,7 @@
     "",
     "Unset, the model reports `no url configured` and generation is off; nothing else is affected.",
     "The optional AI stack (deploy/docker/ai) serves both; any host speaking the same API will do.",
-    "See docs/DOCKER.md, 'The AI services'."
+    "See docs/deploy/docker.md, 'The AI services'."
   ],
   "defaults": {
     "image": "flux2-dev",

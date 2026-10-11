@@ -496,7 +496,7 @@ def write_credits() -> None:
         for fid, f in s.get('files', {}).items():
             lines.append(f'  - #{fid} {f["name"]} <{f["url"]}>')
     lines += ['', 'The slot each clip serves is in `bank.json`; a world, vehicle or actor may replace any slot with '
-              'its own clips (see docs/SOUNDS.md).', '']
+              'its own clips (see docs/dev/specs/SOUNDS.md).', '']
     (OUT / 'CREDITS.md').write_text('\n'.join(lines))
 
 

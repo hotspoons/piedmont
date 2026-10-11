@@ -83,7 +83,7 @@ def _chain_lanes(chain: list[dict], frame: Frame) -> int | None:
     fallback is for.
 
     Per-station lane counts, with the taper through the junction, are the real answer and a bigger
-    job; see docs/LANES-AND-SIGNALS.md. This is the number that is right for most of the
+    job; see docs/dev/specs/LANES-AND-SIGNALS.md. This is the number that is right for most of the
     road rather than the number that is right for none of it.
     """
     metres: dict[int, float] = {}
@@ -257,7 +257,7 @@ def roads(site: dict, frame: Frame, cache: Path) -> dict:
                 x, y = node_xy[nid]
                 lon, lat = node_ll[nid]
                 # `lon`/`lat` are the junction's POSITION; `x`/`y` are a convenience in the frame
-                # this file is tagged with (FRAME.md: WGS84 is the authority, ENU is a render
+                # this file is tagged with (docs/dev/frames.md: WGS84 is the authority, ENU is a render
                 # frame). A reader places the junction from lon/lat under whatever frame it
                 # holds — see `place_junctions` for why the ENU pair alone was not enough.
                 js.append({"node": nid, "x": round(float(frame.to_enu(x, y)[0]), 1), "y": round(float(frame.to_enu(x, y)[1]), 1), "lon": round(lon, 7), "lat": round(lat, 7), "s": round(float(c["line"].project(Point(x, y))), 1), "with": sorted(by_id[o]["ident"] for o in others)})
@@ -404,7 +404,7 @@ def write_vectors(site: dict, frame: Frame, R: dict, out: Path, half_width: floa
     # REGION itself is the bbox for every network now, not the road band (Rich, 2026-10-10: "remove
     # the strip logic and have full world trees"): the world editor never sets `world`, so its
     # radius-drawn worlds (dc-metro-take-2) had their imagery and their point cloud cut to a band
-    # along the roads. See docs/PLAN-OPEN-WORLD.md.
+    # along the roads. See docs/dev/specs/PLAN-OPEN-WORLD.md.
     #
     world = bool(site.get("world"))
     margin = float(site.get("world_margin_m", 300.0))
@@ -454,7 +454,7 @@ def branch_record(c: dict, prim: dict, bp: dict | None) -> dict:
 # kilometre out, and it chose the one 1,068 m off over the one 1,082 m off and said "converted".
 #
 # So no reader takes a frame-relative number on trust any more. A junction's POSITION is the OSM
-# node's lon/lat (`roads` writes it; FRAME.md: WGS84 is the authority), and a file from before that
+# node's lon/lat (`roads` writes it; docs/dev/frames.md: WGS84 is the authority), and a file from before that
 # key still carries `s`, the station along the chain's own ABSOLUTE-UTM polyline, which is the same
 # vertex to 5 cm (the rounding of `s`). Either is placed under whatever frame the reader holds, so
 # reading twice is reading once. The tag is kept, with its origin, because it is what a reader that
