@@ -1,0 +1,31 @@
+name: Build every image
+
+# Every image workflow builds on a push that touches its own paths. On a fresh repository, or after
+# a long gap, that leaves images that were never built: piedmont's first push ran only the editor's,
+# and it failed for want of the Blender image it copies from. This dispatches all of them once.
+# The editor is not in the list: it builds when the Blender image succeeds (its `workflow_run`).
+#
+# Run it from the Actions tab, or change .github/images-all.txt and push.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/images-all.txt'
+
+permissions:
+  actions: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch every image build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          for wf in blender-image.yml bake-image.yml assetsvc-image.yml recon-image.yml core-image.yml; do
+            echo "dispatching $wf"
+            gh workflow run "$wf" --repo "$REPO" --ref main
+          done

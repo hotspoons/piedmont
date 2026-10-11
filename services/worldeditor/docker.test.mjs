@@ -303,11 +303,15 @@ test('create -> pull -> start -> running -> exit 0 -> succeeded; logs come back 
     const pullAt = s.docker.state.calls.indexOf('POST /images/create')
     const createAt = s.docker.state.calls.indexOf('POST /containers/create')
     assert.ok(pullAt >= 0 && pullAt < createAt, 'the pull came before the create')
+    // The daemon has started it; the runner records Running when its own loop next looks, as a
+    // kubelet does. Asserting right after the daemon's start raced that on CI's slower runners.
+    let pods = []
+    await until(async () => {
+      pods = await s.jobs.podsFor('j1')
+      return pods.length === 1 && pods[0].status.phase === 'Running'
+    }, 5000, 'the runner to report the pod Running')
     let j = await s.jobs.getJob('j1')
     assert.equal(j.status.active, 1)
-    const pods = await s.jobs.podsFor('j1')
-    assert.equal(pods.length, 1)
-    assert.equal(pods[0].status.phase, 'Running')
 
     const c = s.docker.state.containers.get(pods[0].metadata.name)
     c.logs.push({ stamp: '2026-10-10T12:00:00.1Z', text: 'baking\n' }, { stamp: '2026-10-10T12:00:02Z', text: 'done\n', stream: 2 })
@@ -542,12 +546,14 @@ test('a sharded bake fans out at most maxParallel shard containers at once, then
     const run = await runs.bake('w', { sharded: true })
     await until(() => find(/ plan w/).some((c) => c.State === 'running'), 10000, 'the plan')
     s.docker.exit(find(/ plan w/)[0].name, 0)
-    await until(() => find(/ shard w /).length === 2, 15000, 'two shards')
+    await until(() => find(/ shard w /).filter((c) => c.State === 'running').length === 2, 15000, 'two shards running')
     await sleep(500)
     assert.equal(find(/ shard w /).length, 2, 'the third shard waits for a slot')
     assert.equal(JSON.parse(await readFile(store.runFile(run.id), 'utf8')).state, 'running')
     s.docker.exit(find(/ shard w /)[0].name, 0)
-    await until(() => find(/ shard w /).length === 3, 10000, 'the third shard')
+    // RUNNING, not merely created: under load the third container exists a beat before it is
+    // started, and exiting only the running ones left it running forever (no finalizer)
+    await until(() => find(/ shard w /).filter((c) => c.State === 'running').length === 2, 10000, 'the third shard running')
     for (const c of find(/ shard w /)) if (c.State === 'running') s.docker.exit(c.name, 0)
     await until(() => find(/ finalize w/).some((c) => c.State === 'running'), 15000, 'the finalizer')
     assert.equal(s.docker.state.maxRunning, 2, 'never more than maxParallel bake containers')

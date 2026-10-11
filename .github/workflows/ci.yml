@@ -90,8 +90,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # The bake shells out to GDAL's tools (gdalbuildvrt, gdaladdo) for mosaics and overviews; the
+      # rasterio wheel carries the library but not the commands. The arcade ran these tests inside
+      # the bake image, which has them; a plain runner does not, and 7 tests erred on the first run.
       - name: Install
-        run: pip install -r bake/requirements.txt
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q gdal-bin
+          pip install -r bake/requirements.txt
       - id: unittests
         name: python -m unittest discover -s tests
         shell: bash

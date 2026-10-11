@@ -11,6 +11,12 @@
 name: Worldeditor image
 
 on:
+  # The image COPIES Blender out of piedmont-blender, so a new Blender image is a new editor image —
+  # and on a fresh repo the editor cannot build until the first Blender image exists at all.
+  workflow_run:
+    workflows: ['Blender image']
+    types: [completed]
+    branches: [main]
   push:
     branches: [main]
     paths:
@@ -44,6 +50,7 @@ jobs:
   # end — so the half that matters was the one never started. Now each runner builds its own
   # platform, loads it, and runs the smoke test on the architecture it will actually run on.
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     strategy:
       fail-fast: false
       matrix:
