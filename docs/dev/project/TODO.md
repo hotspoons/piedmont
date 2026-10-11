@@ -13,6 +13,18 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 | 3 | **Geofabrik's published index can have empty region outlines** | services/worldeditor | 11 regions on 2026-10-10, `virginia.poly` 0 bytes. Routing refuses empty outlines and falls back to the volume's copy or the seed (`services/worldeditor/geofabrik.mjs`); an OSM import of Virginia may fail until Geofabrik fixes its files. |
 | 4 | **Lidar canopy includes roofs** | bake / flora | where a vendor left buildings unclassified; the game masks OSM footprints out of tree planting. The perf panel's tree lines explain bare ground cell by cell. |
 
+## Recently fixed
+
+- **The built-in asset kit never shipped** — `catalog.json` listed 33 ids but no `.glb` existed
+  and `surfaces/` was empty, so a fresh editor drew none of its own models or road textures. The
+  generated kit (33 models, 8 surface sets) is now tracked in Git LFS and shipped by the
+  worldeditor image (`a1d5566`).
+- **Trees planted far-first** — the crescent cursor walked in from the context edge, so a capped
+  tree budget was spent on the hidden `spare` ring beyond the draw radius and the near annulus was
+  never measured; the near trees then appeared a replant later, as you drove up. Rows are now
+  ordered nearest-first and drawn trees fill before spare (`6b2427e`). A fixed-eye boot on
+  `crofton-triangle` went from 1 850 drawn / 0 near to 25 000 drawn / 0 spare.
+
 ## Also open
 
 - **Cloudflare deploy from a piedmont install is unproven** — the client is tested against a stand-in.

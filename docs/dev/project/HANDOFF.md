@@ -9,7 +9,7 @@ For an agent picking up piedmont after the split from siomporas-arcade. Read thi
 | Area | State |
 |---|---|
 | Repository | Pushed to `github.com/hotspoons/piedmont`, `main`. Imported from arcade `34933bd` ([ORIGIN.md](ORIGIN.md)), then renamed, documented and fixed. |
-| Local gate | `npx tsc -b`, `npx vitest run` (993 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (265), `npm run build`: all pass on Node 24. |
+| Local gate | `npx tsc -b`, `npx vitest run` (995 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (265), `npm run build`: all pass on Node 24. |
 | CI | Green on `c7e22c4`. One service suite hung CI twice (anonymous timeout); it did not recur. The checks wrapper now kills a suite that outlives 165 s and fails **with the file name and its last output**, so the next occurrence identifies itself. |
 | Images | All six published on ghcr as `latest`: `piedmont-bake`, `-worldeditor`, `-assetsvc`, `-recon`, `-blender`, `-core`. The core image's CI smoke ran its inner dockerd, a nested container and the world editor on the Docker runner, on amd64 and arm64. |
 | Dev container | Fixed but **never built**: Debian trixie base needs `"moby": false`; Node 24; OpenChamber with opencode's PATH on the extension host. Rich's first build is its first test. |
