@@ -52,6 +52,8 @@ needs Rich's explicit approval first. Ask with the concrete diff in hand.
 
 ## Known issues
 
+Tracked as TODOs in [TODO.md](TODO.md) — add and close them there.
+
 - **World editor: Assets mode has no Traffic tab** (traffic sets are only editable from
   `/editor.html`'s Assets dialog or MCP). Looks like a bug.
 - **Stage panel has no control for a level's `program` or traffic `set`**; the guide sends users to

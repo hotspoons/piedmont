@@ -551,6 +551,17 @@ const server = http.createServer(async (req, res) => {
     /* the placement catalog, merged on the volume, at the path the editor already fetches */
     if (url.pathname === '/assets/catalog.json') return json(res, 200, await store.catalog())
 
+    /*
+     * The kit's models and surface textures: the volume's copy OVERRIDES the one shipped in the
+     * app, exactly as the catalog above does. Serving the volume here (and falling through to the
+     * app image below) is what makes `<data>/assets/` and `<data>/surfaces/` the operator's override
+     * layer — drop a replacement `.glb` or texture there and the editor uses it with no rebuild.
+     */
+    if (req.method === 'GET') {
+      const file = store.publicFile(url.pathname)
+      if (file && (await sendFile(req, res, file, { cache: /\/assets\/.*-[A-Za-z0-9_]{8}\./.test(url.pathname) ? 'public, max-age=31536000, immutable' : 'no-cache' }))) return
+    }
+
     if (seg[0] === 'assetsvc') return await proxyAssetsvc(req, res, seg.slice(1).join('/'))
 
     if (seg[0] === 'api') {

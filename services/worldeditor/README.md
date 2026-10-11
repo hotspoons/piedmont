@@ -8,7 +8,7 @@ on the cluster, and **the browser knows exactly one origin: this service.**
   browser ──HTTP──> worldeditor ──┬─► Overpass (ours, cached on the volume WITH the bake)
                                   ├─► the Kubernetes API (start a bake Job, follow its log)
                                   ├─► assetsvc, proxied (it reaches the GPUs; we never do)
-                                  └─► the volume: sites, worlds, runs, authored files, catalog
+                                  └─► the volume: sites, worlds, runs, authored files, catalog, kit overrides
 ```
 
 ```bash
@@ -233,6 +233,7 @@ with that sentence rather than left saying "running" for ever.
 | `GET /api/runs` · `POST /api/runs/bake` · `/api/runs/publish` | start one |
 | `GET /api/runs/:id` · `/api/runs/:id/log?offset=` · `POST /api/runs/:id/cancel` | watch or stop it |
 | `GET/POST /api/catalog` | the placement catalog — **POST merges by id and cannot replace** |
+| `GET /assets/**` · `GET /surfaces/**` | the shipped kit and surface textures — **the volume's copy overrides the app image's** |
 | `GET/PUT /sites/**` | the bake tree, and the editor's save |
 | `/assetsvc/**` | proxied to assetsvc, unmodified |
 | `/`, `/index.html`, `/editor.html` | the built app: the world editor, the viewer, the site editor |
@@ -240,6 +241,13 @@ with that sentence rather than left saying "running" for ever.
 `/api/ready` **reports and does not gate**. If Overpass is down this can still serve baked sites,
 save authored files and watch a run, and taking the pod out of the Service for that would break the
 editor for a fault it can work around and describe. The kubelet probes `/api/health`.
+
+**The volume overrides the shipped kit and textures.** The build ships the placement kit's models
+under `/assets/` and the road surface textures under `/surfaces/`, both generated and gitignored;
+`/assets/<file>` and `/surfaces/<file>` are served from `<data>/assets/` and `<data>/surfaces/` when
+a file of that name is there, and from the app image otherwise — the same contract as
+`<data>/assets/catalog.json` overriding the shipped catalog. Drop a replacement `.glb` or texture on
+the volume and the editor uses it with no rebuild.
 
 ## Configuration
 

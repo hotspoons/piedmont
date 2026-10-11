@@ -47,6 +47,17 @@ const PROGRAM_EXT = new Set(['.ts', '.tsx', '.js', '.mjs', '.json', '.md', '.txt
 export const AUTHORED = ['adjustments', 'placements', 'structures', 'dead_ends', 'tuning', 'presets', 'zones', 'courses', 'stunts', 'fixtures', 'surfaces', 'points']
 const AUTHORED_RE = new RegExp(`^[a-z0-9-]+/(${AUTHORED.join('|')})\\.json$`)
 
+/**
+ * The app-public roots the volume may OVERRIDE, by their URL prefix.
+ *
+ * The build ships the kit's models under `/assets/` and the road surface textures under
+ * `/surfaces/`; the volume holds replacements at the same paths (`<data>/assets/<file>`,
+ * `<data>/surfaces/<file>`), exactly as `<data>/assets/catalog.json` overrides the shipped
+ * catalog. A closed set rather than "everything": these are the generated, regenerable trees an
+ * operator is expected to swap, and the rest of the app is code.
+ */
+const OVERRIDE_ROOTS = new Set(['assets', 'surfaces'])
+
 /** see writeAtomic */
 let tmpSeq = 0
 
@@ -61,10 +72,11 @@ export class Store {
     this.programs = path.join(this.root, 'programs')
     this.overpassCache = path.join(this.root, 'cache', 'overpass')
     this.assets = path.join(this.root, 'assets')
+    this.surfaces = path.join(this.root, 'surfaces')
   }
 
   async init() {
-    for (const d of [this.sites, this.worlds, this.places, this.runs, this.levels, this.programs, this.overpassCache, this.assets]) await mkdir(d, { recursive: true })
+    for (const d of [this.sites, this.worlds, this.places, this.runs, this.levels, this.programs, this.overpassCache, this.assets, this.surfaces]) await mkdir(d, { recursive: true })
   }
 
   /** Write through a temp file in the same directory, so a reader never sees a half-written JSON. */
@@ -577,6 +589,28 @@ export class Store {
   async catalog() {
     const file = path.join(this.assets, 'catalog.json')
     return (await this.readJson(file)) ?? (await this.readJson(this.catalogSeed ?? '', null)) ?? { assets: [] }
+  }
+
+  /**
+   * Resolve a `/assets/<file>` or `/surfaces/<file>` request to a file on the volume, refusing
+   * anything outside the override roots.
+   *
+   * THE SHIPPED KIT AND TEXTURES LIVE IN THE APP IMAGE — the models and surface maps the build
+   * copied out of `apps/game/public/` — and the volume is the OVERRIDE. An operator drops a
+   * replacement model or texture into `<data>/assets/` or `<data>/surfaces/` and the editor serves
+   * it without a rebuild, the same contract as `<data>/assets/catalog.json` overriding the shipped
+   * catalog. Returns null when the request is outside those roots or the volume has nothing of that
+   * name, and the server falls through to the app image. `..` is collapsed before the prefix check
+   * so a traversal cannot escape by spelling (see `fileFor`).
+   */
+  publicFile(urlPath) {
+    const clean = path.posix.normalize(decodeURIComponent(urlPath)).replace(/^\/+/, '')
+    if (clean.startsWith('..') || clean.includes('\0')) return null
+    const root = clean.split('/')[0]
+    if (!OVERRIDE_ROOTS.has(root)) return null
+    const base = path.join(this.root, root)
+    const file = path.resolve(this.root, clean)
+    return file.startsWith(base + path.sep) ? file : null
   }
 
   /**
