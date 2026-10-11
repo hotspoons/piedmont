@@ -13,7 +13,7 @@ For an agent picking up piedmont after the split from siomporas-arcade. Read thi
 | CI | Green on `c7e22c4`. One service suite hung CI twice (anonymous timeout); it did not recur. The checks wrapper now kills a suite that outlives 165 s and fails **with the file name and its last output**, so the next occurrence identifies itself. |
 | Images | All six published on ghcr as `latest`: `piedmont-bake`, `-worldeditor`, `-assetsvc`, `-recon`, `-blender`, `-core`. The core image's CI smoke ran its inner dockerd, a nested container and the world editor on the Docker runner, on amd64 and arm64. |
 | Dev container | Fixed but **never built**: Debian trixie base needs `"moby": false`; Node 24; OpenChamber with opencode's PATH on the extension host. Rich's first build is its first test. |
-| Cluster deployment | **Not done.** The new `piedmont` namespace on gh200-1 is the main open acceptance item. |
+| Cluster deployment | **Partly done.** `worldeditor`, `assetsvc` and `overpass-na` run in `piedmont`; the editor serves at `piedmont.richard-siomporas.basedweights.com` through the platform Gateway and can draw and build OSM areas. `cluster.yaml` and `worldeditor.yaml` are reconciled to that live state and `just deploy-check gh200-1` is clean. The acceptance items below are still open. |
 | Docker stack | Statically validated, plus the core image smoke above. No host has run `docker compose up` and baked a world. |
 
 ## Next, in order
@@ -23,15 +23,15 @@ needs Rich's explicit approval first. Ask with the concrete diff in hand.
 
 1. **Rich rebuilds the dev container.** If it fails, the error is the next task.
 2. **Decide the deployment's open questions** (Rich's call; bring a recommendation):
-   - **Hostnames.** `deploy/gh200-1/worldeditor.yaml` inherits the chart's ingress host
-     `worldeditor.richard-siomporas.basedweights.com`, and `overpass.yaml` inherits
-     `overpass.richard-siomporas.basedweights.com`. **Both are already served by the arcade's
-     releases in `default`.** Installing as-is would put two ingresses on one host. Pick new hosts
-     (e.g. `piedmont.…`, or disable the Overpass ingress — in-cluster readers use the Service).
-   - **A new Maryland Overpass in `piedmont`?** `cluster.yaml` lists an `overpass` release. On a
-     fresh volume it imports for hours. The editor already reads `overpass-eu` and `overpass-na`
-     from `default` across namespaces (`worldeditor.yaml` `overpassUrl`); the Maryland one could be
-     read the same way instead.
+   - **Hostnames — RESOLVED.** `worldeditor.yaml` routes through the platform Gateway on
+     `piedmont.richard-siomporas.basedweights.com` (Gateway API: a ListenerSet, a cert-manager
+     Certificate and an HTTPRoute), not the chart's default ingress host; the Overpass ingress is
+     off (in-cluster readers use the Service). The arcade's hosts stay with the arcade releases.
+   - **An Overpass in `piedmont` — RESOLVED, North America not Maryland.** `cluster.yaml` now lists
+     `overpass-na`, piedmont's own North America instance, which the editor reads by short name
+     (`worldeditor.yaml` `overpassUrl`). The arcade's Maryland, europe and north-america instances
+     stay in `default` until retired; `overpass.yaml` records the Maryland values but is no longer
+     applied here.
    - **Pin the images.** `just deploy-bump gh200-1` rewrites `tag: latest` to the current `sha-`
      builds for review and commit. Values say `latest` only until the first builds existed; they do now.
    - **The data volume starts empty.** The arcade's `worldeditor-data` PVC holds ~126 GB of lidar

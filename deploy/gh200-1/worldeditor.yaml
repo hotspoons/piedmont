@@ -9,35 +9,53 @@ image:
   # `latest` until piedmont's first image build lands; then `just deploy-bump gh200-1` pins a sha-.
   tag: latest
 
-ingress:
+# The route in: Gateway API, NOT the nginx Ingress this file used to render.
+#
+# Until 2026-10-11 this file said `ingress.enabled: true`, which renders an `Ingress` on
+# `worldeditor.richard-siomporas.basedweights.com` — a host the arcade's own release in `default`
+# already claims. The accepted split routes the editor through the platform's external Gateway
+# instead (`piedmont.richard-siomporas.basedweights.com`): a ListenerSet in this namespace, a
+# cert-manager Certificate, and the HTTPRoute + http->https redirect below. Because the file had
+# drifted from the live release, `just deploy` would have replaced the working Gateway route with an
+# Ingress nobody off-cluster can route to; it is now the live shape, verified by rendering this file
+# and diffing against `helm get manifest worldeditor`. Turn on EXACTLY ONE of `ingress`, `httpRoute`
+# or `gateway` (deploy/helm/worldeditor/values.yaml).
+gateway:
   enabled: true
+  parentRef:
+    name: pai-managed-ext-gateway
+    namespace: patapsco-richard-siomporas-platform
+  hostnames:
+    - piedmont.richard-siomporas.basedweights.com
+  tlsSecretName: piedmont-worldeditor-tls
+  issuer: letsencrypt-issuer
+  redirect: true
 
 # Ours, then the public mirrors (appended by the service). NO BOXES ON THE URLS ANY MORE.
 #
-# Until 2026-10-10 each URL carried a `#south/west/north/east` fence and the editor routed by the
-# tightest fence that covered a world. `overpass`'s fence (#37.9/-79.5/39.8/-75.0) took in
-# Washington, Arlington and Fairfax; its extract is Maryland. dc-metro-take-2 was routed to it, and
-# for an Arlington box it answered HTTP 200 with 0 ways where overpass-na answers 4,346 — the world
-# baked with 108,816 roads in Maryland and none across the river, and reported success.
-#
-# What each instance holds is now `overpassRegions`: the Geofabrik region(s) it was built from (and
-# any added by an osm-import, which the editor keeps on its volume). Routing uses the extracts' real
-# outlines, and the bake refuses a query its instance does not hold (BakeFault). See
-# services/overpass/README.md, "Where the OSM comes from".
-#
-# The Maryland instance is this release's own (`overpass` in cluster.yaml). Europe and North America
-# are 250 GB imports that took days; they keep serving from the `default` namespace, read across by
-# their fully-qualified names, until they are re-imported here or retired.
-overpassUrl: "http://overpass/api/interpreter,http://overpass-eu.default.svc/api/interpreter,http://overpass-na.default.svc/api/interpreter"
-overpassRegions: "overpass=us/maryland,overpass-eu.default.svc=europe,overpass-na.default.svc=north-america"
-# the image the three instances run (kubectl get pod -l app=overpass-na -o jsonpath=...imageID),
-# so an osm-import Job pulls nothing new onto the node
-osmImportImage: "wiktorn/overpass-api@sha256:9bb5f4a9b54cd225bf828c04c67e7f4010650ff4d70b72157a9473a9ba02d93c"
+# The editor reads piedmont's OWN North America instance (`overpass-na` in this namespace). It used
+# to name the arcade's Maryland, europe and North-America instances across the namespace boundary
+# (`overpass.default.svc`, `overpass-eu.default.svc`, `overpass-na.default.svc`); the split moved the
+# editor onto piedmont's own instance, so those are gone from here. What each instance holds is
+# `overpassRegions`: the Geofabrik region(s) it was built from, plus any an osm-import added (kept on
+# the volume, services/overpass/README.md, "Where the OSM comes from").
+overpassUrl: "http://overpass-na/api/interpreter"
+overpassRegions: "overpass-na=north-america"
+# EMPTY: an osm-import Job pulls the editor's default image (`wiktorn/overpass-api:latest`). The
+# digest this file once pinned was the `default`-namespace instance's, not this namespace's, so it
+# would have pulled the wrong build onto the node.
+osmImportImage: ""
 
 # Count free GPUs to size a splat run's fan-out. A CLUSTER-scoped read of nodes and of pods in
 # every namespace — wider than anything else this chart asks for, which is why it is opt-in.
 # Without it the editor reports that it could not ask, rather than reporting zero.
 gpuVisibility: true
+
+# ClusterRole/ClusterRoleBinding have no namespace: their names are global, so a second release of
+# this chart collides with the arcade's `default` install (the `piedmont` install hit exactly this).
+# The suffix keeps this release's RBAC distinct.
+rbac:
+  clusterResourceSuffix: "-piedmont"
 
 # The Deploy panel's Cloudflare token. A token typed into the panel is forgotten whenever this
 # release rolls; to keep one, create the Secret once and name it here:

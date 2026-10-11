@@ -17,7 +17,11 @@ releases:
     chart: deploy/helm/worldeditor
   - name: assetsvc
     chart: deploy/helm/assetsvc
-  # Maryland. A fresh volume IMPORTS before it serves (hours; see services/overpass/README.md).
-  # overpass-eu and overpass-na (values in overpass-na.yaml) are not listed: they stay in `default`.
-  - name: overpass
+  # piedmont's OWN Overpass: the North America instance (values in overpass-na.yaml). A fresh volume
+  # IMPORTS before it serves (hours; see services/overpass/README.md). The editor reads it by short
+  # name (worldeditor.yaml). This list used to say `overpass` — the arcade's Maryland instance — but
+  # that release was never installed here; the accepted split brought North America into piedmont
+  # instead, and Maryland, europe and the arcade's own north-america stay in `default` until retired
+  # (overpass.yaml records the Maryland values but is not applied by this file).
+  - name: overpass-na
     chart: deploy/helm/overpass

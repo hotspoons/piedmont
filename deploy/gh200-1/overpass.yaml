@@ -2,6 +2,12 @@
 # deploy/helm/overpass -n "$NAMESPACE" -f deploy/gh200-1/overpass.yaml). The chart's defaults ARE Maryland
 # (values.yaml: planetUrl, diffUrl, regions.primary), so this only states what differs.
 #
+# NOT APPLIED BY cluster.yaml. The Maryland instance is an arcade-era release that lives in `default`
+# (with europe and the arcade's north-america); the split brought North America into `piedmont` as
+# `overpass-na` instead, and cluster.yaml lists that. This file is kept as the record of the Maryland
+# release's values; the deploy script cannot install it (cluster.yaml's `namespace` is piedmont), so
+# it is documentation, not a managed release.
+#
 # regions: the osm-import sidecar (services/overpass/README.md, "Adding a region to an instance").
 # Turned on 2026-10-10 with the OSM coverage work; the same upgrade turned the areas step off
 # (OVERPASS_USE_AREAS=false), which this release had been missing since before the value existed.

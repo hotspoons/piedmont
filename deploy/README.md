@@ -23,8 +23,11 @@ just deploy gh200-1 --check      # render and diff against what is live; changes
 
 ## The namespace is a value
 
-`deploy/<cluster>/cluster.yaml` names the namespace every release goes into (`namespace:`), and
-`scripts/deploy.mjs` passes it to `helm upgrade -n <namespace> --create-namespace`. The charts name
+`deploy/<cluster>/cluster.yaml` names the namespace every release goes into (under `cluster:`, as
+`namespace:`), and `scripts/deploy.mjs` passes it to `helm upgrade -n <namespace>
+--create-namespace`. (`scripts/deploy-yaml.mjs` reads the file, nested `cluster:` block included, and
+`scripts/deploy-yaml.test.mjs` holds it to the real one: a reader that dropped the nested map once
+made `just deploy` target `default` while the file said `piedmont`.) The charts name
 no namespace: the world editor reads its own from the release (`PIEDMONT_EDITOR_NAMESPACE` is
 `.Release.Namespace`), creates its bake Jobs there, and reaches the asset service and Overpass by
 their short service names. Moving the whole stack is changing that one line. Endpoints outside the

@@ -23,6 +23,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
+import { readYaml } from './deploy-yaml.mjs'
 
 const argv = process.argv.slice(2)
 const has = (f) => argv.includes(f)
@@ -49,37 +50,13 @@ function listClusters() {
   return existsSync(d) ? require('node:fs').readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name) : []
 }
 
-/** A very small YAML reader: enough for these files, which are flat maps and one list of maps. */
-function readYaml(file) {
-  const out = {}
-  let list = null
-  let listKey = null
-  let item = null
-  for (const raw of readFileSync(file, 'utf8').split('\n')) {
-    const line = raw.replace(/#.*$/, '').trimEnd()
-    if (!line.trim()) continue
-    const indent = line.length - line.trimStart().length
-    const t = line.trim()
-    if (t.startsWith('- ')) {
-      item = {}
-      list.push(item)
-      const [k, ...v] = t.slice(2).split(':')
-      if (v.length) item[k.trim()] = clean(v.join(':'))
-      continue
-    }
-    const [k, ...v] = t.split(':')
-    const value = v.join(':').trim()
-    if (indent > 0 && item) { item[k.trim()] = clean(value); continue }
-    if (!value) { list = []; listKey = k.trim(); out[listKey] = list; item = null; continue }
-    if (indent === 0) { out[k.trim()] = clean(value); list = null; item = null }
-  }
-  return out
-}
-const clean = (s) => s.trim().replace(/^["']|["']$/g, '')
-
-const cluster = readYaml(path.join(DIR, 'cluster.yaml'))
-const namespace = cluster.namespace ?? 'default'
-const releases = (cluster.releases ?? []).filter((r) => !ONLY || r.name === ONLY)
+// The reader lives in its own module (scripts/deploy-yaml.mjs) so it can be tested, and because it
+// has to read the nested `cluster:` map: it used to drop it, so `namespace` fell back to `default`
+// and the whole stack deployed into the wrong namespace. Read `doc.cluster.namespace`, not
+// `doc.namespace` — the file groups the cluster's facts under `cluster:`.
+const doc = readYaml(path.join(DIR, 'cluster.yaml'))
+const namespace = doc.cluster?.namespace ?? 'default'
+const releases = (doc.releases ?? []).filter((r) => !ONLY || r.name === ONLY)
 if (!releases.length) {
   console.error(ONLY ? `deploy/${CLUSTER}/cluster.yaml does not list a release called ${ONLY}` : `no releases listed for ${CLUSTER}`)
   process.exit(1)
