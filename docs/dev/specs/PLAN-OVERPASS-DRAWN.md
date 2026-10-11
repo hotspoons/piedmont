@@ -40,16 +40,26 @@ B" test. Both look right and both broke in production:
 - In the live index `us`, `us-south`, `us/maryland` and `us/district-of-columbia` **all** name
   `north-america` as their parent. They are siblings, so a DC-sized shape matched the whole-US
   extract (11 GB) beside DC itself.
-- Geofabrik ships some regions with an **empty outline** (TODO #3), patched here from the coarse
-  vendored seed. Deciding containment from those geometries drops a state for the tiniest enclave
-  inside it and cascades: a shape spanning Maryland and Virginia came back as Washington DC alone.
+- A global "region A contains region B" test is no better, because neighbouring regions ADJOIN.
+  Washington DC shares a border with Maryland and with Virginia, so samples of a drawn shape land in
+  each, and the rule dropped both states for the tiny enclave they abut — a shape spanning Maryland
+  and Virginia came back as DC alone.
+
+  (A related trap, from TODO #3: Geofabrik ships some regions with an **empty** index outline —
+  Maryland and Virginia among them — filled in here from the vendored seed, whose polygons match the
+  region's own `.poly`.)
 
 A local "is this point inside this region, smallest area wins" is exact, cannot cascade, and needs
 no nesting to be correct. A bounding-box overlap is only a pre-filter — a continent's bbox spans the
-world. Two edge cases are known and cosmetic: a square whose corner crosses the Potomac into the
-coarse patched Virginia outline names Virginia as well as DC, and an open-ocean draw in the Pacific
-can name `us-pacific` (another whole-world-bbox outline in the index). A shape no extract covers at
-all is a plain 400.
+world.
+
+Consequences. A shape that genuinely crosses a border names both neighbours: a square drawn on DC
+comes back as DC **and** Maryland **and** Virginia, because its corners really are in Maryland (east)
+and Virginia (across the Potomac) — checked against Geofabrik's own `.poly`, not a bug. And an
+open-ocean draw inside a group region's convex hull (the Pacific states' `us-pacific`, say) names
+that hull, because Geofabrik's outline for a group region is a hull that covers the ocean between
+its members; telling that from a real island needs land data the index does not carry. A shape no
+extract covers at all is a plain 400.
 
 ## The snapshot decision
 
