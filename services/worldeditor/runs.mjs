@@ -1182,7 +1182,8 @@ export function osmImportJob({ name, runId, upstream, region, node, image, ttlSe
  *   * there is no `UPDATES_URL`: a drawn area follows no diff stream (runs.mjs `osmBuild`).
  *
  * No RBAC the editor does not already have: it creates a Job and reads the instance's pod for its
- * node — exactly what `osmImportJob` needs.
+ * node — exactly what `osmImportJob` needs. services/overpass/osm-build-job.yaml is this written
+ * out for review; a test in runs-osm.test.mjs holds the two together.
  */
 export function osmBuildJob({ name, runId, upstream, region, node, image, ttlSeconds = 604800 }) {
   const urls = (region.sources ?? []).map((s) => s.pbf).filter(Boolean)

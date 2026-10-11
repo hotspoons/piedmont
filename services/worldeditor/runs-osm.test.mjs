@@ -13,9 +13,10 @@ import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import { Coverage } from './coverage.mjs'
 import { drawnPolygon } from './osmbuild.mjs'
-import { Runs, osmImportJob } from './runs.mjs'
+import { Runs, osmBuildJob, osmImportJob } from './runs.mjs'
 import { Store } from './store.mjs'
 import { manifest } from '../overpass/osm-import-job.mjs'
+import { manifest as buildManifest } from '../overpass/osm-build-job.mjs'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const until = async (f, ms = 20000) => { const t = Date.now(); while (!(await f())) { if (Date.now() - t > ms) throw new Error('timed out'); await sleep(20) } }
@@ -271,4 +272,9 @@ test('the reviewed manifest is exactly what the editor creates', async () => {
   // services/overpass/osm-import-job.yaml is what an admin reads; this holds it to the code
   const onDisk = await readFile(new URL('../overpass/osm-import-job.yaml', import.meta.url), 'utf8')
   assert.equal(onDisk, manifest(osmImportJob), 'regenerate with: node services/overpass/osm-import-job.mjs > services/overpass/osm-import-job.yaml')
+})
+
+test('the reviewed BUILD manifest is exactly what the editor creates', async () => {
+  const onDisk = await readFile(new URL('../overpass/osm-build-job.yaml', import.meta.url), 'utf8')
+  assert.equal(onDisk, buildManifest(osmBuildJob), 'regenerate with: node services/overpass/osm-build-job.mjs > services/overpass/osm-build-job.yaml')
 })

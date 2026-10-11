@@ -1,0 +1,90 @@
+# THE JOB AN OSM-BUILD CREATES, for review. GENERATED from services/worldeditor/runs.mjs
+# (osmBuildJob) by services/overpass/osm-build-job.mjs; a test fails if the two differ.
+#
+# An osm-build is an osm-import (`osm-import-job.yaml`) with a DRAWN AREA instead of a named
+# Geofabrik region: the same image, node, volume, ConfigMap and script (/opt/regions/import.sh), so
+# the instance's `regions` sidecar applies the change through the dispatcher exactly as for an
+# import. What differs is how import.sh learns the area:
+#   * POLYGON_POLY_B64 is the ring a person drew in the editor, as an osmium .poly file, base64 so
+#     it survives an env var. import.sh decodes it to /db/regions/<id>/region.poly, the region's
+#     outline (what defer_deletes.py and the coverage map read);
+#   * PBF_URLS is the Geofabrik extract(s) covering the ring, space-separated — chosen by the
+#     editor's server, which holds the index geometry and the sizes (osmbuild.mjs). import.sh
+#     downloads them, merges if there is more than one, and clips with `osmium extract -p`;
+#   * there is NO updates stream: a drawn area is a snapshot (the extract it is cut from also
+#     covers ground outside the shape), applied once and not followed.
+#
+# Example values: a small drawn patch on the `overpass` instance (gh200-1-node-2), covered by the
+# Maryland extract. The editor fills in the polygon, the sources, the node and a unique name; a
+# real build's ring is whatever a person drew. RBAC and the regions.enabled prerequisite are the
+# same as osm-import-job.yaml.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: osm-build-overpass-example
+  labels:
+    app.kubernetes.io/name: worldeditor-run
+    worldeditor/run: osm-build-overpass-build-a1b2c3-20261011120000-abcd
+    worldeditor/kind: osm-build
+    worldeditor/upstream: overpass
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 172800
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: worldeditor-run
+        worldeditor/run: osm-build-overpass-build-a1b2c3-20261011120000-abcd
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - gh200-1-node-2
+      containers:
+        - name: build
+          image: wiktorn/overpass-api@sha256:9bb5f4a9b54cd225bf828c04c67e7f4010650ff4d70b72157a9473a9ba02d93c
+          imagePullPolicy: Always
+          command:
+            - /bin/bash
+            - /opt/regions/import.sh
+          env:
+            - name: UPSTREAM
+              value: overpass
+            - name: REGION_ID
+              value: overpass-build-my-patch-a1b2c3
+            - name: REGION_NAME
+              value: "my patch"
+            - name: PBF_URLS
+              value: https://download.geofabrik.de/north-america/us/maryland-latest.osm.pbf
+            - name: POLYGON_POLY_B64
+              value: "bXkgcGF0Y2gKMQogICAtNzcuMjAwMDAwMCAzOC44MDAwMDAwCiAgIC03Ni45MDAwMDAwIDM4LjgwMDAwMDAKICAgLTc2LjkwMDAwMDAgMzkuMDAwMDAwMAogICAtNzcuMjAwMDAwMCAzOC44MDAwMDAwCkVORAo="
+            - name: INTERPRETER
+              value: http://overpass/api/interpreter
+          resources:
+            requests:
+              cpu: "2"
+              memory: 2Gi
+            limits:
+              cpu: "8"
+              memory: 8Gi
+          volumeMounts:
+            - name: db
+              mountPath: /db
+            - name: scripts
+              mountPath: /opt/regions
+              readOnly: true
+      volumes:
+        - name: db
+          persistentVolumeClaim:
+            claimName: overpass-db
+        - name: scripts
+          configMap:
+            name: overpass-regions
+            defaultMode: 493
