@@ -17,11 +17,11 @@ ARG BLENDER_IMAGE=ghcr.io/hotspoons/piedmont-blender:5.1.2
 
 # ---- the arcade packages, at the pinned ref ----------------------------------------------------
 # @apex/engine, @apex/enginesim and @apex/stunt-pieces live in siomporas-arcade and are npm
-# workspaces here (docs/ARCADE.md). On a laptop `vendor/arcade` is a symlink; an image wants real
+# workspaces here (docs/dev/arcade.md). On a laptop `vendor/arcade` is a symlink; an image wants real
 # files, and it wants the ref arcade.json PINS — never whatever ext/siomporas-arcade happens to hold
 # on the machine that ran `docker build`. So this stage fetches the pin itself (sparse: the three
 # packages and the tsconfig they extend) and copies them out as plain directories.
-FROM node:22-slim AS arcade
+FROM node:24-slim AS arcade
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -31,7 +31,7 @@ COPY scripts/setup.mjs scripts/
 RUN node scripts/setup.mjs --copy /arcade
 
 # ---- build the three pages ---------------------------------------------------------------------
-FROM node:22-slim AS app
+FROM node:24-slim AS app
 WORKDIR /src
 # The lockfile, every workspace manifest and the arcade packages first, so a change to a source
 # file does not re-resolve the dependency tree. `npm ci` needs the WHOLE workspace layout, and it
@@ -82,8 +82,8 @@ RUN git clone --filter=blob:none https://projects.blender.org/Rich-Siomporas/ble
 # ---- the service -------------------------------------------------------------------------------
 # TRIXIE, not bookworm, and Blender is the reason: the arm64 build links against trixie's glibc
 # (5.x needs GCC 14, which bookworm does not have), and a binary built there will not start on
-# bookworm's older one. `node:22-slim` is bookworm.
-FROM node:22-trixie-slim
+# bookworm's older one. `node:24-slim` is bookworm.
+FROM node:24-trixie-slim
 WORKDIR /app
 # ONE dependency, and it is named here because this stage has no `npm install` and never will:
 # everything else is node builtins plus the files beside it — SigV4 by hand, the Kubernetes API by

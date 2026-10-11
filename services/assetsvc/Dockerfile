@@ -12,7 +12,7 @@
 # per-pixel work in plain JavaScript. That is installed HERE rather than fetched by `npx` at runtime:
 # a pod that reaches out to the npm registry the first time somebody finishes a mesh is a pod that
 # fails on an air-gapped cluster and is slow on every cold start.
-FROM node:22-slim
+FROM node:24-slim
 
 # gltf-transform's draco and meshopt paths are prebuilt wasm/native for linux; nothing to compile.
 WORKDIR /app

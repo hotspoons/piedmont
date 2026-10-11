@@ -21,10 +21,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
-      # The arcade packages are workspaces linked in by setup (docs/ARCADE.md): fetch the pinned
+      # The arcade packages are workspaces linked in by setup (docs/dev/arcade.md): fetch the pinned
       # ref, link vendor/arcade, then `npm ci` — setup does all three. No gaussworks, no Python here.
       - name: Install
         run: |
@@ -70,7 +70,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
       - run: node scripts/check-names.mjs
       - run: node scripts/check-pull-policy.mjs
       - run: node scripts/check-links.mjs
@@ -89,7 +89,7 @@ jobs:
           cache-dependency-path: bake/requirements.txt
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
       # The bake shells out to GDAL's tools (gdalbuildvrt, gdaladdo) for mosaics and overviews; the
       # rasterio wheel carries the library but not the commands. The arcade ran these tests inside
       # the bake image, which has them; a plain runner does not, and 7 tests erred on the first run.

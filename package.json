@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "license": "Apache-2.0",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "description": "An open-world driving game on real roads: the game and its editors, the world baker, the services and the asset pipelines.",
   "workspaces": [
     "vendor/arcade/packages/engine",
@@ -37,6 +40,7 @@
     "@types/webxr": "^0.5.24",
     "@types/ws": "^8.18.1",
     "draco3dgltf": "^1.5.7",
+    "esbuild": "^0.28.2",
     "heroicons": "^2.2.0",
     "meshoptimizer": "^1.2.0",
     "oxlint": "^1.71.0",
