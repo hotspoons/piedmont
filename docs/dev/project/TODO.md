@@ -15,6 +15,20 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 
 ## Recently fixed
 
+- **A shard block with nothing in the world crashed the whole bake** — `shards.world_lidar_area`
+  returned an empty `streets` geometry when a block owned no part of the world and carried no roads,
+  and `snap_bbox` on its NaN bounds killed the shard (`ValueError: cannot convert float NaN to
+  integer`). Any diagonal or L-shaped world has corner blocks like that; it stopped the
+  `i70-us15-maryland` bake at shard 19. Both `world_lidar_area`s now answer `None` when there is
+  nothing to read and the callers fall through to the elevation-model profiles. `bbff1eb`;
+  shard 19 now completes in seconds.
+- **A service suite hung CI on ~half of pushes** — `runs-osm.test.mjs` passed every test and then
+  never exited. `Runs.cancel` finishes a run while `#advance` is mid-flight, so the advance started
+  the next phase and re-armed a watcher for an already-terminal run, whose log follower kept opening
+  the run's (removed) log file. The phase watchers no-op on a terminal run, the log sinks tolerate a
+  vanished directory, and the checks wrapper passes `--test-force-exit`. `a1439b0`; cleared at 16-way
+  concurrency.
+
 - **Tiled network: the game minimap read the whole network** — `game/move/minimap.ts`'s worker
   loaded the site's entire network export (`context.json`, ~47 MB on dc-metro) once and tiled it
   itself. It now reads the coarse `vt/<z>` cells for the view (`chooseMapLevel`: the finest level

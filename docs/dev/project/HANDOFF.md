@@ -9,8 +9,8 @@ For an agent picking up piedmont after the split from siomporas-arcade. Read thi
 | Area | State |
 |---|---|
 | Repository | Pushed to `github.com/hotspoons/piedmont`, `main`. Imported from arcade `34933bd` ([ORIGIN.md](ORIGIN.md)), then renamed, documented and fixed. |
-| Local gate | `npx tsc -b`, `npx vitest run` (1026 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (350), `npm run build`: all pass on Node 24. |
-| CI | Green on `c7e22c4`. One service suite hung CI twice (anonymous timeout); it did not recur. The checks wrapper now kills a suite that outlives 165 s and fails **with the file name and its last output**, so the next occurrence identifies itself. |
+| Local gate | `npx tsc -b`, `npx vitest run` (1026 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (357), `npm run build`: all pass on Node 24. |
+| CI | Green. A service suite (`runs-osm.test.mjs`) hung CI on roughly half of pushes — all its tests passed, the process just never exited. Root cause: `Runs.cancel` finishes a run while `#advance` is mid-flight, so the advance started the next phase and re-armed a watcher for an already-terminal run, whose log follower then opened the run's (removed) log file. Fixed 2026-10-12 (`a1439b0`): the phase watchers no-op on a terminal run, sinks tolerate a vanished directory, and the checks wrapper passes `--test-force-exit`. Reproduced and cleared at 16-way concurrency (96 runs). |
 | Images | All six published on ghcr as `latest`: `piedmont-bake`, `-worldeditor`, `-assetsvc`, `-recon`, `-blender`, `-core`. The core image's CI smoke ran its inner dockerd, a nested container and the world editor on the Docker runner, on amd64 and arm64. |
 | Dev container | Fixed but **never built**: Debian trixie base needs `"moby": false`; Node 24; OpenChamber with opencode's PATH on the extension host. Rich's first build is its first test. |
 | Cluster deployment | **Partly done.** `worldeditor`, `assetsvc` and `overpass-na` run in `piedmont`; the editor serves at `piedmont.richard-siomporas.basedweights.com` through the platform Gateway and can draw and build OSM areas. `cluster.yaml` and `worldeditor.yaml` are reconciled to that live state and `just deploy-check gh200-1` is clean. The acceptance items below are still open. |
@@ -33,12 +33,15 @@ with per-segment profiles. Naively feeding halo-local chains through `netsets.as
 double-count a seam-spanning road (each halo clips it at a different start). Phases 2–4 and the
 sourcing are tracked in [TODO.md](TODO.md) #6.
 
-**Route selection** (2026-10-12, `ad7cab5`/`0d6dac7`) is the many-road selector: a third selection
-mode beside Square and Polygon where a plain click adds a road, Ctrl/Cmd-click toggles, and each
-picked road takes a start and an end. It writes `kind:"route"` (`refs` + `clip` + `cuts`), which the
-bake's `_resolve_route` turns into the same network site; `routes.trim_line` projects the clicked
-WGS84 anchors onto the bake's own chain of the ref. Verified in a headless browser against the
-deployed editor (`ad7cab5`) and by `apps/game/test/editor-routegeom.test.ts`.
+**Route selection** (2026-10-12, `ad7cab5`/`0d6dac7`/`7011c82`) is the many-road selector: a third
+selection mode beside Square and Polygon where a plain click selects just the road, Ctrl/Cmd-click
+adds or removes one, and each picked road takes a start and an end. It writes `kind:"route"`
+(`refs` + `clip` + `cuts`), which the bake's `_resolve_route` turns into the same network site;
+`routes.trim_line` projects the clicked WGS84 anchors onto the bake's own chain of the ref. Because
+the editor labels a road `name || ref`, `routes.fetch_ref_lines` matches a ref on the OSM `ref`
+**or** the road's `name` (`9381596`) — an editor-picked route named "Robert Crain Highway" would
+otherwise resolve to nothing. Verified in a headless browser against the deployed editor and by
+`apps/game/test/editor-routegeom.test.ts` + `bake/tests/test_routes.py`.
 
 ## Next, in order
 
