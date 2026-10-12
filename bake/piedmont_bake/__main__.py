@@ -242,8 +242,13 @@ def cmd_vectors(a: argparse.Namespace) -> None:
     rebake. It also upgrades a world tiled by an earlier, buildings-only backfill: the footprints are
     read back out of the existing tiles and re-tiled beside the furniture. Sites already on the
     current `vt.cells` schema, or small enough to stay inline, are skipped.
+
+    It ALSO writes the coarse vector LODs (`vtiles.write_levels`) beside `vt/0` when the site carries
+    a raster pyramid, exactly as a fresh `export_site` does — so a world baked before the LODs grew
+    gains its overview bundle here. `--force` re-tiles a site below the inline threshold, for the case
+    where the coarse bundle is what is wanted.
     """
-    from . import export
+    from . import export, vtiles
 
     if a.slug == "all":
         sites = sorted(d for d in (DATA / "sites").glob("*") if (d / "web" / "manifest.json").exists())
@@ -277,15 +282,32 @@ def cmd_vectors(a: argparse.Namespace) -> None:
         # a broader set (this bug once shipped `water`/`landuse`/`pois` into the tiles while leaving
         # them inline); dropping them here re-tiles to exactly `TILED_ACTIVE` and stops the duplicate.
         arrays = {k: v for k, v in arrays.items() if k in export.TILED_ACTIVE}
+        # The coarse LODs come off the FULL arrays (before the threshold), so a site small enough to
+        # keep its arrays inline still gets an overview bundle if it has a pyramid to key to.
+        pyr = (out.get("layers") or {}).get("pyramid") or {}
+        levels = {}
+        if pyr.get("zmin") is not None and pyr.get("zmax") is not None:
+            try:
+                levels = vtiles.write_levels(web, arrays, pyr["zmin"], pyr["zmax"], vt.get("size_m", 1000.0))
+            except Exception as exc:
+                print(f"  {d.name}: coarse LODs SKIPPED: {exc.__class__.__name__}: {exc}")
         bs = arrays.get("buildings") or []
-        if len(bs) < export.VECTOR_TILE_MIN:
-            print(f"  {d.name}: {len(bs)} footprints, below the tiling threshold, left inline")
+        if len(bs) < export.VECTOR_TILE_MIN and not getattr(a, "force", False):
+            if levels:
+                out["vt"] = {**vt, "size_m": vt.get("size_m", 1000.0), "dir": vt.get("dir", "vt/0"), "levels": levels}
+                man.write_text(json.dumps(out, separators=(",", ":")))
+                print(f"  {d.name}: {len(bs)} footprints left inline, {len(levels)} coarse levels written", flush=True)
+            else:
+                print(f"  {d.name}: {len(bs)} footprints, below the tiling threshold, left inline")
             continue
         out["vt"] = export._vector_tiles(web, arrays)
+        if levels:
+            out["vt"]["levels"] = levels
         export._empty_tiled(out)
         man.write_text(json.dumps(out, separators=(",", ":")))
         c = out["vt"]["counts"]
-        print(f"  {d.name}: {len(out['vt']['cells'])} tiles / {c.get('buildings', 0)} footprints, {c.get('sidewalks', 0)} walks -> {man.stat().st_size / 1e6:.1f} MB manifest", flush=True)
+        lod = f", vt.levels z{'/'.join(sorted(levels, key=int))}" if levels else ""
+        print(f"  {d.name}: {len(out['vt']['cells'])} tiles / {c.get('buildings', 0)} footprints, {c.get('sidewalks', 0)} walks{lod} -> {man.stat().st_size / 1e6:.1f} MB manifest", flush=True)
 
 
 def cmd_plan(a: argparse.Namespace) -> None:
@@ -624,6 +646,7 @@ def main() -> None:
     ctx.set_defaults(fn=cmd_context)
     vec = sub.add_parser("vectors", help="split the heavy spatial arrays out of an exported manifest into per-1 km vector tiles")
     vec.add_argument("slug", nargs="?", default="all")
+    vec.add_argument("--force", action="store_true", help="re-tile even a site below the inline threshold")
     vec.set_defaults(fn=cmd_vectors)
     ex = sub.add_parser("export", help="(re)write web/ layers + sites/index.json for the viewer")
     ex.add_argument("slug", nargs="?", default="all")

@@ -2,14 +2,14 @@
 
 For an agent picking up piedmont after the split from siomporas-arcade. Read this, then
 [AGENTS.md](../../../AGENTS.md), [DEVELOPING.md](../../../DEVELOPING.md) and
-[ACCEPTANCE.md](ACCEPTANCE.md). State as of 2026-10-11.
+[ACCEPTANCE.md](ACCEPTANCE.md). State as of 2026-10-12.
 
 ## Where things stand
 
 | Area | State |
 |---|---|
 | Repository | Pushed to `github.com/hotspoons/piedmont`, `main`. Imported from arcade `34933bd` ([ORIGIN.md](ORIGIN.md)), then renamed, documented and fixed. |
-| Local gate | `npx tsc -b`, `npx vitest run` (999 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (327), `npm run build`: all pass on Node 24. |
+| Local gate | `npx tsc -b`, `npx vitest run` (1005 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (331), `npm run build`: all pass on Node 24. |
 | CI | Green on `c7e22c4`. One service suite hung CI twice (anonymous timeout); it did not recur. The checks wrapper now kills a suite that outlives 165 s and fails **with the file name and its last output**, so the next occurrence identifies itself. |
 | Images | All six published on ghcr as `latest`: `piedmont-bake`, `-worldeditor`, `-assetsvc`, `-recon`, `-blender`, `-core`. The core image's CI smoke ran its inner dockerd, a nested container and the world editor on the Docker runner, on amd64 and arm64. |
 | Dev container | Fixed but **never built**: Debian trixie base needs `"moby": false`; Node 24; OpenChamber with opencode's PATH on the extension host. Rich's first build is its first test. |
@@ -20,9 +20,10 @@ Two workstreams are in flight beyond the split itself. **The `agent/mcp-fixes` p
 nine live findings, ported by intent — [specs/PLAN-MCP-PORT.md](../specs/PLAN-MCP-PORT.md)); the only
 open acceptance item is a real-browser check. **The tiled-network plan**
 ([specs/PLAN-TILED-NETWORK.md](../specs/PLAN-TILED-NETWORK.md)) has landed Phase 0, the first Phase 1
-slice (per-tile-set network artifacts) and the bake half of Phase 4b (coarse vector LODs beside the
-raster pyramid). The rest of Phase 1 (the per-tile-set OSM query), Phases 2–4 and the viewer's coarse
-vector adoption remain; they are tracked in [TODO.md](TODO.md).
+slice (per-tile-set network artifacts) and **both halves of Phase 4b** (coarse vector LODs written
+beside `vt/0`, and the editor map's `chooseVectorLevel` reading them — live-verified in a browser).
+The rest of Phase 1 (the per-tile-set OSM query), Phases 2–4 and the game viewer's coarse-vector
+adoption remain; they are tracked in [TODO.md](TODO.md).
 
 ## Next, in order
 

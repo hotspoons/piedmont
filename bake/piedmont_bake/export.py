@@ -2021,8 +2021,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
             try:
                 from . import vtiles
 
-                _, mid_lat = frame.anchor
-                levels = vtiles.write_levels(web, frame, arrays, pl["zmin"], pl["zmax"], mid_lat)
+                levels = vtiles.write_levels(web, arrays, pl["zmin"], pl["zmax"], out["vt"].get("size_m", 1000.0))
                 if levels:
                     out["vt"]["levels"] = levels
                     tot = sum(v["count"] for v in levels.values())

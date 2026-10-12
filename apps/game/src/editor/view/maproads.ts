@@ -52,6 +52,45 @@ const BUILD_MS = 4
 /** label candidates examined a frame, at most */
 const MAX_CANDS = 6000
 
+/**
+ * Which coarse vector level fits the eye, or null to use `vt/0`.
+ *
+ * `vt.levels` (bake/vtiles.py) is the pyramid's coarse end, keyed by quadtree z; each level's cells
+ * are `cell_m` metres and carry only the distance-reading layers. A map picks the COARSEST level
+ * whose cells still fit the view a few times across — few tiles, and detail scaled to the distance —
+ * and falls to `vt/0` (null) once even the finest coarse level is too coarse to read, i.e. zoomed in.
+ *
+ * `viewPx` is the view's long side in CSS pixels; `mpp` its metres a pixel, so `mpp · viewPx` is the
+ * ground span. A level fits when its cell is at most half that span (≈2 cells across, the minimum
+ * that shows a road's shape rather than a dot).
+ *
+ * NO DEAD BAND. The fine tiles only stream at or below `minMpp` (`TIER_MPP[1]`, the "z14" zoom). If
+ * no coarse level fits yet the eye is still coarser than that, the FINEST coarse level bridges the
+ * gap — better a slightly-too-coarse tile than a screen with no new roads on it — and it hands over
+ * to `vt/0` exactly at `minMpp`.
+ */
+export function chooseVectorLevel(
+  levels: Record<string, { cell_m: number }> | undefined,
+  mpp: number,
+  viewPx = 1000,
+  minMpp = TIER_MPP[1],
+): string | null {
+  if (!levels) return null
+  const half = (mpp * viewPx) / 2
+  let best: string | null = null
+  let bestCell = 0
+  let finest: string | null = null
+  let finestCell = Infinity
+  for (const z of Object.keys(levels)) {
+    const cell = levels[z]?.cell_m ?? 0
+    if (cell <= 0) continue
+    if (cell < finestCell) { finest = z; finestCell = cell }
+    if (cell <= half && cell >= bestCell) { best = z; bestCell = cell }
+  }
+  if (best) return best
+  return finest && mpp > minMpp ? finest : null
+}
+
 interface Built {
   b: Bucket
   names: string[]
@@ -148,7 +187,7 @@ export class RoadMap {
   roadsOn = true
   labelsOn = true
   /** for probes and the report: what came from where, and what it cost */
-  readonly stats = { source: 'none' as 'none' | 'context' | 'manifest' | 'tiles', roads: 0, buckets: 0, built: 0, segments: 0, workerMs: 0, firstMajorAt: 0, firstMajorPageMs: 0, labels: 0, cands: 0, layoutMs: 0, buildMs: 0, vtCells: 0 }
+  readonly stats = { source: 'none' as 'none' | 'context' | 'manifest' | 'tiles', roads: 0, buckets: 0, built: 0, segments: 0, workerMs: 0, firstMajorAt: 0, firstMajorPageMs: 0, labels: 0, cands: 0, layoutMs: 0, buildMs: 0, vtCells: 0, vtLevel: null as string | null }
   private host: RoadMapHost
   private built: Built[] = []
   private queue = new Set<Built>()
@@ -330,7 +369,7 @@ export class RoadMap {
     if (!vt?.branch?.length || !vt.dir || this.stats.source !== 'tiles' || this.vtBusy >= 2) return
     const size = vt.size_m || 1000
     const want = vt.branch
-      .filter((t) => !this.vtTaken.has(`${t.x},${t.y}`))
+      .filter((t) => !this.vtTaken.has(`${vt.dir}:${t.x},${t.y}`))
       .map((t) => ({ t, d: Math.hypot((t.x + 0.5) * size - cx, (t.y + 0.5) * size - cy) }))
       .filter((w) => w.d < radius)
       .sort((a, b) => a.d - b.d)
@@ -338,7 +377,7 @@ export class RoadMap {
     const gen = this.gen
     const slug = this.manifest!.slug
     for (const { t } of want) {
-      this.vtTaken.add(`${t.x},${t.y}`)
+      this.vtTaken.add(`${vt.dir}:${t.x},${t.y}`)
       this.vtBusy++
       void loadVectorTile(slug, vt.dir, t.x, t.y).then((files) => {
         this.vtBusy--
@@ -350,6 +389,48 @@ export class RoadMap {
         // one bucket per tile: these are already 1 km cells
         const out = bucketRoads(lines, 1e9, `vt${t.x},${t.y}:`)
         for (const b of out.buckets) if (b.tier === 0) b.tier = 1 // a tile's major roads arrive with the zoom that fetched them
+        this.stats.vtCells++
+        this.take(out.names, out.buckets)
+      }).catch(() => { this.vtBusy-- })
+    }
+  }
+
+  /**
+   * A tiled world at an overview zoom: take the coarse level's tiles around the view.
+   *
+   * The coarse bundle is a partial manifest (`vtiles.write_levels`) keyed in the same site metres as
+   * `vt/0`, so this is `streamTiles` with a coarser cell and a directory named for the level. Unlike
+   * `vt/0`, a coarse tile IS the overview — its major roads are already reduced by `vectorlod`, so
+   * they stay tier 0 and draw at any distance. The bucket is tagged with its level so only the level
+   * chosen for the eye stays on the GPU (see `update`).
+   */
+  private streamLevel(z: string, cx: number, cy: number, radius: number) {
+    const vt = this.manifest?.vt
+    const lvl = vt?.levels?.[z]
+    if (!vt || !lvl || this.stats.source === 'context' || this.vtBusy >= 2) return
+    const cell = lvl.cell_m || vt.size_m || 1000
+    const dir = `vt/${z}`
+    const r = Math.max(radius, cell * 1.5)
+    const want = lvl.tiles
+      .filter((t) => !this.vtTaken.has(`${dir}:${t.x},${t.y}`))
+      .map((t) => ({ t, d: Math.hypot((t.x + 0.5) * cell - cx, (t.y + 0.5) * cell - cy) }))
+      .filter((w) => w.d < r)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 2 - this.vtBusy)
+    const gen = this.gen
+    const slug = this.manifest!.slug
+    for (const { t } of want) {
+      this.vtTaken.add(`${dir}:${t.x},${t.y}`)
+      this.vtBusy++
+      void loadVectorTile(slug, dir, t.x, t.y).then((files) => {
+        this.vtBusy--
+        if (gen !== this.gen) return
+        const lines: RoadLine[] = []
+        for (const br of (files.branches ?? []) as NonNullable<Manifest['branches']>) {
+          if (br.coords?.length > 1) lines.push(lineOf(br.coords, br.highway ?? 'residential', br.name ?? br.ref ?? null))
+        }
+        const out = bucketRoads(lines, 1e9, `vtz${z}:${t.x},${t.y}:`)
+        for (const b of out.buckets) b.level = z
         this.stats.vtCells++
         this.take(out.names, out.buckets)
       }).catch(() => { this.vtBusy-- })
@@ -495,11 +576,21 @@ export class RoadMap {
     this.pv.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)
     this.frustum.setFromProjectionMatrix(this.pv)
     const tierOn = TIER_MPP.map((t) => mpp <= t)
-    if (tierOn[1]) this.streamTiles(focus.x, focus.y, Math.max(1500, mpp * 1200))
+    const lvl = chooseVectorLevel(this.manifest?.vt?.levels, mpp)
+    this.stats.vtLevel = lvl
+    if (lvl) this.streamLevel(lvl, focus.x, focus.y, Math.max(1500, mpp * 1200))
+    else if (tierOn[1]) this.streamTiles(focus.x, focus.y, Math.max(1500, mpp * 1200))
 
     // ---- visibility, and what to build
     let builtMinor = 0
     for (const e of this.built) {
+      // a coarse tile belongs to one level: while another level is the fit, free its GPU buffers but
+      // keep the bucket (vtTaken remembers it), so coming back does not refetch
+      if (e.b.level && e.b.level !== lvl) {
+        if (e.geo) { this.unbuild(e); e.lz = null }
+        if (e.casing) e.casing.visible = e.fill!.visible = false
+        continue
+      }
       const want = this.roadsOn && tierOn[e.b.tier] && this.frustum.intersectsBox(e.box)
       if (want) {
         e.seen = this.frame
@@ -537,10 +628,10 @@ export class RoadMap {
       }
     }
     // ---- labels
-    this.placeLabels(mpp, tierOn, moving)
+    this.placeLabels(mpp, tierOn, lvl, moving)
   }
 
-  private placeLabels(mpp: number, tierOn: boolean[], moving: boolean) {
+  private placeLabels(mpp: number, tierOn: boolean[], lvl: string | null, moving: boolean) {
     const lc = this.labelCanvas
     const gl = this.host.canvas
     if (!this.shown || !this.labelsOn || gl.hidden) {
@@ -583,7 +674,7 @@ export class RoadMap {
       return [(nx * 0.5 + 0.5) * W, (-ny * 0.5 + 0.5) * H]
     }
     outer: for (const e of this.built) {
-      if (!this.roadsOn || !tierOn[e.b.tier] || !e.lz || e.seen !== this.frame) continue
+      if (!this.roadsOn || !tierOn[e.b.tier] || (e.b.level && e.b.level !== lvl) || !e.lz || e.seen !== this.frame) continue
       const Lb = e.b.labels
       for (let k = 0; k < Lb.x.length; k++) {
         if (cands.length >= MAX_CANDS) break outer

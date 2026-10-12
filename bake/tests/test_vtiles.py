@@ -1,8 +1,8 @@
-"""vtiles: coarse vector tiles tiled onto the raster pyramid, layer by layer.
+"""vtiles: coarse vector tiles tiled beside `vt/0`, layer by layer.
 
 `vectorlod` is the reduction; this is the tiling around it — gather the four distance-reading layers
-from the manifest arrays, assign each feature to every pyramid tile it crosses, reduce per tile, and
-write `web/vt/<z>/<x>_<y>.json`. Synthetic features and a real `Frame`, no bake.
+from the manifest arrays, assign each feature to every coarse site-metre cell it crosses, reduce per
+cell, and write `web/vt/<z>/<ix>_<iy>.json` as a partial manifest. Synthetic features, no bake.
 
     bake/.venv/bin/python -m unittest discover -s tests
 """
@@ -15,48 +15,46 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from shapely.geometry import LineString  # noqa: E402
 
-from piedmont_bake import pyramid, vtiles as vt  # noqa: E402
-from piedmont_bake.geo import Frame  # noqa: E402
-
-# A real frame, so the ENU <-> WGS conversion under test is the bake's own.
-FR = Frame.at(-76.7, 39.0)
+from piedmont_bake import vtiles as vt  # noqa: E402
 
 
-def enu(lon, lat):
-    """WGS -> the site metres the manifest stores (the inverse of `vtiles._wgs_bbox`)."""
-    ux, uy = FR.from_wgs(lon, lat)
-    e, n = FR.to_enu(ux, uy)
-    return float(e), float(n)
+def seg(x0, y0, x1, y1):
+    return [[float(x0), float(y0)], [float(x1), float(y1)]]
 
 
-def seg(lon0, lat0, lon1, lat1, nd=2):
-    e0, n0 = enu(lon0, lat0)
-    e1, n1 = enu(lon1, lat1)
-    return [[round(e0, nd), round(n0, nd)], [round(e1, nd), round(n1, nd)]]
+def road(cls, x0, x1, y=0.0, name=None, ref=None):
+    return {"highway": cls, "name": name, "ref": ref, "coords": seg(x0, y, x1, y)}
+
+
+class CellTest(unittest.TestCase):
+    def test_a_level_is_a_quadtree_z_off_the_leaf(self):
+        self.assertEqual(vt.cell_m_for(14), 1000.0)
+        self.assertEqual(vt.cell_m_for(13), 2000.0)
+        self.assertEqual(vt.cell_m_for(12), 4000.0)
+        self.assertEqual(vt.cell_m_for(11), 8000.0)
+        self.assertEqual(vt.cell_m_for(8), 64000.0)
+
+    def test_the_cell_size_scales_with_the_base(self):
+        self.assertEqual(vt.cell_m_for(11, 2000.0), 16000.0)
 
 
 class GatherTest(unittest.TestCase):
     def test_the_four_sources_map_to_the_four_layers(self):
         arrays = {
-            "branches": [{"highway": "motorway", "ref": "I 95", "coords": seg(-76.70, 39.0, -76.69, 39.0)}],
-            "trails": [{"kind": "path", "name": "Patuxent Trail", "coords": seg(-76.70, 39.01, -76.69, 39.01)}],
-            "rail": [{"kind": "rail", "name": "CSX", "coords": seg(-76.70, 39.02, -76.69, 39.02)}],
-            "water": {"lines": [{"kind": "river", "name": "Patuxent", "pts": seg(-76.70, 39.03, -76.69, 39.03)}]},
+            "branches": [road("motorway", 0, 100, ref="I 95")],
+            "trails": [{"kind": "path", "name": "Patuxent Trail", "coords": seg(0, 0, 100, 0)}],
+            "rail": [{"kind": "rail", "name": "CSX", "coords": seg(0, 0, 100, 0)}],
+            "water": {"lines": [{"kind": "river", "name": "Patuxent", "pts": seg(0, 0, 100, 0)}]},
         }
         out = vt.gather(arrays)
         self.assertEqual(out["roads"][0]["highway"], "motorway")
         self.assertEqual(out["trails"][0]["kind"], "path")
         self.assertEqual(out["rail"][0]["kind"], "rail")
         self.assertEqual(out["streams"][0]["kind"], "river")
-        self.assertAlmostEqual(out["roads"][0]["line"].length, out["trails"][0]["line"].length, places=0)
 
     def test_a_one_point_or_missing_source_contributes_nothing(self):
-        out = vt.gather({
-            "branches": [{"highway": "motorway", "coords": [[0.0, 0.0]]}],
-            "water": {},
-        })
+        out = vt.gather({"branches": [{"highway": "motorway", "coords": [[0.0, 0.0]]}], "water": {}})
         self.assertEqual(out["roads"], [])
         self.assertEqual(out["streams"], [])
 
@@ -67,57 +65,64 @@ class GatherTest(unittest.TestCase):
 
 
 class AssignTest(unittest.TestCase):
-    def test_a_short_feature_lands_in_the_tile_that_contains_it(self):
-        arrays = {"branches": [{"highway": "motorway", "ref": "I 95",
-                                "coords": seg(-76.70, 39.0, -76.699, 39.0)}]}
-        feats = vt.gather(arrays)
-        z = 14
-        tiles = vt.assign(feats, FR, z)
-        want = pyramid.tile_of(z, -76.70, 39.0)
-        self.assertIn(want, tiles)
-        self.assertIn("roads", tiles[want])
+    def test_a_short_feature_lands_in_the_cell_that_contains_it(self):
+        feats = vt.gather({"branches": [road("motorway", 500, 1500, 500, ref="I 95")]})
+        cells = vt.assign(feats, 14)  # 1 km cells
+        self.assertIn((0, 0), cells)
+        self.assertIn("roads", cells[(0, 0)])
 
-    def test_a_long_feature_is_in_every_tile_it_crosses(self):
-        # ~17 km of longitude at z11 (~10 km tiles) crosses more than one
-        arrays = {"branches": [{"highway": "motorway", "ref": "I 95",
-                                "coords": seg(-76.80, 39.0, -76.60, 39.0)}]}
-        feats = vt.gather(arrays)
-        tiles = vt.assign(feats, FR, 11)
-        self.assertGreaterEqual(len(tiles), 2)
-        # and it is in each, not split across them
-        for t in tiles.values():
-            self.assertEqual(len(t["roads"]), 1)
+    def test_a_long_feature_is_in_every_cell_it_crosses(self):
+        feats = vt.gather({"branches": [road("motorway", 0, 25000, ref="I 95")]})
+        cells = vt.assign(feats, 11)  # 8 km cells: x in 0..3
+        self.assertEqual(sorted(c[0] for c in cells), [0, 1, 2, 3])
+        for c in cells.values():
+            self.assertEqual(len(c["roads"]), 1)
 
-    def test_no_features_is_no_tiles(self):
-        self.assertEqual(vt.assign(vt.gather({}), FR, 10), {})
+    def test_no_features_is_no_cells(self):
+        self.assertEqual(vt.assign(vt.gather({}), 10), {})
 
 
 class BuildLevelTest(unittest.TestCase):
     def test_a_coarse_tile_drops_minor_and_unnamed_roads(self):
-        # long enough that a tile's fragment clears the z10 length gate after the split
         arrays = {"branches": [
-            {"highway": "motorway", "ref": "I 95", "coords": seg(-76.80, 39.0, -76.50, 39.0)},
-            {"highway": "residential", "name": "Oak Ct", "coords": seg(-76.80, 39.0, -76.50, 39.0)},
-            {"highway": "primary", "coords": seg(-76.80, 39.0, -76.50, 39.0)},  # right class, no name
+            road("motorway", 0, 50000, ref="I 95"),
+            road("residential", 0, 50000, name="Oak Ct"),
+            road("primary", 0, 50000),  # right class, no name/ref
         ]}
-        cells = vt.build_level(vt.gather(arrays), FR, 10, 39.0)
-        docs = [d for cell in cells.values() for d in cell.get("roads", [])]
+        cells = vt.build_level(vt.gather(arrays), 10)
+        docs = [d for cell in cells.values() for d in cell.get("branches", [])]
         self.assertTrue(docs)
         self.assertEqual({d.get("ref") for d in docs}, {"I 95"})
 
+    def test_a_coarse_tile_is_a_partial_manifest_in_site_metres(self):
+        arrays = {"branches": [road("motorway", 0, 50000, y=1000, ref="I 95")]}
+        cells = vt.build_level(vt.gather(arrays), 10)
+        cell = next(iter(cells.values()))
+        self.assertIn("branches", cell)
+        doc = cell["branches"][0]
+        self.assertEqual(doc["highway"], "motorway")
+        self.assertIn("coords", doc)
+        for x, y in doc["coords"]:
+            self.assertLess(abs(x), 200000.0)
+            self.assertLess(abs(y), 200000.0)
+
+    def test_streams_are_nested_under_water_lines(self):
+        arrays = {"water": {"lines": [{"kind": "river", "name": "Patuxent", "pts": seg(0, 0, 50000, 0)}]}}
+        cells = vt.build_level(vt.gather(arrays), 10)
+        docs = [d for cell in cells.values() for d in cell.get("water", {}).get("lines", [])]
+        self.assertTrue(docs)
+        self.assertEqual({d["kind"] for d in docs}, {"river"})
+
     def test_the_leaf_level_keeps_everything(self):
-        arrays = {"branches": [
-            {"highway": "residential", "name": "Oak Ct", "coords": seg(-76.70, 39.0, -76.699, 39.0)},
-        ]}
-        cells = vt.build_level(vt.gather(arrays), FR, 14, 39.0)
-        docs = [d for cell in cells.values() for d in cell.get("roads", [])]
+        arrays = {"branches": [road("residential", 0, 500, name="Oak Ct")]}
+        cells = vt.build_level(vt.gather(arrays), 14)
+        docs = [d for cell in cells.values() for d in cell.get("branches", [])]
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0]["name"], "Oak Ct")
 
     def test_an_empty_cell_is_dropped(self):
-        arrays = {"branches": [{"highway": "residential", "name": "Oak Ct",
-                                "coords": seg(-76.70, 39.0, -76.699, 39.0)}]}
-        self.assertEqual(vt.build_level(vt.gather(arrays), FR, 10, 39.0), {})
+        arrays = {"branches": [road("residential", 0, 500, name="Oak Ct")]}
+        self.assertEqual(vt.build_level(vt.gather(arrays), 10), {})
 
 
 class LevelsTest(unittest.TestCase):
@@ -132,67 +137,34 @@ class LevelsTest(unittest.TestCase):
 
 class WriteLevelsTest(unittest.TestCase):
     def test_it_writes_a_bundle_per_level_and_an_index(self):
-        arrays = {"branches": [{"highway": "motorway", "ref": "I 95",
-                                "coords": seg(-76.70, 39.0, -76.69, 39.0)}]}
+        arrays = {"branches": [road("motorway", 0, 50000, ref="I 95")]}
         with tempfile.TemporaryDirectory() as tmp:
             web = Path(tmp)
-            index = vt.write_levels(web, FR, arrays, 11, 11, 39.0)
+            index = vt.write_levels(web, arrays, 11, 11)
             self.assertIn("11", index)
+            self.assertEqual(index["11"]["cell_m"], 8000.0)
             self.assertGreater(index["11"]["count"], 0)
-            # the index names the tiles it wrote, and each is a real file
             row = index["11"]["tiles"][0]
             f = web / "vt" / "11" / f"{row['x']}_{row['y']}.json"
             self.assertTrue(f.exists())
             cell = json.loads(f.read_text())
-            self.assertIn("roads", cell)
-            self.assertIn("line", cell["roads"][0])
+            self.assertIn("branches", cell)
+            self.assertIn("coords", cell["branches"][0])
 
     def test_nothing_to_write_is_no_index_and_no_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
             web = Path(tmp)
-            self.assertEqual(vt.write_levels(web, FR, {}, 11, 11, 39.0), {})
+            self.assertEqual(vt.write_levels(web, {}, 11, 11), {})
             self.assertFalse((web / "vt").exists())
 
     def test_a_rewrite_replaces_the_level_rather_than_accumulating(self):
-        arrays = {"branches": [{"highway": "motorway", "ref": "I 95",
-                                "coords": seg(-76.70, 39.0, -76.69, 39.0)}]}
+        arrays = {"branches": [road("motorway", 0, 50000, ref="I 95")]}
         with tempfile.TemporaryDirectory() as tmp:
             web = Path(tmp)
-            first = vt.write_levels(web, FR, arrays, 11, 11, 39.0)
-            second = vt.write_levels(web, FR, arrays, 11, 11, 39.0)
+            first = vt.write_levels(web, arrays, 11, 11)
+            second = vt.write_levels(web, arrays, 11, 11)
             self.assertEqual(first, second)
-            files = list((web / "vt" / "11").glob("*.json"))
-            self.assertEqual(len(files), len(second["11"]["tiles"]))
-
-
-class GeometrySpaceTest(unittest.TestCase):
-    def test_a_written_feature_is_where_the_raster_tile_says(self):
-        # the whole point: the vector tile is keyed like the raster tile beside it
-        lon, lat = -76.7, 39.0
-        arrays = {"branches": [{"highway": "motorway", "ref": "I 95",
-                                "coords": seg(lon, lat, lon + 0.001, lat)}]}
-        for z in (12, 13, 14):
-            cells = vt.build_level(vt.gather(arrays), FR, z, lat)
-            self.assertIn(pyramid.tile_of(z, lon, lat), cells)
-
-    def test_site_metres_are_not_utm_so_the_conversion_goes_through_enu(self):
-        # a feature 20 km east of the anchor: treating its metres as UTM would miss the tile it is
-        # really in by the convergence; going through enu_to_utm must land it exactly
-        lon, lat = -76.5, 39.0
-        arrays = {"branches": [{"highway": "motorway", "ref": "US 50",
-                                "coords": seg(lon, lat, lon + 0.001, lat)}]}
-        cells = vt.build_level(vt.gather(arrays), FR, 13, lat)
-        self.assertIn(pyramid.tile_of(13, lon, lat), cells)
-
-    def test_the_written_line_is_in_site_metres(self):
-        arrays = {"branches": [{"highway": "motorway", "ref": "I 95",
-                                "coords": seg(-76.70, 39.0, -76.69, 39.0)}]}
-        cells = vt.build_level(vt.gather(arrays), FR, 13, 39.0)
-        doc = next(d for cell in cells.values() for d in cell.get("roads", []))
-        # site metres are small offsets from the anchor, not degrees and not 400 km UTM eastings
-        for x, y in doc["line"]:
-            self.assertLess(abs(x), 20000.0)
-            self.assertLess(abs(y), 20000.0)
+            self.assertEqual(len(list((web / "vt" / "11").glob("*.json"))), len(second["11"]["tiles"]))
 
 
 if __name__ == "__main__":

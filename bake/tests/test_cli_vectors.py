@@ -133,6 +133,41 @@ class CmdVectorsTest(unittest.TestCase):
         out = json.loads((web / "manifest.json").read_text())
         self.assertEqual(out["vt"], {"cells": [{"x": 0, "y": 0}]})
 
+    def _lod_site(self, slug: str) -> Path:
+        web = self._site(slug, [_footprint(100, 100)])
+        man = web / "manifest.json"
+        doc = json.loads(man.read_text())
+        doc["layers"] = {"pyramid": {"zmin": 11, "zmax": 14}}
+        doc["branches"] = [{"id": "way-1", "highway": "trunk", "ref": "MD 3", "coords": [[0.0, 0.0], [50000.0, 0.0]]}]
+        man.write_text(json.dumps(doc))
+        return web
+
+    def test_writes_coarse_levels_for_a_small_site_with_a_pyramid_but_leaves_it_inline(self):
+        web = self._lod_site("lod")
+        cli.cmd_vectors(argparse.Namespace(slug="lod"))
+        out = json.loads((web / "manifest.json").read_text())
+        self.assertIn("levels", out["vt"])
+        self.assertIn("11", out["vt"]["levels"])
+        self.assertEqual(out["vt"]["levels"]["11"]["cell_m"], 8000.0)
+        self.assertTrue((web / "vt" / "11").exists())
+        # the footprints are still inline: nothing crossed the tiling threshold
+        self.assertEqual(len(out["buildings"]), 1)
+
+    def test_force_tiles_a_small_site_and_keeps_its_coarse_levels(self):
+        web = self._lod_site("force")
+        cli.cmd_vectors(argparse.Namespace(slug="force", force=True))
+        out = json.loads((web / "manifest.json").read_text())
+        self.assertEqual(out["buildings"], [])               # tiled after all
+        self.assertIn("cells", out["vt"])
+        self.assertIn("levels", out["vt"])
+        self.assertGreater(out["vt"]["levels"]["11"]["count"], 0)
+
+    def test_a_pyramid_less_site_writes_no_coarse_levels(self):
+        web = self._site("flat", [_footprint(100, 100)])
+        cli.cmd_vectors(argparse.Namespace(slug="flat"))
+        out = json.loads((web / "manifest.json").read_text())
+        self.assertNotIn("vt", out)
+
 
 if __name__ == "__main__":
     unittest.main()

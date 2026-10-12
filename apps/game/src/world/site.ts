@@ -367,6 +367,13 @@ export interface VectorTileIndex {
   cells?: { x: number; y: number }[]
   /** per-array feature counts across the tiles, for the boot log and attribution without loading */
   counts?: Record<string, number>
+  /** Coarse levels, keyed by quadtree z (`bake/vtiles.py`): `levels[z]` is a bundle written beside
+   *  `vt/0` under `vt/<z>/`, whose cells are `cell_m` metres and carry only the distance-reading
+   *  layers (roads, trails, rail, streams), reduced by `vectorlod`. A coarse tile is a PARTIAL
+   *  MANIFEST keyed in the SAME site metres: a feature at (x, y) lives in tile
+   *  `(floor(x / cell_m), floor(y / cell_m))`, so `loadVectorTile(slug, 'vt/' + z, ix, iy)` reads it
+   *  exactly like a `vt/0` tile. Absent on a bake with no pyramid, or one made before this. */
+  levels?: Record<string, { cell_m: number; tiles: { x: number; y: number; n: number }[]; count: number }>
 }
 
 export interface IndexEntry {

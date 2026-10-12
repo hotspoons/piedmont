@@ -12,13 +12,21 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 | 2 | **Stage panel has no control for a level's `program` or traffic `set`** | editor | the guide sends users to Shell mode or MCP `level_save`. |
 | 3 | **Geofabrik's published index can have empty region outlines** | services/worldeditor | 11 regions on 2026-10-10, `virginia.poly` 0 bytes. Routing refuses empty outlines and falls back to the volume's copy or the seed (`services/worldeditor/geofabrik.mjs`); an OSM import of Virginia may fail until Geofabrik fixes its files. |
 | 4 | **Lidar canopy includes roofs** | bake / flora | where a vendor left buildings unclassified; the game masks OSM footprints out of tree planting. The perf panel's tree lines explain bare ground cell by cell. |
-| 5 | **Tiled network: the viewer's coarse-vector adoption** | bake / viewer | the bake now writes `web/vt/<z>/` coarse bundles and a `vt.levels` index (`bake/piedmont_bake/vtiles.py`, `export`); `world/scene.ts`'s bucket loader and `editor/view/maproads.ts` still read only `vt/0`. Needs a browser. See [specs/PLAN-TILED-NETWORK.md](../specs/PLAN-TILED-NETWORK.md) Phase 4b. |
+| 5 | **Tiled network: the game viewer's coarse-vector adoption** | bake / viewer | the bake writes `web/vt/<z>/` coarse bundles and a `vt.levels` index (`bake/piedmont_bake/vtiles.py`, `export`), and the editor map now adopts them (`chooseVectorLevel` in `editor/view/maproads.ts`, verified live in a browser: z10 at ~40 m/px, z11 at ~20, `vt/0` at ≤10). `world/scene.ts`'s branch pump still reads only `vt/0`. See [specs/PLAN-TILED-NETWORK.md](../specs/PLAN-TILED-NETWORK.md) Phase 4b. |
 | 6 | **Tiled network: the per-tile-set OSM query** | bake | Phase 1 stops holding the whole network in one process — plan/query Overpass or clip a Geofabrik extract per tile-set. See Phase 1. |
 | 7 | **MCP port: prove it in a real browser** | editor / services | the port is in and unit-tested (`316d583`); the remaining acceptance item is a real-browser check with the Shell tab never opened. See [specs/PLAN-MCP-PORT.md](../specs/PLAN-MCP-PORT.md) *Done when*. |
 
 ## Recently fixed
 
-- **Port `agent/mcp-fixes` into piedmont** — the arcade branch (`agent/mcp-fixes`) was never merged,
+- **Tiled network: the coarse-vector LODs, bake and viewer** — the bake now reduces the
+  distance-reading layers (roads, trails, rail, streams) into `web/vt/<z>/` bundles beside `vt/0`
+  and carries a `vt.levels` index, keyed on the SAME site-metre cells `vt/0` uses so a coarse tile is
+  a partial manifest the existing loader reads unchanged; `export_site` writes them for every coarse
+  level and `piedmont_bake vectors [--force]` backfills a deployed site. The editor map picks the
+  level with `chooseVectorLevel`, streams it with `streamLevel`, tags buckets `b.level` and frees the
+  previous level's GPU buffers on a switch. Live-verified on a backfilled `crofton-triangle`. See
+  [specs/PLAN-TILED-NETWORK.md](../specs/PLAN-TILED-NETWORK.md) Phase 4b; the game viewer's branch
+  pump is the remaining piece (TODO #5). — the arcade branch (`agent/mcp-fixes`) was never merged,
   so all nine live findings were ported by intent against today's code (`316d583`): the document
   channel (`apiFetch` broadcasts `documentsChanged` to every page, `Shell.refresh` pulls the text
   into the machine without saving back), an explicit `shell_exec` cwd, `program_delete` refusing a

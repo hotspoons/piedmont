@@ -76,6 +76,9 @@ export interface Bucket {
   segs: Uint32Array
   /** style index per segment */
   style: Uint8Array
+  /** the coarse `vt.levels` z this bucket came from, when it is a coarse tile: it is drawn only
+   *  while that level is the one chosen for the view (see chooseVectorLevel) */
+  level?: string
   labels: { x: Float32Array; y: Float32Array; ang: Float32Array; name: Uint32Array; rank: Uint8Array }
 }
 

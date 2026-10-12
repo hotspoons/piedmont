@@ -1,8 +1,9 @@
 # The tiled network: area bakes without a global spine; spine bakes keep theirs
 
 **Status:** proposed 2026-10-11. Position paper and staged plan; Phase 0 (`netsets.py`), the first
-slice of Phase 1 (`network.write_tilesets`, the per-tile-set artifact) and the bake half of Phase 4b
-(`vtiles.py`, `export` writing `web/vt/<z>/` and a `vt.levels` index) landed.
+slice of Phase 1 (`network.write_tilesets`, the per-tile-set artifact) and both halves of Phase 4b
+(`vtiles.py`, `export` writing `web/vt/<z>/` and a `vt.levels` index; the editor map's
+`chooseVectorLevel` reading them) landed.
 This extends [PLAN-SHARDED-BAKE.md](PLAN-SHARDED-BAKE.md): that plan sharded the **rasters** (dem,
 naip, lidar, tiles, pyramid) and kept the **network** one global object — the plan step runs
 `roads()`/`dead_ends()` over the whole region and the finalizer stitches one primary. That is fine
@@ -109,9 +110,16 @@ all of them — high-resolution vectors spanning coast to coast, which is both t
 from 100 km up and a budget problem.
 
 The scheme is trailworks' (`pipeline/bake/tiles.py`), on piedmont's quadtree levels z (z14 ≈ 1 km
-leaf, z11 ≈ 10 km, z8 ≈ 80 km). A coarse vector tile lives **beside the raster tile at the same z**,
-so the viewer already knows which one it wants, and it carries the distance-reading layers — piedmont's
-are **roads**, **trails**, **rail** and **streams** — reduced as the tile grows:
+leaf, z11 ≈ 8 km, z8 ≈ 64 km; a level `z`'s cell is `cell_m = size_m · 2^(14−z)`, the same physical
+scale as the raster tile at that z). A coarse vector tile is keyed in **SITE METRES**, not the
+geographic quadtree: a feature at (x, y) lives in cell `(floor(x / cell_m), floor(y / cell_m))` —
+exactly where `vt/0` already keys and where the viewer buckets its vector stream — so a coarse tile
+is a **partial manifest** (`branches`, `trails`, `rail`, `water.lines`) that `loadVectorTile` and the
+editor map read exactly like a `vt/0` tile. (The plan sketched a geographic key, "beside the raster
+tile"; the viewer's vector stream has never been geographic, so keying it that way would mean a
+second key space in the browser. The LEVEL is still a quadtree z, so the scale is unchanged.) It
+carries the distance-reading layers — piedmont's are **roads**, **trails**, **rail** and
+**streams** — reduced as the tile grows:
 
 | z (edge) | roads kept | trails / rail | streams |
 |---|---|---|---|
@@ -135,8 +143,8 @@ long trail or river still crosses a coarse tile. And coarse ways are **dissolved
 (`ref`/`name`) *before* the length gate, because OSM delivers one road as hundreds of fragments and
 "10 km of I-95" only exists after the merge; the survivors are then **decimated to the tile's own
 scale** (`simplify ≈ edge / 512`). `piedmont_bake/vectorlod.py` is these tables and the reduction, and
-`piedmont_bake/vtiles.py` is the tiling that writes them beside the raster pyramid (`web/vt/<z>/`, a
-`vt.levels` index), both tested. What is left is the viewer's zoom→level choice, below.
+`piedmont_bake/vtiles.py` is the tiling that writes them beside `vt/0` (`web/vt/<z>/`, a `vt.levels`
+index), both tested. The viewer's zoom→level choice is `chooseVectorLevel` (below).
 
 ## Phases
 
@@ -174,19 +182,26 @@ read, as PLAN-SHARDED-BAKE Phase 0 already points at.)
 `manifest.json` (tile-set → its fragments), not one country manifest. The viewer loads neighbour
 tiles for cross-seam continuity (the seam nodes make this exact). Publishing becomes per tile-set.
 
-**Phase 4b — coarse vector LODs, with the pyramid (bake half landed).** `pyramid.bake` emits, beside
-each raster tile, a coarse vector bundle for the distance-reading layers (`vectorlod.coarse_layer`)
-keyed to the same z, so `web/vt/<z>/` grows a level as the raster pyramid does and the manifest carries
-a `vt.levels` index. **Landed:** `piedmont_bake/vtiles.py` — gather the four layers (`roads` ←
-`branches`, `trails`, `rail`, `streams` ← `water.lines`), assign each feature to every pyramid tile it
-crosses in WGS (via `grade.enu_to_utm`, since the stored geometry is ENU, not UTM), reduce per tile, and
-write `web/vt/<z>/<x>_<y>.json` in site metres with a `vt.levels` index; `export.export_site` calls it
-right after `_vector_tiles` for every coarse level of the pyramid (`levels_for` = `zmin..min(zmax,
-FINEST_FULL_LEVEL-1)`), and it is additive — `vt/0` and a tree without `vt.levels` are read as before.
-Tested in `bake/tests/test_vtiles.py`. **Still to do:** the viewer's zoom→level choice and descent —
-`world/scene.ts`'s bucket loader and `editor/view/maproads.ts` — reading `vt.levels` (index shape:
-`{ "<z>": { edge_m, tiles: [{x, y, n}], count } }`) and falling back to `vt/0`. A browser is needed to
-prove it, so it is deferred with that noted.
+**Phase 4b — coarse vector LODs, with the pyramid (landed, bake and viewer).** `export_site` emits,
+beside `vt/0`, a coarse vector bundle for the distance-reading layers (`vectorlod.coarse_layer`)
+keyed to a quadtree z, so `web/vt/<z>/` grows a level as the raster pyramid does and the manifest
+carries a `vt.levels` index. **Bake half:** `piedmont_bake/vtiles.py` — gather the four layers
+(`roads` ← `branches`, `trails`, `rail`, `streams` ← `water.lines`), assign each feature to every
+SITE-METRE cell it crosses (`floor(x / cell_m)`, the same key space as `vt/0`, not the geographic
+quadtree), reduce per cell, and write `web/vt/<z>/<ix>_<iy>.json` as a partial manifest with a
+`vt.levels` index (`{ "<z>": { cell_m, tiles: [{x, y, n}], count } }`). `export.export_site` calls it
+right after `_vector_tiles` for every coarse level (`levels_for` = `zmin..min(zmax, FINEST_FULL_LEVEL−1)`),
+and `piedmont_bake vectors [--force]` backfills the levels onto an already-deployed site without a
+rebake. Additive — `vt/0` and a tree without `vt.levels` are read as before. Tested in
+`bake/tests/test_vtiles.py`. **Viewer half (landed):** `editor/view/maproads.ts`'s `chooseVectorLevel`
+picks the coarsest level whose cell fits the view a few times across (no dead band: the finest coarse
+level bridges to `vt/0` at `TIER_MPP[1]`); `streamLevel` fetches its cells from `vt/<z>/` exactly as
+`streamTiles` fetches `vt/0`; buckets are tagged `b.level`; and the previous level's GPU buffers are
+freed on a switch (bucket kept, no refetch). Coarse tier-0 majors draw at any distance. Verified live
+in a browser on a backfilled `crofton-triangle` (z10 at ~40 m/px, z11 at ~20, full `vt/0` at ≤10).
+Tested in `apps/game/test/editor-maproads-level.test.ts`. **Still to do:** the game viewer's own
+branch pump (`world/scene.ts`) to read `vt.levels` too — today only the editor map does; and the
+class/length tables are first guesses to tune against real tiles.
 
 **Phase 5 — spine mode.** Reuse the current single-primary machinery as the selector: resolve the
 route, buffer it, pick the tile-sets it crosses and the metros to include, order them, then run the
@@ -239,9 +254,11 @@ Prove it first on a **2×2 tile-set split of Crofton** (cheap, every seam), then
   Geofabrik extract clipped per tile-set is probably the answer, and that is an ingestion job of its
   own (see [OVERPASS-PLANET.md](OVERPASS-PLANET.md)).
 - **The `world`/canopy global raster** is fetched whole today; it must tile too.
-- **Vector LOD level→zoom mapping.** The viewer picks a pyramid z from metres-per-pixel; the coarse
-  vector levels must hang off the same choice, and the class/length tables in `vectorlod.py` are
-  first guesses to tune against real tiles (they are one table, not baked into callers).
+- **Vector LOD level→zoom mapping.** `chooseVectorLevel` (`editor/view/maproads.ts`) picks the
+  coarsest level whose cell fits the view a few times across, hung off metres-per-pixel like the
+  raster choice, and hands over to `vt/0` at `TIER_MPP[1]`. The class/length tables in `vectorlod.py`
+  are first guesses to tune against real tiles (they are one table, not baked into callers). The game
+  viewer's branch pump (`world/scene.ts`) still needs the same read.
 
 ## What we are NOT doing
 
