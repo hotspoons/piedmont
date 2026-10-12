@@ -10,12 +10,21 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 |---|---|---|---|
 | 3 | **Geofabrik's published index can have empty region outlines** | services/worldeditor | 11 regions on 2026-10-10, `virginia.poly` 0 bytes. Routing refuses empty outlines and falls back to the volume's copy or the seed (`services/worldeditor/geofabrik.mjs`); an OSM import of Virginia may fail until Geofabrik fixes its files. |
 | 4 | **Lidar canopy includes roofs** | bake / flora | where a vendor left buildings unclassified; the game masks OSM footprints out of tree planting. The perf panel's tree lines explain bare ground cell by cell. |
-| 5 | **Tiled network: the game minimap reads the whole network** | viewer / bake | `game/move/minimap.ts`'s worker loads the whole-network export (`context.json`, ~47 MB on dc-metro) once and tiles it itself, so the flag-scale map is a coast-to-coast high-resolution read — the thing the coarse `vt.levels` bundles exist to replace. Separate from `vt/0`: `context.json` is the network export, not vector tiles. |
-| 6 | **Tiled network: the per-tile-set OSM query** | bake | Phase 1 stops holding the whole network in one process — plan/query Overpass or clip a Geofabrik extract per tile-set. See Phase 1. |
+| 6 | **Tiled network: the per-tile-set OSM query** | bake | Phase 1 stops holding the whole network in one process — plan/query Overpass or clip a Geofabrik extract per tile-set. See Phase 1. **The next real step on the tiled network**: `roads()` still queries the whole site bbox and merges chains globally, so `plan` holds whole 100 km+ chains (`write_tilesets` then cuts them). The per-tile-set *sourcing* is what removes the long polies; the consumers are Phases 2–4. |
 | 8 | **MCP config leaks the bearer token to an unauthenticated caller** | services/worldeditor | `GET /api/agent/mcp/config` returns `auth.token` in the clear (`mcpauth.describe()`, deliberately, so the Agent tab can show it) — but the deployed host answered that GET with no credentials, so the token (which gates `shell_exec`, `program_write`, …) is readable by anyone who can reach the ingress. The code assumes the ingress authenticates; empirically it does not in front of this path. Fix is a deployment/auth decision (gate the route, or front the editor with auth), not a unilateral code change — Rich's call. |
 
 ## Recently fixed
 
+- **Tiled network: the game minimap read the whole network** — `game/move/minimap.ts`'s worker
+  loaded the site's entire network export (`context.json`, ~47 MB on dc-metro) once and tiled it
+  itself. It now reads the coarse `vt/<z>` cells for the view (`chooseMapLevel`: the finest level
+  whose cell keeps the view under ~8 cells across, via the shared `loadVectorTile` LRU), sends each
+  cell to the worker as its own message, and only falls back to `context.json`/`osm.geojson` when a
+  site has no `vt.levels`. The "spider web" (one `Float32Array` per class read as ONE polyline, so
+  the worker joined the end of each road to the start of the next) is gone: a `cell` now carries
+  `layers: Record<string, Float32Array[]>` — one array per polyline. Live-verified on the deployed
+  viewer (`piedmont.minimapVectors()` reports `mode:"cells"`, `dir:"vt/0"` at default zoom, `vt/11`
+  zoomed out). `0990b53`.
 - **Tiled network: the coarse-vector LODs, bake and viewer** — the bake now reduces the
   distance-reading layers (roads, trails, rail, streams) into `web/vt/<z>/` bundles beside `vt/0`
   and carries a `vt.levels` index, keyed on the SAME site-metre cells `vt/0` uses so a coarse tile is

@@ -9,7 +9,7 @@ For an agent picking up piedmont after the split from siomporas-arcade. Read thi
 | Area | State |
 |---|---|
 | Repository | Pushed to `github.com/hotspoons/piedmont`, `main`. Imported from arcade `34933bd` ([ORIGIN.md](ORIGIN.md)), then renamed, documented and fixed. |
-| Local gate | `npx tsc -b`, `npx vitest run` (1005 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (331), `npm run build`: all pass on Node 24. |
+| Local gate | `npx tsc -b`, `npx vitest run` (1026 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (350), `npm run build`: all pass on Node 24. |
 | CI | Green on `c7e22c4`. One service suite hung CI twice (anonymous timeout); it did not recur. The checks wrapper now kills a suite that outlives 165 s and fails **with the file name and its last output**, so the next occurrence identifies itself. |
 | Images | All six published on ghcr as `latest`: `piedmont-bake`, `-worldeditor`, `-assetsvc`, `-recon`, `-blender`, `-core`. The core image's CI smoke ran its inner dockerd, a nested container and the world editor on the Docker runner, on amd64 and arm64. |
 | Dev container | Fixed but **never built**: Debian trixie base needs `"moby": false`; Node 24; OpenChamber with opencode's PATH on the extension host. Rich's first build is its first test. |
@@ -18,12 +18,27 @@ For an agent picking up piedmont after the split from siomporas-arcade. Read thi
 
 Two workstreams are in flight beyond the split itself. **The `agent/mcp-fixes` port is done** (all
 nine live findings, ported by intent — [specs/PLAN-MCP-PORT.md](../specs/PLAN-MCP-PORT.md)); the only
-open acceptance item is a real-browser check. **The tiled-network plan**
+open acceptance item is a real-browser check, now done
+(`services/worldeditor/mcp-browser-check.mjs`). **The tiled-network plan**
 ([specs/PLAN-TILED-NETWORK.md](../specs/PLAN-TILED-NETWORK.md)) has landed Phase 0, the first Phase 1
 slice (per-tile-set network artifacts) and **both halves of Phase 4b** (coarse vector LODs written
 beside `vt/0`, and the editor map's `chooseVectorLevel` reading them — live-verified in a browser).
-The rest of Phase 1 (the per-tile-set OSM query) and Phases 2–4 remain; they are tracked in
-[TODO.md](TODO.md).
+The last wholesale reader, the game **minimap**, now reads those coarse cells too (2026-10-12,
+`0990b53`; the "spider web" from one `Float32Array` read as a single polyline is gone).
+**The rest of Phase 1 is the next real step and is a multi-phase change:** per-tile-set *sourcing*
+(an Overpass/Geofabrik query per tile-set) is what removes the long polies, but it cannot be done in
+isolation — `cut_line`'s `s0`/`s1` are "along the ORIGINAL chain", and a locally-sourced chain has no
+single original, so the `s` semantics only become per-segment once Phase 3 replaces the world primary
+with per-segment profiles. Naively feeding halo-local chains through `netsets.assign` now would
+double-count a seam-spanning road (each halo clips it at a different start). Phases 2–4 and the
+sourcing are tracked in [TODO.md](TODO.md) #6.
+
+**Route selection** (2026-10-12, `ad7cab5`/`0d6dac7`) is the many-road selector: a third selection
+mode beside Square and Polygon where a plain click adds a road, Ctrl/Cmd-click toggles, and each
+picked road takes a start and an end. It writes `kind:"route"` (`refs` + `clip` + `cuts`), which the
+bake's `_resolve_route` turns into the same network site; `routes.trim_line` projects the clicked
+WGS84 anchors onto the bake's own chain of the ref. Verified in a headless browser against the
+deployed editor (`ad7cab5`) and by `apps/game/test/editor-routegeom.test.ts`.
 
 ## Next, in order
 
