@@ -188,5 +188,79 @@ class SampleOutsideRasterTest(unittest.TestCase):
         self.assertTrue(all(abs(z - 5.0) < 1e-6 for z in raw["road_z"]))  # never 999
 
 
+class BridgeNanTest(unittest.TestCase):
+    """Detection reads a hole-bridged array; the returned arrays keep their NaN."""
+
+    def test_holes_are_interpolated(self):
+        from piedmont_bake.lidar import _bridge_nan
+
+        got = _bridge_nan(np.array([1.0, np.nan, np.nan, 4.0]))
+        np.testing.assert_allclose(got, [1.0, 2.0, 3.0, 4.0])
+
+    def test_no_hole_is_returned_unchanged(self):
+        from piedmont_bake.lidar import _bridge_nan
+
+        a = np.array([1.0, 2.0, 3.0])
+        self.assertIs(_bridge_nan(a), a)
+
+    def test_all_holes_is_zeros_not_a_crash(self):
+        from piedmont_bake.lidar import _bridge_nan
+
+        np.testing.assert_array_equal(_bridge_nan(np.array([np.nan, np.nan])), [0.0, 0.0])
+
+
+class AnOverpassOverADtmHoleTest(unittest.TestCase):
+    """A hole in the DTM under a crossing deck must not truncate the deck's span.
+
+    The owner shard's own raster is nodata where the ground under a bridge is never seen (i70's
+    Ernstville: s=10904 and s=10914-10922), so `surface_z` was NaN exactly across a deck 6.4 m up.
+    Every deck point there then failed the 4.5-40 m above-surface test, and a real overpass came out
+    a 2 m `gantry`, which the game draws no scenery for (2026-10-12).
+    """
+
+    def setUp(self):
+        import rasterio
+        from rasterio.transform import from_origin
+
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        n = 300
+        west, north = OX - 50.0, OY + 50.0
+        for name in ("dtm", "chm"):
+            a = np.full((n, n), 100.0 if name == "dtm" else 0.0, np.float32)
+            if name == "dtm":
+                a[45:56, 145:158] = -9999.0  # nodata for x in [OX+95, OX+107]: under the bridge
+            with rasterio.open(
+                self.dir / f"{name}.tif", "w", driver="GTiff", height=n, width=n, count=1,
+                dtype="float32", crs="EPSG:32618", transform=from_origin(west, north, 1.0, 1.0),
+                nodata=-9999.0,
+            ) as dst:
+                dst.write(a, 1)
+        self.line = LineString([(OX, OY), (OX + 200.0, OY)])
+        rng = np.random.default_rng(3)
+        gx, gy = OX + rng.uniform(0.0, 200.0, 800), OY + rng.uniform(-8.0, 8.0, 800)
+        dx, dy = OX + rng.uniform(92.0, 112.0, 400), OY + rng.uniform(-8.0, 8.0, 400)
+        x, y = np.concatenate([gx, dx]), np.concatenate([gy, dy])
+        z = np.concatenate([np.full(800, 100.0), np.full(400, 106.0)])  # a deck 6 m up
+        self.pts = {
+            "x": x, "y": y, "z": z, "cls": np.full(x.size, 2, np.uint8),
+            "rn": np.ones(x.size, np.uint8), "nr": np.ones(x.size, np.uint8),
+            "i": rng.integers(100, 300, x.size).astype(np.uint16), "road": np.ones(x.size, np.int16),
+        }
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_the_span_covers_the_hole_and_is_an_overpass(self):
+        prof = nt.profile_tiled(self.line, self.dir, self.pts, 1, crossings_over_s=[102.0])
+        spans = [st for st in prof["structures"] if st["kind"] in ("overpass", "gantry")]
+        self.assertTrue(spans, "no spanning structure at all")
+        best = max(spans, key=lambda st: st["length_m"])
+        self.assertGreaterEqual(best["length_m"], 5.0)  # not a 2 m gantry
+        self.assertLessEqual(best["s_start"], 96.0)  # covers the hole on both sides
+        self.assertGreaterEqual(best["s_end"], 108.0)
+        self.assertEqual(best["kind"], "overpass")  # OSM says a way crosses over here
+
+
 if __name__ == "__main__":
     unittest.main()

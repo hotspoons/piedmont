@@ -559,6 +559,28 @@ def _runs(mask: np.ndarray) -> list[tuple[int, int]]:
     return out
 
 
+def _bridge_nan(a: np.ndarray) -> np.ndarray:
+    """Interpolate an along-track array's holes, for DETECTION only.
+
+    The ground a road runs on is continuous, and a hole in the DTM (no ground returns under a bridge)
+    must not switch detection off. i70's Ernstville: the owner shard's own raster is nodata at
+    s=10904 and s=10914–10922 (the ground beneath the crossing bridge is never seen), so `surface_z`
+    was NaN exactly across the deck — the crossing deck's own points, 6.4 m up, fell outside the
+    4.5–40 m above-surface test and the whole overpass read as a 2 m `gantry` (2026-10-12). The
+    arrays this feeds are used to read the points, never returned: the raw `ground_z`/`surface_z`
+    still carry their NaN so `stitch_profile` can take the station from the shard that owns it."""
+    a = np.asarray(a, dtype=float)
+    bad = ~np.isfinite(a)
+    if not bad.any():
+        return a
+    if bad.all():
+        return np.zeros_like(a)
+    out = a.copy()
+    ok = np.flatnonzero(~bad)
+    out[bad] = np.interp(np.flatnonzero(bad), ok, a[ok])
+    return out
+
+
 def profile(spine: LineString, dtm: np.ndarray, chm: np.ndarray, tr, pts: dict, step: float = 2.0, major_road: bool = True, crossings_over_s: list[float] | None = None) -> dict:
     """Along-track profile: road height, ground beside the road (cut/fill), canopy beside the
     road, and structures — bridges we are on, overpasses over us.
@@ -598,6 +620,7 @@ def profile(spine: LineString, dtm: np.ndarray, chm: np.ndarray, tr, pts: dict, 
         return out
 
     ground_z = sample(dtm, p)
+    ground_ref = _bridge_nan(ground_z)  # what the structure tests read across a hole (see _bridge_nan)
     surface_z = ground_z.copy()
     structures: list[dict] = []
     notnoise = (pts["cls"] != 7) & (pts["cls"] != 18)
@@ -618,10 +641,10 @@ def profile(spine: LineString, dtm: np.ndarray, chm: np.ndarray, tr, pts: dict, 
         if (j - i + 1) * step < 4:
             continue
         a, b = max(0, i - 8), min(n - 1, j + 8)
-        interp = np.interp(np.arange(i, j + 1), [a, b], [ground_z[a], ground_z[b]])
+        interp = np.interp(np.arange(i, j + 1), [a, b], [ground_ref[a], ground_ref[b]])
         on_deck = np.nanmean(np.abs(deck_min[i : j + 1] - interp))
-        on_ground = np.nanmean(np.abs(ground_z[i : j + 1] - interp))
-        above = float(np.nanmedian(deck_min[i : j + 1] - ground_z[i : j + 1]))
+        on_ground = np.nanmean(np.abs(ground_ref[i : j + 1] - interp))
+        above = float(np.nanmedian(deck_min[i : j + 1] - ground_ref[i : j + 1]))
         if on_deck < on_ground and above >= 1.5:  # the deck continues our grade AND stands above the ground: we are ON it
             filled = deck_min[i : j + 1].copy()
             nan = np.isnan(filled)
@@ -632,7 +655,7 @@ def profile(spine: LineString, dtm: np.ndarray, chm: np.ndarray, tr, pts: dict, 
                 "kind": "bridge", "source": "class17",
                 "s_start": round(float(s[i]), 1), "s_end": round(float(s[j]), 1), "length_m": round(float((j - i + 1) * step), 1),
                 "deck_z_min": round(float(np.nanmin(deck_min[i : j + 1])), 2), "deck_z_max": round(float(np.nanmax(deck_max[i : j + 1])), 2),
-                "clearance_m": None, "height_above_ground_m": round(float(np.nanmedian(deck_min[i : j + 1] - ground_z[i : j + 1])), 2),
+                "clearance_m": None, "height_above_ground_m": round(float(np.nanmedian(deck_min[i : j + 1] - ground_ref[i : j + 1])), 2),
             })
     # --- 1b. unlabelled decks: the road bridges a dip the DTM fell into ---------------------------
     # Where the vendor's class 17 is junk (Bowie, 2014) or absent, a culvert or a short bridge shows
@@ -651,8 +674,8 @@ def profile(spine: LineString, dtm: np.ndarray, chm: np.ndarray, tr, pts: dict, 
     near_bins, near_z = near_bins[order], near_z[order]
     starts = np.searchsorted(near_bins, np.arange(n + 1))
     win = int(60 / step)
-    local = np.array([np.median(ground_z[max(0, i - win) : i + win + 1]) for i in range(n)])
-    dipped = (local - ground_z) >= DIP_MIN
+    local = np.array([np.median(ground_ref[max(0, i - win) : i + win + 1]) for i in range(n)])
+    dipped = (local - ground_ref) >= DIP_MIN
     for st in structures:  # labelled bridges are already resolved
         dipped[int(st["s_start"] / step) : int(st["s_end"] / step) + 1] = False
     for i, j in _runs(dipped):
@@ -660,7 +683,7 @@ def profile(spine: LineString, dtm: np.ndarray, chm: np.ndarray, tr, pts: dict, 
         if length < 4 or length > DIP_MAX_LEN:
             continue
         a, b = max(0, i - 3), min(n - 1, j + 3)
-        grade = np.interp(np.arange(i, j + 1), [a, b], [ground_z[a], ground_z[b]])
+        grade = np.interp(np.arange(i, j + 1), [a, b], [ground_ref[a], ground_ref[b]])
         deck_med = np.full(j - i + 1, np.nan)
         deck_n = all_n = 0
         for k in range(i, j + 1):
@@ -682,19 +705,20 @@ def profile(spine: LineString, dtm: np.ndarray, chm: np.ndarray, tr, pts: dict, 
         # the deck has to actually stand above the hole, and a run touching either end of the spine
         # is the median window running out of road, not a bridge (Sideling s=0..8 and the last 8 m
         # came out as 0.07 m and -0.11 m "decks")
-        if i == 0 or j == n - 1 or float(np.median(deck_med - ground_z[i : j + 1])) < DIP_MIN * 0.7:
+        if i == 0 or j == n - 1 or float(np.median(deck_med - ground_ref[i : j + 1])) < DIP_MIN * 0.7:
             continue
         surface_z[i : j + 1] = deck_med
         structures.append({
             "kind": "bridge", "source": "geometry",
             "s_start": round(float(s[i]), 1), "s_end": round(float(s[j]), 1), "length_m": round(float(length), 1),
             "deck_z_min": round(float(np.min(deck_med)), 2), "deck_z_max": round(float(np.max(deck_med)), 2),
-            "clearance_m": None, "height_above_ground_m": round(float(np.median(deck_med - ground_z[i : j + 1])), 2),
+            "clearance_m": None, "height_above_ground_m": round(float(np.median(deck_med - ground_ref[i : j + 1])), 2),
         })
     structures.sort(key=lambda st: st["s_start"])
     on_bridge = np.zeros(n, bool)
     for st in structures:
         on_bridge[int(st["s_start"] / step) : int(st["s_end"] / step) + 1] = True
+    surface_ref = _bridge_nan(surface_z)  # the driving surface the over-us test reads, hole bridged
 
     # --- 2. anything spanning the road 4.5-40 m above the DRIVING SURFACE ------------------------
     # A bridge over us covers the whole width in one along-track run; a tree overhangs from one
@@ -714,7 +738,7 @@ def profile(spine: LineString, dtm: np.ndarray, chm: np.ndarray, tr, pts: dict, 
     near_all = shapely.distance(g_all, spine) <= 10.0
     if near_all.any():
         bins_all = np.clip((shapely.line_locate_point(spine, g_all[near_all]) / step).astype(int), 0, n - 1)
-        h_all = pts["z"][notnoise][near_all] - surface_z[bins_all]
+        h_all = pts["z"][notnoise][near_all] - surface_ref[bins_all]
         pxy = np.column_stack([pts["x"][notnoise][near_all], pts["y"][notnoise][near_all]])
         lat_off = np.einsum("ij,ij->i", pxy - p[bins_all], normal[bins_all])
         over = (h_all >= 4.5) & (h_all <= 40.0) & (np.abs(lat_off) <= 8.0)
@@ -760,7 +784,7 @@ def profile(spine: LineString, dtm: np.ndarray, chm: np.ndarray, tr, pts: dict, 
             structures.append({
                 "kind": "overpass" if overpass else "gantry", "source": "geometry+class17" if labelled else "geometry",
                 "s_start": round(float(s[i]), 1), "s_end": round(float(s[j]), 1), "length_m": round(float(length), 1),
-                "deck_z_min": round(float(np.nanmin(hmin[i : j + 1] + surface_z[i : j + 1])), 2), "deck_z_max": None,
+                "deck_z_min": round(float(np.nanmin(hmin[i : j + 1] + surface_ref[i : j + 1])), 2), "deck_z_max": None,
                 "clearance_m": round(float(np.nanmin(hmin[i : j + 1])), 2), "height_above_ground_m": None,
                 "underside_std_m": round(float(np.nanmedian(under_std[i : j + 1])), 2),
             })

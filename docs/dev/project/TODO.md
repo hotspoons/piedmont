@@ -24,11 +24,15 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
   stations. The wrong `surface_z` also truncated each overpass span to a 2 m `gantry`, because the
   crossing deck's points fell outside the 4.5–40 m above-surface test — so the game (which draws a
   deck for `overpass`/`bridge` but only a marker for `gantry`) never drew a bridge. `sample()` now
-  returns NaN outside the raster and `_fill_along` bridges what no shard can answer. Separately,
-  `export._stub_roads` followed the bare-earth DEM down into the hole a bridge spans (Ernstville
+  returns NaN outside the raster and `_fill_along` bridges what no shard can answer. Separately, the
+  structure tests read a hole-bridged reference (`lidar._bridge_nan`): the owner shard's own DTM is
+  nodata exactly under a crossing bridge (Ernstville s=10904 and 10914–10922), so `surface_z` was
+  NaN across the whole deck and its points failed the 4.5–40 m above-surface test — the span was
+  truncated to the 2 m `gantry`. The returned arrays keep their NaN (the `fill=False` contract).
+  And `export._stub_roads` followed the bare-earth DEM down into the hole a bridge spans (Ernstville
   Road, 6.7 m); `_hold_grade` bridges a short dip to the stub's own grade. `68329aa`; the sampling
-  contract and the grade hold are unit-tested (`bake/tests/test_branch_profile.py`,
-  `test_stub_span.py`).
+  contract, the hole-bridged detection and the grade hold are unit-tested
+  (`bake/tests/test_branch_profile.py`, `test_stub_span.py`).
 - **A finished bake's intermediates are pruned (the volume no longer fills)** — nothing removed a
   shipped world's `shards/`, merged `lidar/`, `canopy_global.tif` or mosaic `.ovr`s, so two big
   worlds filled the 500 Gi `worldeditor-data` PVC and the worldeditor crash-looped on `EDQUOT`
