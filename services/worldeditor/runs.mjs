@@ -640,7 +640,11 @@ export class Runs {
     run.jobs = created
     run.job = created[0] ?? null
     run.followed = {}
-    run.state = 'queued'
+    // RUNNING, not `queued`: the phase's Jobs exist and are being scheduled. This used to reset to
+    // `queued` and leave the watcher to promote it up to one tick (3 s) later, so a client polling
+    // right after a phase had started saw `queued` beside active Jobs — which a sharded-bake test
+    // read as a failure on a loaded CI runner (2026-10-12; `docker.test.mjs`).
+    run.state = 'running'
     await this.#save(run)
     this.#watchPhase(run)
   }
