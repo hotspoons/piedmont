@@ -130,9 +130,17 @@ export function serverTools({ apiFetch, root, siteDoc }) {
      * folders are real and `move` is a rename rather than a copy-and-delete that can lose a file
      * if the tab closes in between.
      */
-    T('program_list', 'Every program file and folder. Folders are listed even when empty, because an empty folder is something somebody just made.', {}, [], () => get('/api/programs')),
-    T('program_read', 'One program’s source.', { path: str('e.g. levels/rooftop/run — no extension unless it has one') }, ['path'], (a) => get(`/api/programs/${a.path}`)),
-    T('program_write', 'Create or replace a program. LIVE: the editor reloads it. Writing is not compiling — use code_typecheck to find out whether it is valid.', { path: str(''), source: str('the whole file') }, ['path', 'source'], (a) => put(`/api/programs/${a.path}`, { source: a.source })),
+    T('program_list', 'Every program file and folder. Folders are listed even when empty, because an empty folder is something somebody just made. Each row carries BOTH `path` and `id` — they are the same string, and `path` is what program_read, program_write, program_check and program_build take.', {}, [], async () => {
+      const r = await get('/api/programs')
+      // `path` alongside `id`: program_read/write/check/build all take `path`, and an agent that
+      // copied `id` out of this listing had to guess that. Both fields, one string.
+      return {
+        programs: (r.programs ?? []).map((p) => ({ ...p, path: p.id })),
+        dirs: (r.dirs ?? []).map((d) => ({ path: d, id: d })),
+      }
+    }),
+    T('program_read', 'One program’s source.', { path: str('the path under programs/, WITH its extension: e.g. levels/rooftop/run.ts') }, ['path'], (a) => get(`/api/programs/${a.path}`)),
+    T('program_write', 'Create or replace a program. LIVE: the editor reloads it. Writing is not compiling — use program_check to find out whether it is valid.', { path: str('the path under programs/, WITH its extension: e.g. levels/rooftop/run.ts'), source: str('the whole file') }, ['path', 'source'], (a) => put(`/api/programs/${a.path}`, { source: a.source })),
     T('program_move', 'Rename or move a program or folder, in one operation.', { path: str('current path'), to: str('new path') }, ['path', 'to'], (a) => put(`/api/programs/${a.path}`, { move: a.to })),
     T('program_mkdir', 'Make a folder.', { path: str('') }, ['path'], (a) => post(`/api/programs/${a.path}`, {})),
     T('program_delete', 'Delete a program. Set recursive for a FOLDER and everything inside it — which is asked for explicitly so a mistyped file path can never become a recursive delete.', { path: str(''), recursive: bool('delete a folder and its contents') }, ['path'], (a) => del(`/api/programs/${a.path}${a.recursive ? '?dir=1' : ''}`)),

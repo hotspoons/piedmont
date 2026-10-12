@@ -321,6 +321,9 @@ const shellPanel = new ShellPanel({
 const mcpSection = el('div', 'mcp-section')
 const bridge = new AgentBridge({
   shell: () => shellPanel.machine,
+  // start the machine on demand for an agent's shell_exec, rather than asking a human to open the
+  // Shell tab first — see ShellPanel.ensureMachine
+  ensureShell: () => shellPanel.ensureMachine(),
   programs: async () => {
     const list = await api.programs().then((r) => r.programs).catch(() => [])
     const out: { path: string; text: string }[] = []
@@ -335,6 +338,18 @@ const bridge = new AgentBridge({
   // `step` as well as `mode` since main split them: an agent asking what is on screen wants
   // the stage, not just that we are in world mode.
   state: () => ({ mode, step, world: selected, dirty }),
+  /*
+   * A DOCUMENT CHANGED BEHIND THIS PAGE. The service broadcasts what an MCP write moved; the shell
+   * pulls the new text into its machine, and the list that moved is repainted. Without the shell
+   * half, a program_write left the shell serving the text it seeded at tab-open and the next
+   * `sed -i` wrote that stale text back over the agent's edit, exit 0.
+   */
+  onDocuments: (docs) => {
+    void shellPanel.refresh(docs)
+    if (docs.some((d) => d.startsWith('programs/')) && mode === 'program') void programPanel.render()
+    if (docs.some((d) => d.startsWith('worlds/'))) { void refreshWorlds(); renderPanel() }
+    if (docs.some((d) => d.startsWith('levels/'))) void stagePanel.load()
+  },
   token: () => mcpToken,
   label: 'world editor',
   onStatus: (st) => {
@@ -343,6 +358,11 @@ const bridge = new AgentBridge({
     // indistinguishable from outside without it, and the whole point of ownership is that they
     // are not the same window.
     ;(window as unknown as { __mcpown?: unknown }).__mcpown = st.own ?? null
+    // PRE-WARM. An agent that calls shell_exec the moment it attaches should not pay the ~7 s of
+    // Worker start as an unexplained pause that reads as a hang. Kick the boot off on attach, not
+    // awaited, and swallow a failure: a shell that cannot start must not stop this page offering
+    // code_check and editor_state, which do not need one.
+    if (st.state === 'attached') void shellPanel.ensureMachine().catch(() => {})
   },
 })
 const mcpPanel = new McpPanel(mcpSection, () => bridge)
@@ -373,8 +393,11 @@ void api
     mcpToken = c.auth.token
     bridge.start()
   })
-  .catch(() => {
-    // An older service with no MCP config still runs the editor; the Agent tab says so.
+  .catch((e) => {
+    // An older service with no MCP config still runs the editor; the Agent tab says so. Warn rather
+    // than swallow: a silent failure here is why "the agent bridge never connected" had nothing to
+    // go on.
+    console.warn('mcp config unavailable — the agent bridge will not connect:', String((e as Error)?.message ?? e))
   })
 
 let mode: Mode = 'world'

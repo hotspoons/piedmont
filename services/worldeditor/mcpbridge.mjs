@@ -40,6 +40,42 @@ const HEARTBEAT_MS = 30_000
 /** How long a forwarded call may take. The shell can be slow; a python import is seconds. */
 const CALL_TIMEOUT_MS = 120_000
 
+/**
+ * Which projected documents a successful mutating request changed.
+ *
+ * THE PAGE'S VOCABULARY, not the API's. The shell's filesystem is `worlds/<slug>.json`,
+ * `levels/<id>.json`, `programs/<path>`, `sites/<slug>/<doc>` — so that is what a page can act on,
+ * and it is what gets broadcast. The path (and, for a create, the response body that names the new
+ * id) is the only thing needed: the projection is one-to-one with these routes.
+ *
+ * Returns [] for anything that is not a document — the catalog, settings, a run — rather than
+ * broadcasting a path nothing can use.
+ */
+export function documentsChanged(method, apiPath, result) {
+  if (method !== 'PUT' && method !== 'POST' && method !== 'DELETE') return []
+  const path = String(apiPath).split('?')[0]
+  const raw = path.split('/').filter(Boolean)
+  // strip the `/api` prefix the HTTP tools carry; the projection paths never have it
+  const seg = (raw[0] === 'api' ? raw.slice(1) : raw).map(decodeURIComponent)
+  const docs = []
+  const push = (d) => { if (d && !docs.includes(d)) docs.push(d) }
+
+  if (seg[0] === 'worlds') {
+    if (seg.length === 1 && method === 'POST') push(result?.world?.slug ? `worlds/${result.world.slug}.json` : null)
+    else if (seg.length === 2 && seg[1] !== 'preview') push(`worlds/${seg[1]}.json`)
+  } else if (seg[0] === 'levels') {
+    if (seg.length === 1 && method === 'POST') push(result?.level?.id ? `levels/${result.level.id}.json` : null)
+    else if (seg.length === 2 && seg[1] !== 'validate') push(`levels/${seg[1]}.json`)
+  } else if (seg[0] === 'programs' && seg.length >= 2) {
+    // a move: the result names where it went, the path is where it was
+    if (result?.id && result.id !== seg.slice(1).join('/')) push(`programs/${result.id}`)
+    push(`programs/${seg.slice(1).join('/')}`)
+  } else if (seg[0] === 'sites' && seg.length === 3) {
+    push(`sites/${seg[1]}/${seg[2]}`)
+  }
+  return docs
+}
+
 export class McpBridge {
   constructor({ log = console } = {}) {
     this.log = log
@@ -279,6 +315,31 @@ export class McpBridge {
    */
   tools() {
     return this.owner ? [...this.owner.tools.values()] : []
+  }
+
+  /**
+   * Tell every attached page which documents changed.
+   *
+   * Called after a mutating `/api` call this service made on an agent's behalf, so a page holding a
+   * COPY of those documents (the shell's projection) can pull the new text in and repaint. It is a
+   * broadcast to ALL attached pages, not just the owner: a non-owner page is still showing the
+   * documents, and its copy going stale is the same bug.
+   *
+   * NEVER THROWS. It fires on every write, and a page that has gone away, or a moment where nothing
+   * is attached at all, must not turn somebody's successful save into an error. An empty list is a
+   * no-op too.
+   */
+  broadcast(docs) {
+    const list = Array.isArray(docs) ? docs.filter((d) => typeof d === 'string' && d) : []
+    if (!list.length) return
+    const msg = JSON.stringify({ type: 'changed', docs: list })
+    for (const page of this.pages) {
+      try {
+        page.ws.send(msg)
+      } catch {
+        /* a socket on its way out; the sweep will drop it */
+      }
+    }
   }
 
   has(name) {

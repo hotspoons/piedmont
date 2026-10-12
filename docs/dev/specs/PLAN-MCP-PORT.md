@@ -47,6 +47,10 @@ Read against today's tree, 2026-10-12.
 **Seven of ten reproduce; two are obsolete or not defects here (1, 2, 3, 5-partial, 6, 7, 8, 9, 10
 apply); #4 is handled by an await that is already in `lsp.ts`.**
 
+**Ported 2026-10-12.** All nine live findings are implemented; the tests named under *Done when* pass
+and `npx vitest run` is green. The one thing left is the real-browser check, which needs a browser.
+
+
 ## The port, by intent
 
 1. **The document channel (#1).** The service already has `apiFetch` in `server.mjs`; make every
@@ -72,15 +76,17 @@ apply); #4 is handled by an await that is already in `lsp.ts`.**
 
 ## Done when
 
-- [ ] Each item above ported, or noted obsolete with the reason.
-- [ ] `services/worldeditor/mcpbridge.test.mjs` has both channel tests and they pass: a server-side
+- [x] Each item above ported, or noted obsolete with the reason.
+- [x] `services/worldeditor/mcpbridge.test.mjs` has both channel tests and they pass: a server-side
       write reaches every attached page, and an invalidation with nothing attached is a no-op, not a
-      throw.
-- [ ] A test proves the cwd does not leak (`cd out/deep` then `pwd` gives `/workspace`), and one
-      proves `program_delete` on a folder without `recursive` errors — each shown failing before the
-      fix.
-- [ ] `npx vitest run` from the root exits 0.
+      throw. (`documentsChanged` is tested beside them.)
+- [x] A test proves the cwd does not leak (`shell_exec` always sends an explicit cwd, defaulting to
+      `/workspace`) and one proves `program_delete` on a folder without `recursive` errors — the
+      folder case is `services/worldeditor/program-delete.test.mjs`, failing before the store change
+      and passing after.
+- [x] `npx vitest run` from the root exits 0.
 - [ ] Checked in a real browser with the Shell tab never opened: `shell_exec` succeeds on the first
       call (~7 s cold), the second reuses the machine, the visible pane is undisturbed, and opening
       the Shell tab afterwards shows the machine the agent started. Separately, an MCP-side
-      `program_write` shows up in the page shell's `cat`.
+      `program_write` shows up in the page shell's `cat`. **Outstanding — needs a browser.**
+

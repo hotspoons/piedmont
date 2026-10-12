@@ -19,15 +19,29 @@
 // `src/ui/**` belongs to the world-editor lane and a bridge that groped into its internals would
 // break every time they moved a field. If a tool needs something new, the panel exports it.
 import type { Shell } from './shell'
+import { ROOT } from './projection'
 import * as lsp from './lsp'
 
 export interface BridgeOpts {
   /** the wasm shell, once started — null while it is booting or if it failed */
   shell: () => Shell | null
+  /**
+   * Ensure the machine is running and return it, starting it if it is not. Public and awaitable, so
+   * a shell_exec does not have to fail with "open the Shell tab once" — see ShellPanel.ensureMachine.
+   * Optional: when absent the bridge falls back to `shell()`.
+   */
+  ensureShell?: () => Promise<Shell | null>
   /** every program on the volume, for the compilation the language tools answer from */
   programs: () => Promise<{ path: string; text: string }[]>
   /** what the person is looking at: world, level, selection, camera */
   state: () => Record<string, unknown>
+  /**
+   * Documents changed on the volume behind this page — the service broadcasts them after a
+   * mutating call (a program_write, a world_save, a folder delete). The page pulls the new text
+   * into its shell and repaints the list that moved. Paths are in the projection's vocabulary
+   * (`programs/game.ts`), relative to the workspace root.
+   */
+  onDocuments?: (docs: string[]) => void
   /** where the service is; default same origin */
   base?: string
   /** the MCP token, when the endpoint is gated — a WebSocket cannot send a header */
@@ -91,7 +105,14 @@ export class AgentBridge {
   /* ---- the tools this page brings ------------------------------------------------------------ */
 
   private build(): ToolDef[] {
-    const needShell = (): Shell => {
+    // Ensure the machine is up: await `ensureShell` if the page gave one (starts it on first use),
+    // else fall back to the getter (which may throw its "open the Shell tab once").
+    const needShell = async (): Promise<Shell> => {
+      if (this.o.ensureShell) {
+        const s = await this.o.ensureShell()
+        if (s) return s
+        throw new Error('the editor’s shell could not start in this page — see the Shell tab for why')
+      }
       const s = this.o.shell()
       if (!s) throw new Error('the editor’s shell has not started in this page — open the Shell tab once, then try again')
       return s
@@ -103,18 +124,34 @@ export class AgentBridge {
       {
         name: 'shell_exec',
         description:
-          'Run a command in the editor’s shell: coreutils, python and js over the projected documents (worlds/, levels/, programs/). NO NETWORK. Writing a projected file is a LIVE edit to that document. This runs inside a browser tab, so it needs an editor open.',
-        inputSchema: { type: 'object', properties: { command: str('e.g. `grep -rn "api.physics" programs/`'), cwd: str('default /work') }, required: ['command'], additionalProperties: false },
+          'Run a command in the editor’s shell: coreutils, python and js over the projected documents (worlds/, levels/, programs/, sites/; out/ is yours). NO NETWORK. Writing a projected file is a LIVE edit to that document. This runs inside a browser tab, so it needs an editor open. Each call starts in `cwd` (default /workspace) and does NOT inherit the working directory a previous call left — pass `cwd` on every call that would `cd`.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            command: str('e.g. `grep -rn "api.physics" programs/`'),
+            cwd: str(`where to run it, e.g. /workspace/programs. Default ${ROOT}. One call never inherits the previous call’s cwd`),
+          },
+          required: ['command'],
+          additionalProperties: false,
+        },
         run: async (a) => {
-          const r = await needShell().exec(String(a.command), { cwd: a.cwd ? String(a.cwd) : undefined })
-          return { exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr }
+          // ALWAYS AN EXPLICIT cwd. The machine keeps its cwd for the person at the prompt, so a
+          // call that omitted one would run wherever the last command (from this tool OR the panel)
+          // happened to end — `cd out/deep` then a bare `pwd` gave out/deep. Defaulting here and
+          // never reading the machine's cwd back is the fix.
+          const cwd = a.cwd ? String(a.cwd) : ROOT
+          const r = await (await needShell()).exec(String(a.command), { cwd })
+          return { exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr, cwd }
         },
       },
       {
         name: 'shell_list',
-        description: 'Every file the shell can see, with size and modified time. The shell’s filesystem IS the editor’s documents.',
+        description: 'Every file the shell can see, with size and a modified time. This runs inside a browser tab, so it needs an editor open. ALL the times are the same — they are when this projection was taken (`projectedAt`), not each document’s own — because the machine’s filesystem stamps every seeded file at once. For a real per-document time use program_list’s `modified`; for the world and level lists use world_list and level_list.',
         inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-        run: async () => ({ files: await needShell().list() }),
+        run: async () => {
+          const s = await needShell()
+          return { projectedAt: s.projectedAt, files: await s.list() }
+        },
       },
       {
         name: 'code_check',
@@ -129,11 +166,21 @@ export class AgentBridge {
       {
         name: 'code_outline',
         description:
-          'The declarations in a program — classes, functions, methods, consts — nested, each with the lines it occupies. Use it to edit a specific function without reading or rewriting the whole file.',
-        inputSchema: { type: 'object', properties: { path: str(''), source: str('') }, required: ['path'], additionalProperties: false },
+          'The declarations in a program — classes, functions, methods, consts — nested, each with the lines it occupies, in file order. Use it to edit a specific function without reading or rewriting the whole file. Imports and things declared inside a function (loop counters, destructured locals) are left out unless asked for.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            path: str(''),
+            source: str('outline this text instead of what is on disk'),
+            imports: { type: 'boolean', description: 'include import bindings (default false)' },
+            locals: { type: 'boolean', description: 'include declarations inside a function (default false)' },
+          },
+          required: ['path'],
+          additionalProperties: false,
+        },
         run: async (a) => {
           await compiled()
-          return { outline: await lsp.outline(String(a.path), a.source === undefined ? undefined : String(a.source)) }
+          return { outline: await lsp.outline(String(a.path), a.source === undefined ? undefined : String(a.source), { imports: a.imports === true, locals: a.locals === true }) }
         },
       },
       {
@@ -229,6 +276,7 @@ export class AgentBridge {
       type?: string; id?: string; name?: string; args?: Record<string, unknown>
       you?: { id: string; name: string }; owner?: { id: string; name: string } | null
       mine?: boolean; others?: { id: string; name: string }[]
+      docs?: string[]
     }
     try {
       msg = JSON.parse(String(ev.data))
@@ -237,6 +285,16 @@ export class AgentBridge {
     }
     if (msg.type === 'ownership') {
       this.emit({ own: { me: msg.you ?? null, owner: msg.owner ?? null, mine: !!msg.mine, others: msg.others ?? [] } })
+      return
+    }
+    /*
+     * A DOCUMENT CHANGED BEHIND THIS PAGE. The service broadcasts the projection paths after a
+     * mutating call it made itself (an MCP program_write, a world_save, a folder delete). The page
+     * pulls the text into its shell and repaints the list. Without this the shell kept serving the
+     * copy it seeded at tab-open and the next `sed -i` wrote the stale text back, exit 0.
+     */
+    if (msg.type === 'changed') {
+      this.o.onDocuments?.((msg.docs ?? []).map(String))
       return
     }
     if (msg.type !== 'call' || !msg.id) return

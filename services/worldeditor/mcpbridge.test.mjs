@@ -16,7 +16,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import http from 'node:http'
 import { WebSocket } from 'ws'
-import { McpBridge } from './mcpbridge.mjs'
+import { McpBridge, documentsChanged } from './mcpbridge.mjs'
 
 /** A server with the bridge attached, on a port the OS picks. */
 async function harness({ auth = null } = {}) {
@@ -163,4 +163,64 @@ test('two pages offering the same tool is not an error', async () => {
   a.ws.close()
   b.ws.close()
   await h.close()
+})
+
+/* ---- the document channel (finding 01) -------------------------------------------------------- */
+
+test('a server-side write reaches EVERY attached page', async () => {
+  const h = await harness()
+  const seen = []
+  const page = (label) => {
+    const ws = new WebSocket(h.url)
+    const ready = new Promise((resolve, reject) => {
+      ws.on('open', () => {
+        ws.send(JSON.stringify({ type: 'register', label, tools: TOOLS }))
+        resolve()
+      })
+      ws.on('error', reject)
+    })
+    ws.on('message', (raw) => {
+      const m = JSON.parse(String(raw))
+      if (m.type === 'changed') seen.push({ label, docs: m.docs })
+    })
+    return { ws, ready }
+  }
+  const a = page('tab-a')
+  const b = page('tab-b')
+  await Promise.all([a.ready, b.ready])
+  await waitFor(() => h.bridge.attached === 2)
+
+  h.bridge.broadcast(['programs/game.ts'])
+  assert.ok(await waitFor(() => seen.length === 2), 'both pages were told')
+  assert.deepEqual(seen.map((s) => s.label).sort(), ['tab-a', 'tab-b'])
+  assert.deepEqual(seen[0].docs, ['programs/game.ts'])
+
+  a.ws.close()
+  b.ws.close()
+  await h.close()
+})
+
+test('an invalidation with nobody attached is a no-op, not a throw', async () => {
+  const h = await harness()
+  // it fires on every write, so it must never turn a successful save into an error
+  assert.doesNotThrow(() => h.bridge.broadcast(['programs/game.ts']))
+  assert.doesNotThrow(() => h.bridge.broadcast([]))
+  assert.doesNotThrow(() => h.bridge.broadcast())
+  await h.close()
+})
+
+test('documentsChanged names the projected document a write touched', () => {
+  assert.deepEqual(documentsChanged('PUT', '/api/programs/levels/rooftop/run.ts', {}), ['programs/levels/rooftop/run.ts'])
+  assert.deepEqual(documentsChanged('DELETE', '/api/programs/scratch?dir=1', {}), ['programs/scratch'])
+  assert.deepEqual(documentsChanged('DELETE', '/api/worlds/crofton', {}), ['worlds/crofton.json'])
+  assert.deepEqual(documentsChanged('PUT', '/api/levels/rooftop', {}), ['levels/rooftop.json'])
+  assert.deepEqual(documentsChanged('POST', '/api/levels', { level: { id: 'rooftop' } }), ['levels/rooftop.json'])
+  assert.deepEqual(documentsChanged('POST', '/api/worlds', { world: { slug: 'crofton' } }), ['worlds/crofton.json'])
+  assert.deepEqual(documentsChanged('PUT', '/sites/crofton/tuning.json', {}), ['sites/crofton/tuning.json'])
+  // a move is both the old path and the new one
+  assert.deepEqual(documentsChanged('PUT', '/api/programs/a/old.ts', { id: 'b/new.ts' }), ['programs/b/new.ts', 'programs/a/old.ts'])
+  // reads and non-documents tell nobody
+  assert.deepEqual(documentsChanged('GET', '/api/programs/x.ts', {}), [])
+  assert.deepEqual(documentsChanged('PUT', '/api/settings', {}), [])
+  assert.deepEqual(documentsChanged('POST', '/api/worlds/preview', {}), [])
 })

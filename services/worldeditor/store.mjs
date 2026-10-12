@@ -430,9 +430,24 @@ export class Store {
 
   async removeProgram(id) {
     const file = this.#programFile(id)
-    if (!file) return
+    if (!file) {
+      /*
+       * A FOLDER IS A REFUSAL HERE, NOT A SILENT NO-OP.
+       *
+       * `#programFile` only ever names a file with a known extension, so a folder fell through this
+       * and the caller answered `{deleted: id}` — a delete that removed nothing, with exit 0. An
+       * agent (or a person) then believed a folder was gone. Deleting a folder is `removeProgramDir`
+       * and is asked for explicitly; naming it here is the whole point of the two methods.
+       */
+      const dir = this.#programPath(id, true)
+      if (dir && existsSync(dir) && (await stat(dir)).isDirectory()) {
+        throw Object.assign(new Error(`${id} is a folder — pass recursive to delete it and everything inside it`), { status: 400 })
+      }
+      return { deleted: null }
+    }
     await rm(file, { force: true })
     await this.#pruneEmpty(path.dirname(file))
+    return { deleted: id }
   }
 
   /**

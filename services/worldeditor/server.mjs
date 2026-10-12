@@ -40,7 +40,7 @@ import { Platform } from './platform.mjs'
 import { attachAgentRelay } from './agentws.mjs'
 import { McpAuth } from './mcpauth.mjs'
 import { publicMcpUrl } from './publicurl.mjs'
-import { McpBridge } from './mcpbridge.mjs'
+import { McpBridge, documentsChanged } from './mcpbridge.mjs'
 import * as mcp from './mcp.mjs'
 import * as programs from './programs.mjs'
 import * as training from './training.mjs'
@@ -532,6 +532,15 @@ async function apiFetch(method, apiPath, body, opts = {}) {
     e.status = r.status
     throw e
   }
+  /*
+   * A WRITE MADE ON AN AGENT'S BEHALF MUST REACH THE PAGES. Every mutating call this function makes
+   * is an edit the editor pages did not make themselves, so they are holding stale copies — the
+   * shell above all, which would otherwise serve the text it seeded at tab-open and write it back
+   * over the agent's edit on the next `sed -i`, exit 0. The pages are told which documents moved;
+   * a GET tells nobody.
+   */
+  const changed = documentsChanged(method, apiPath, parsed)
+  if (changed.length) mcpBridge.broadcast(changed)
   return parsed
 }
 
@@ -1453,10 +1462,15 @@ async function api(req, res, seg, q) {
     }
     if (req.method === 'DELETE') {
       // `?dir=1` deletes a folder and everything under it. Asked for explicitly rather than
-      // inferred, so a mistyped file path can never turn into a recursive delete.
+      // inferred, so a mistyped file path can never turn into a recursive delete. Without it a
+      // folder is REFUSED by the store and answered as an error, not a `{deleted}` that removed
+      // nothing — see store.removeProgram.
       if (q.get('dir')) return json(res, 200, await store.removeProgramDir(id))
-      await store.removeProgram(id)
-      return json(res, 200, { deleted: id })
+      try {
+        return json(res, 200, await store.removeProgram(id))
+      } catch (e) {
+        return json(res, e.status ?? 500, { error: String(e.message ?? e) })
+      }
     }
   }
 

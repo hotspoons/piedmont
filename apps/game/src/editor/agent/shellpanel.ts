@@ -41,7 +41,8 @@ export class ShellPanel {
   private saved: { path: string; what: string; ok: boolean; error?: string }[] = []
   private files: ShellFile[] = []
   private tree: FileTree | null = null
-  private booting = false
+  /** the in-flight boot, so concurrent callers await ONE start rather than racing several */
+  private booting: Promise<Shell | null> | null = null
 
   constructor(o: ShellPanelOpts) {
     this.o = o
@@ -76,7 +77,7 @@ export class ShellPanel {
     host.append(term)
 
     this.drawSidebar()
-    if (!this.shell) await this.boot()
+    await this.ensureMachine()
     this.input.focus()
   }
 
@@ -87,11 +88,24 @@ export class ShellPanel {
     this.out.scrollTop = this.out.scrollHeight
   }
 
-  private async boot(): Promise<void> {
-    if (this.booting) return
-    this.booting = true
+  /**
+   * Ensure the machine is running and return it, starting it if it is not.
+   *
+   * PUBLIC, IDEMPOTENT, AWAITABLE. This is what an agent's `shell_exec` calls. The old `boot()` was
+   * guarded by a boolean that returned IMMEDIATELY for a second caller — so several tool calls
+   * arriving together raced, and the ones that lost got no machine and no error. Here concurrent
+   * callers await the SAME promise, and a start that FAILS resolves to null rather than throwing:
+   * a shell that cannot start must not stop the page offering code_check and editor_state, which do.
+   */
+  async ensureMachine(): Promise<Shell | null> {
+    if (this.shell) return this.shell
+    this.booting ??= this.boot().finally(() => { this.booting = null })
+    return this.booting
+  }
+
+  private async boot(): Promise<Shell | null> {
     this.write('starting the shell…\n', 'term-dim')
-    this.shell = new Shell({
+    const shell = new Shell({
       onReady: (motd) => this.write(`${motd}\n\n`, 'term-dim'),
       onStatus: (t) => this.write(`${t}\n`, 'term-dim'),
       onFiles: (f) => { this.files = f; this.drawSidebar() },
@@ -106,12 +120,15 @@ export class ShellPanel {
     })
     try {
       const docs = await this.o.docs()
-      await this.shell.start(docs, (p) => this.o.read(p))
+      await shell.start(docs, (p) => this.o.read(p))
+      // published only once its Worker has started: a half-started machine in `this.shell` is what
+      // an agent would otherwise be handed
+      this.shell = shell
+      return shell
     } catch (e) {
+      shell.stop()
       this.write(`the shell did not start: ${(e as Error).message}\n`, 'term-bad')
-      this.shell = null
-    } finally {
-      this.booting = false
+      return null
     }
   }
 
@@ -120,7 +137,7 @@ export class ShellPanel {
     this.shell = null
     this.saved = []
     if (this.out) this.out.textContent = ''
-    await this.boot()
+    await this.ensureMachine()
     this.input?.focus()
   }
 
@@ -216,6 +233,15 @@ export class ShellPanel {
   /** For probes, and for the agent: the live shell. */
   get machine(): Shell | null {
     return this.shell
+  }
+
+  /**
+   * Pull documents that changed behind this page into the machine. The bridge calls this when the
+   * service reports an MCP write; a no-op if the machine never started (there is nothing stale).
+   */
+  async refresh(docs: string[]): Promise<void> {
+    if (!this.shell) return
+    await this.shell.refresh(docs)
   }
 
   stop(): void {

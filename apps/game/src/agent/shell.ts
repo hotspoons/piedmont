@@ -64,7 +64,18 @@ export class Shell {
   private mirror = new Map<string, Uint8Array>()
   /** paths this side is reading back right now, so a save does not chase its own write */
   private syncing = new Set<string>()
+  /** how to fetch a document's text again — kept so a background write can be pulled in (refresh) */
+  private fetchDoc: ((path: string) => Promise<string | null>) | null = null
   files: ShellFile[] = []
+  /**
+   * When this projection was taken.
+   *
+   * The machine's files all carry the SAME mtime — the moment they were seeded — so a listing that
+   * reported it as "modified" said every document was written the second the tab opened. What the
+   * number honestly is, is when the projection was read; a real per-document time is
+   * `program_list`'s `modified`. See the `shell_list` tool.
+   */
+  projectedAt = 0
   cwd = ROOT
   motd = ''
   timeoutMs = 120_000
@@ -85,6 +96,7 @@ export class Shell {
    */
   async start(docs: DocSources, fetchDoc: (path: string) => Promise<string | null>): Promise<void> {
     if (this.ready) return this.ready
+    this.fetchDoc = fetchDoc
     const seed: Record<string, Uint8Array> = {}
     const enc = new TextEncoder()
     seed[`${ROOT}/README.md`] = enc.encode(readme(docs))
@@ -92,9 +104,52 @@ export class Shell {
       const text = await fetchDoc(path).catch(() => null)
       if (text !== null) seed[path] = enc.encode(text)
     }
+    this.projectedAt = Date.now()
     for (const [p, b] of Object.entries(seed)) this.mirror.set(p, b)
     this.motd = `the world editor's documents, in a shell. ${Object.keys(seed).length - 1} files projected; see README.md.`
     return this.boot()
+  }
+
+  /**
+   * Pull the store's text back INTO the machine, for documents changed behind this page's back.
+   *
+   * THE OTHER HALF OF THE PROJECTION. The machine was seeded once, when the tab opened, and never
+   * looked again — so an MCP `program_write` (a server-side edit) left the machine serving the copy
+   * it seeded, and the next `sed -i` over that path wrote the STALE text back over the agent's
+   * edit, with exit 0 and nothing saying so. This reads the named documents again and puts the
+   * volume's text in the machine.
+   *
+   * IT DOES NOT SAVE BACK, deliberately: saving would loop, and would stamp a fresh mtime on a
+   * document nobody edited. `syncing` is what keeps the write below from being read as a change to
+   * push out. A path that no longer exists is removed from the machine — a delete propagates too.
+   * A path outside the projection is ignored; `/workspace/out/` is the caller's, not a document.
+   */
+  async refresh(docs: string[]): Promise<void> {
+    await this.ready
+    if (!this.fetchDoc || !docs.length) return
+    for (const rel of docs) {
+      const path = rel.startsWith('/') ? rel : `${ROOT}/${rel}`
+      const text = await this.fetchDoc(path).catch(() => null)
+      if (text === null) {
+        // gone from the volume: drop it from the machine too, so a later write cannot resurrect it
+        this.syncing.add(path)
+        try {
+          await this.ask({ type: 'exec', cmd: `rm -f ${JSON.stringify(path)}`, cwd: ROOT }).catch(() => {})
+        } finally {
+          this.syncing.delete(path)
+          this.mirror.delete(path)
+        }
+        continue
+      }
+      this.syncing.add(path)
+      try {
+        await this.write(path, text)
+        this.mirror.set(path, new TextEncoder().encode(text))
+      } finally {
+        this.syncing.delete(path)
+      }
+    }
+    void this.list()
   }
 
   private boot(): Promise<void> {
