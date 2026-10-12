@@ -1,6 +1,7 @@
 # The tiled network: area bakes without a global spine; spine bakes keep theirs
 
-**Status:** proposed 2026-10-11. Position paper and staged plan; Phase 0 started (`netsets.py`).
+**Status:** proposed 2026-10-11. Position paper and staged plan; Phase 0 (`netsets.py`) and the first
+slice of Phase 1 (`network.write_tilesets`, the per-tile-set artifact) landed.
 This extends [PLAN-SHARDED-BAKE.md](PLAN-SHARDED-BAKE.md): that plan sharded the **rasters** (dem,
 naip, lidar, tiles, pyramid) and kept the **network** one global object — the plan step runs
 `roads()`/`dead_ends()` over the whole region and the finalizer stitches one primary. That is fine
@@ -146,6 +147,17 @@ tested in isolation. No consumer changes; the tree stays green.
 query: plan each tile-set's bbox (query Overpass per tile-set, or take a Geofabrik extract and clip)
 and write per-tile-set network artifacts (`tilesets/<i>/roads.json`). Keep the global
 `spine_utm.json` as a compatibility rollup until Phase 3, so shards keep working.
+
+  - **Started.** `network.build_tilesets` / `network.write_tilesets` cut the current global `roads()`
+    output at the seams and write `tilesets/<i>/roads.json` (each chain's facts, its cut geometry in
+    WGS84, the `s0`/`s1` along the ORIGINAL chain, `cut_start`/`cut_end` flags, the junctions and
+    dead ends whose `s` falls in the segment) plus a `tilesets/index.json`. A tile-set also carries
+    its neighbours' pieces inside the halo as read-only `context`. Written from `fetch_site` and
+    `cmd_plan`, beside the global rollup, which nothing has stopped reading. Tested in
+    `bake/tests/test_tilesets.py` — the union of the owned segments is the chain (no drop, no
+    duplicate, length preserved) and a seam is shared exactly.
+  - **Still to do.** The per-tile-set Overpass/Geofabrik query so a country bake never holds the
+    whole network in one process; and the consumers (Phase 2 onward).
 
 **Phase 2 — the junction model per tile-set.** `intersections` takes (owned + halo) for one tile-set
 instead of the whole site; route grouping becomes per tile-set (with the halo making a seam-split

@@ -312,6 +312,8 @@ def cmd_plan(a: argparse.Namespace) -> None:
         print(f"  roads   {network.summary(R)}", flush=True)
         network.dead_ends(R["chains"], frame, CACHE / "overpass", float(site.get("radius_m", 9000)), site["lat"], site["lon"], clip=network.selection_polygon(site, frame))
         V = network.write_vectors(site, frame, R, out, a.half_width, CACHE / "overpass")
+        tc = network.write_tilesets(out, frame, R, tuple(V["bbox"]))
+        print(f"  tileset {tc['tilesets']} tile-sets: {tc['owned']} owned segments, {tc['context']} in halos", flush=True)
         plan = shards.build_plan(slug, tuple(V["bbox"]), R["chains"], R["primary"], max_side_m=a.max_side, max_shards=a.max_shards)
         shards.write_plan(out, plan)
         counts = [len(plan["tiles"][str(i)]) for i in range(plan["n"])]

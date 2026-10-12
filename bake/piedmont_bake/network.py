@@ -41,7 +41,7 @@ import shapely
 from shapely.geometry import LineString, MultiLineString, Point, Polygon, box as shp_box, mapping
 from shapely.ops import linemerge, unary_union
 
-from . import BakeFault, osm
+from . import BakeFault, netsets, osm
 from . import progress
 from .geo import Frame, snap_bbox
 
@@ -439,6 +439,92 @@ def write_vectors(site: dict, frame: Frame, R: dict, out: Path, half_width: floa
     return {"road_band": road_band, "region": region, "world": world, "bbox": bbox, "segments": segs, "crossings": cross, "features": len(feats["features"]), "ident": ident, "photo_s": photo_s}
 
 
+def _segment_record(frame: Frame, piece: dict, chain: dict, length_m: float, primary_id: str | None) -> dict:
+    """One tile-set's segment of a chain: the cut geometry plus the chain facts a consumer needs.
+
+    The geometry is WGS84 lon/lat — the authority (docs/dev/frames.md), so a reader places it under
+    whatever frame it holds and the ENU origin never has to travel. `s0`/`s1` are the segment's
+    along-ORIGINAL-chain metres, so a profile keyed by `s` still lines up after the cut.
+    """
+    g: LineString = piece["geom"]
+    a = np.asarray(g.coords, dtype=float)
+    lon, lat = frame.to_wgs(a[:, 0], a[:, 1])
+    s0, s1 = float(piece["s0"]), float(piece["s1"])
+    js = [j for j in chain.get("junctions", []) if s0 - 0.5 <= float(j.get("s", 0.0)) <= s1 + 0.5]
+    de = [d for d in chain.get("dead_ends", []) if s0 - 0.5 <= float(d.get("s", 0.0)) <= s1 + 0.5]
+    return {
+        "chain": str(chain["id"]), "ident": chain["ident"], "name": chain["name"], "ref": chain["ref"],
+        "highway": chain["highway"], "lanes": chain["lanes"], "oneway": chain["oneway"],
+        "primary": primary_id is not None and str(chain["id"]) == str(primary_id),
+        "s0": round(s0, 1), "s1": round(s1, 1), "length_m": round(float(g.length), 1),
+        # cut_start/cut_end say this end is a SEAM, not a real road end: the neighbour's segment
+        # carries the same point, which is what makes a walked route cross the seam with no gap.
+        "cut_start": s0 > 0.5, "cut_end": s1 < length_m - 0.5,
+        "geometry": np.column_stack([lon, lat]).round(7).tolist(),
+        "junctions": js, "dead_ends": de,
+    }
+
+
+def build_tilesets(frame: Frame, chains: list[dict], bbox, set_m: float = netsets.DEFAULT_SET_M,
+                   halo_m: float = netsets.DEFAULT_HALO_M, primary_id: str | None = None) -> dict:
+    """The per-tile-set network artifact: every chain cut at the seams, grouped by the tile-set that
+    owns each piece, with the neighbouring pieces inside the halo as read-only context.
+
+    Phase 1 of [PLAN-TILED-NETWORK]. This is written BESIDE the global `spine_utm.json`, which stays
+    the rollup every current consumer and the shards still read. Nothing consumes this yet: it is the
+    decomposition the later phases move the junction model, the profiles and the pyramid onto, and it
+    is what makes "no road is one geometry longer than a tile-set" checkable in one place.
+    """
+    sets = netsets.tilesets(bbox, set_m)
+    assigned = netsets.assign(chains, sets, halo_m)
+    by_id = {str(c["id"]): c for c in chains}
+    docs = []
+    for s in sets:
+        idx = int(s["index"])
+        a = assigned[idx]
+        owned, context = [], []
+        for p in a["owned"]:
+            c = by_id[str(p["chain"])]
+            owned.append(_segment_record(frame, p, c, float(c["length_m"]), primary_id))
+        for p in a["context"]:
+            c = by_id[str(p["chain"])]
+            context.append(_segment_record(frame, p, c, float(c["length_m"]), primary_id))
+        docs.append({
+            "index": idx, "ix": int(s["ix"]), "iy": int(s["iy"]),
+            "bbox": [float(v) for v in s["bbox"]],
+            "halo": [float(v) for v in netsets.halo_rect(s["bbox"], halo_m)],
+            "owned": owned, "context": context,
+        })
+    return {
+        "frame": frame_tag(frame), "set_m": float(set_m), "halo_m": float(halo_m),
+        "tilesets": docs,
+        "counts": {"tilesets": len(docs), "owned": sum(len(d["owned"]) for d in docs),
+                   "context": sum(len(d["context"]) for d in docs)},
+    }
+
+
+def write_tilesets(out: Path, frame: Frame, R: dict, bbox, set_m: float = netsets.DEFAULT_SET_M,
+                   halo_m: float = netsets.DEFAULT_HALO_M) -> dict:
+    """Write `tilesets/<i>/roads.json` per tile-set and a `tilesets/index.json` rollup."""
+    doc = build_tilesets(frame, R["chains"], bbox, set_m, halo_m, primary_id=R["primary"]["id"])
+    root = out / "tilesets"
+    root.mkdir(parents=True, exist_ok=True)
+    index = []
+    for d in doc["tilesets"]:
+        tdir = root / str(d["index"])
+        tdir.mkdir(parents=True, exist_ok=True)
+        (tdir / "roads.json").write_text(json.dumps({
+            **d, "frame": doc["frame"], "set_m": doc["set_m"], "halo_m": doc["halo_m"],
+        }, separators=(",", ":")))
+        index.append({"index": d["index"], "ix": d["ix"], "iy": d["iy"], "bbox": d["bbox"],
+                      "owned": len(d["owned"]), "context": len(d["context"])})
+    (root / "index.json").write_text(json.dumps({
+        "frame": doc["frame"], "set_m": doc["set_m"], "halo_m": doc["halo_m"],
+        "tilesets": index, "counts": doc["counts"],
+    }, indent=1))
+    return doc["counts"]
+
+
 def summary(R: dict) -> str:
     prim = R["primary"]
     return f"{len(R['chains'])} chains from {R['ways']} ways; primary {prim['ident']} {prim['length_m']} m with {len(prim['junctions'])} junctions; roads {R['found']}; missing {R['missing']}"
@@ -603,6 +689,8 @@ def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set
     region = V["region"]
     world = V["world"]
     bbox = V["bbox"]
+    tc = write_tilesets(out, frame, R, bbox)
+    print(f"  tileset {tc['tilesets']} tile-sets: {tc['owned']} owned segments, {tc['context']} in halos", flush=True)
     #
     # THE STREETS ARE `lidar_road_band`; THE POINT CLOUD IS READ OVER THE WORLD (world_lidar_area).
     #
