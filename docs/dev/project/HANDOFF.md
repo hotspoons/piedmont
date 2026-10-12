@@ -9,12 +9,20 @@ For an agent picking up piedmont after the split from siomporas-arcade. Read thi
 | Area | State |
 |---|---|
 | Repository | Pushed to `github.com/hotspoons/piedmont`, `main`. Imported from arcade `34933bd` ([ORIGIN.md](ORIGIN.md)), then renamed, documented and fixed. |
-| Local gate | `npx tsc -b`, `npx vitest run` (995 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (265), `npm run build`: all pass on Node 24. |
+| Local gate | `npx tsc -b`, `npx vitest run` (999 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (327), `npm run build`: all pass on Node 24. |
 | CI | Green on `c7e22c4`. One service suite hung CI twice (anonymous timeout); it did not recur. The checks wrapper now kills a suite that outlives 165 s and fails **with the file name and its last output**, so the next occurrence identifies itself. |
 | Images | All six published on ghcr as `latest`: `piedmont-bake`, `-worldeditor`, `-assetsvc`, `-recon`, `-blender`, `-core`. The core image's CI smoke ran its inner dockerd, a nested container and the world editor on the Docker runner, on amd64 and arm64. |
 | Dev container | Fixed but **never built**: Debian trixie base needs `"moby": false`; Node 24; OpenChamber with opencode's PATH on the extension host. Rich's first build is its first test. |
 | Cluster deployment | **Partly done.** `worldeditor`, `assetsvc` and `overpass-na` run in `piedmont`; the editor serves at `piedmont.richard-siomporas.basedweights.com` through the platform Gateway and can draw and build OSM areas. `cluster.yaml` and `worldeditor.yaml` are reconciled to that live state and `just deploy-check gh200-1` is clean. The acceptance items below are still open. |
 | Docker stack | Statically validated, plus the core image smoke above. No host has run `docker compose up` and baked a world. |
+
+Two workstreams are in flight beyond the split itself. **The `agent/mcp-fixes` port is done** (all
+nine live findings, ported by intent — [specs/PLAN-MCP-PORT.md](../specs/PLAN-MCP-PORT.md)); the only
+open acceptance item is a real-browser check. **The tiled-network plan**
+([specs/PLAN-TILED-NETWORK.md](../specs/PLAN-TILED-NETWORK.md)) has landed Phase 0, the first Phase 1
+slice (per-tile-set network artifacts) and the bake half of Phase 4b (coarse vector LODs beside the
+raster pyramid). The rest of Phase 1 (the per-tile-set OSM query), Phases 2–4 and the viewer's coarse
+vector adoption remain; they are tracked in [TODO.md](TODO.md).
 
 ## Next, in order
 
