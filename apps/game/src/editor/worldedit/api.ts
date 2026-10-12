@@ -108,6 +108,11 @@ export interface World {
   primary?: string | null
   roads?: string[]
   all_streets?: boolean
+  /** a `route` world: the roads it follows, and the region it is bounded to */
+  refs?: string[]
+  clip?: [number, number][]
+  /** a `route` world's per-ref trim, as the two WGS84 points that bound the kept stretch */
+  cuts?: Record<string, [[number, number], [number, number]]>
   region?: string
   note?: string
   boundary?: [number, number][]

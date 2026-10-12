@@ -94,8 +94,18 @@ export function validate(world, sharding = {}) {
     if (!world.all_streets && !roads.length) errors.push('pick at least one road, or choose Every street')
     if (!world.primary) errors.push('a spine road is required')
     if (!world.all_streets && world.primary && !roads.includes(world.primary)) errors.push(`spine "${world.primary}" is not in the roads list`)
+  } else if (world.kind === 'route') {
+    // A route is several long roads bounded to a region (`refs` + a `clip` ring). It is not a
+    // second kind of world to the bake: `_resolve_route` turns it into the same network site, so
+    // the checks here are only the ones that would stop the resolve (no roads, a spine not among
+    // them). The clip ring is optional — with none, `routes.clip_polygon` falls back to `boundary`.
+    const refs = world.refs ?? []
+    if (!refs.length) errors.push('pick at least one route')
+    if (world.primary && !refs.includes(world.primary)) errors.push(`spine "${world.primary}" is not in the route list`)
+    const ring = world.clip ?? world.boundary ?? []
+    if (ring.length && ring.length < 3) errors.push('a route region needs at least three points')
   } else if (world.kind) {
-    errors.push(`unknown kind "${world.kind}" — this editor makes network sites`)
+    errors.push(`unknown kind "${world.kind}" — this editor makes network and route sites`)
   }
   /*
    * WHICH TEXTURES THIS WORLD USES, by role.
@@ -156,12 +166,13 @@ export const SEASONS = ['winter', 'spring', 'summer', 'autumn']
  * drew 18 of the 10 593 drivable ways in that extract, so nearly all the street furniture built
  * from OSM had nothing to attach to. `all_streets` is the default.
  */
-export function fromDraw({ slug, name, boundary, centre, radius_m, primary, roads, all_streets = true, region, note, look, surfaces }) {
+export function fromDraw({ slug, name, boundary, centre, radius_m, primary, roads, refs, clip, cuts, kind, all_streets = true, region, note, look, surfaces }) {
   const ring = (boundary ?? []).map(toPoint)
   const circle = ring.length >= 3 ? circleFor(ring) : null
   const lat = centre?.lat ?? circle?.lat
   const lon = centre?.lon ?? circle?.lon
   const r = radius_m ?? circle?.radius_m
+  const isRoute = kind === 'route'
   const world = {
     slug: slugify(slug ?? name ?? ''),
     // THE NAME IS THE THING SOMEBODY TYPED, and the slug is derived from it (Rich, 2026-09-28:
@@ -169,7 +180,7 @@ export function fromDraw({ slug, name, boundary, centre, radius_m, primary, road
     // derivation loses information nobody should have to retype — "Crofton Triangle" and
     // "crofton-triangle" are not the same string, and the first is what belongs on a label.
     name: String(name ?? slug ?? '').trim() || slugify(slug ?? name ?? ''),
-    kind: 'network',
+    kind: isRoute ? 'route' : 'network',
     lat: round6(lat),
     lon: round6(lon),
     radius_m: Math.round(r ?? 0),
@@ -177,8 +188,21 @@ export function fromDraw({ slug, name, boundary, centre, radius_m, primary, road
     photos: [],
     heading_deg: null,
   }
-  if (all_streets) world.all_streets = true
-  else world.roads = [...new Set(roads ?? [])]
+  if (isRoute) {
+    // `refs` is what the bake's `_resolve_route` reads; `clip` bounds it to a region (a ring drawn
+    // on the map, or the current view). `cuts` is the per-ref trim: the two WGS84 points that bound
+    // the stretch to keep, which `routes.trim_line` projects onto the bake's own chain of that ref.
+    world.refs = [...new Set(refs ?? roads ?? [])]
+    // kept even when it is too short: `validate` is where a bad ring is refused, and dropping it
+    // here would turn "this route has no region" into a bake-time "no clip ring" instead
+    if (clip && clip.length) world.clip = clip.map((p) => [round6(p[0]), round6(p[1])])
+    if (cuts && typeof cuts === 'object' && Object.keys(cuts).length) world.cuts = cuts
+    world.all_streets = false
+  } else if (all_streets) {
+    world.all_streets = true
+  } else {
+    world.roads = [...new Set(roads ?? [])]
+  }
   if (region) world.region = region
   if (note) world.note = note
   if (look && typeof look === 'object') {

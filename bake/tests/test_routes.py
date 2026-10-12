@@ -82,6 +82,50 @@ class BoundaryTest(unittest.TestCase):
         self.assertIsNone(routes.boundary_of([], 10))
 
 
+class TrimTest(unittest.TestCase):
+    """`trim_line` cuts a ref's chain to the stretch between two clicked WGS84 anchors.
+
+    The anchors arrive as points (what the editor stored) and are projected onto the bake's own
+    chain, which is the whole point: the bake's chain need not be the one on screen.
+    """
+
+    def setUp(self):
+        self.frame = Frame.at(-77.52, 39.47)
+        self.line = seg(0, 0, 1000, 0)
+
+    def _wgs(self, x, y):
+        lon, lat = self.frame.to_wgs([x], [y])
+        return [float(lon[0]), float(lat[0])]
+
+    def test_keeps_only_the_stretch_between_the_anchors(self):
+        cut = [self._wgs(250, 0), self._wgs(750, 0)]
+        out = routes.trim_line(self.line, cut, self.frame)
+        self.assertAlmostEqual(out.length, 500, delta=2)
+        self.assertAlmostEqual(out.coords[0][0], 250, delta=2)
+
+    def test_order_does_not_matter(self):
+        cut = [self._wgs(750, 0), self._wgs(250, 0)]
+        out = routes.trim_line(self.line, cut, self.frame)
+        self.assertAlmostEqual(out.length, 500, delta=2)
+
+    def test_anchors_project_onto_the_line(self):
+        # both anchors sit well off the line; the projection is what makes the cut land on it
+        cut = [self._wgs(250, 900), self._wgs(750, -900)]
+        out = routes.trim_line(self.line, cut, self.frame)
+        self.assertAlmostEqual(out.length, 500, delta=3)
+
+    def test_no_cut_leaves_the_whole_line(self):
+        self.assertEqual(routes.trim_line(self.line, None, self.frame).length, 1000)
+        self.assertEqual(routes.trim_line(self.line, [], self.frame).length, 1000)
+
+    def test_a_sliver_cut_leaves_the_whole_line(self):
+        cut = [self._wgs(500, 0), self._wgs(500.1, 0)]
+        self.assertEqual(routes.trim_line(self.line, cut, self.frame).length, 1000)
+
+    def test_unreadable_cut_leaves_the_whole_line(self):
+        self.assertEqual(routes.trim_line(self.line, ["nope", "also-nope"], self.frame).length, 1000)
+
+
 class ResolveSiteTest(unittest.TestCase):
     def test_to_wgs_ring_round_trips_through_the_frame(self):
         frame = Frame.at(-77.52, 39.47)

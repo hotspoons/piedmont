@@ -94,6 +94,7 @@ export class DefinePanel {
     this.roads.clear()
     this.preview = null
     this.o.map.clearRing()
+    this.o.map.clearRouteCuts()
     this.o.map.select = 'square'
     this.o.map.picked = this.roads
     this.o.map.extent = null
@@ -105,14 +106,18 @@ export class DefinePanel {
   load(w: World) {
     this.editing = w.slug
     this.draft = { ...w }
-    this.roads = new Set(w.roads ?? [])
+    this.roads = new Set(w.roads ?? w.refs ?? [])
     this.o.map.picked = this.roads
-    this.o.map.ring = (w.boundary ?? []).map(([lon, lat]) => ({ lon, lat }))
+    this.o.map.clearRouteCuts()
+    for (const [ident, [a, b]] of Object.entries(w.cuts ?? {})) {
+      this.o.map.routeCuts.set(ident, { a: { lon: a[0], lat: a[1] }, b: { lon: b[0], lat: b[1] } })
+    }
+    this.o.map.ring = (w.boundary ?? w.clip ?? []).map(([lon, lat]) => ({ lon, lat }))
     this.o.map.ringClosed = this.o.map.ring.length >= 3
     this.o.map.select = this.o.map.ringClosed && !this.o.map.isRect() ? 'polygon' : 'square'
     this.o.map.extent = { centre: { lon: w.lon, lat: w.lat }, radius_m: w.radius_m }
     this.o.map.flyTo({ lon: w.lon, lat: w.lat }, zoomFor(w.radius_m))
-    this.o.map.mode = 'draw'
+    this.o.map.mode = w.kind === 'route' ? 'route' : 'draw'
     this.refresh()
   }
 
@@ -124,6 +129,11 @@ export class DefinePanel {
       return
     }
     this.schedule()
+  }
+
+  /** The route trim changed in route mode (a start or end was set). Re-draw the panel. */
+  onRouteCuts() {
+    this.render()
   }
 
   /** A road was clicked in pick mode. Shift adds; a plain click replaces the primary. */
@@ -202,22 +212,33 @@ export class DefinePanel {
 
     const sel = group('Selection')
     const sb0 = bodyOf(sel)
-    sb0.append(segmented({
-      value: this.o.map.select,
+    const selMode: 'square' | 'polygon' | 'route' = this.o.map.mode === 'route' ? 'route' : this.o.map.select
+    sb0.append(segmented<'square' | 'polygon' | 'route'>({
+      value: selMode,
       options: [
         { value: 'square', label: 'Square' },
         { value: 'polygon', label: 'Polygon' },
+        { value: 'route', label: 'Route' },
       ],
       onChange: (v) => {
-        this.o.map.select = v
-        this.o.map.mode = 'draw'
+        if (v === 'route') {
+          // Route is the many-spine selector: pick roads instead of drawing an area, and the
+          // bake follows them. `all_streets` would take everything and make the picker moot.
+          this.o.map.mode = 'route'
+          this.draft.all_streets = false
+        } else {
+          this.o.map.select = v
+          this.o.map.mode = 'draw'
+        }
         this.o.map.draw()
         this.render()
       },
     }))
-    sb0.append(hint(this.o.map.select === 'polygon'
-      ? 'Click to place points. Click the first point to close. Drag a point to move it, click an edge to add one, Backspace removes the selected point. Ctrl-drag, right-drag or middle-drag scrolls.'
-      : 'Drag a box. Drag a corner or an edge to resize it, then switch to Polygon to add or remove corners. Ctrl-drag, right-drag or middle-drag scrolls.'))
+    sb0.append(hint(selMode === 'route'
+      ? 'Click a road to add it. Ctrl/Cmd-click toggles one, so several routes can be picked. On any picked route, set a start and an end and the bake keeps only that stretch.'
+      : selMode === 'polygon'
+        ? 'Click to place points. Click the first point to close. Drag a point to move it, click an edge to add one, Backspace removes the selected point. Ctrl-drag, right-drag or middle-drag scrolls.'
+        : 'Drag a box. Drag a corner or an edge to resize it, then switch to Polygon to add or remove corners. Ctrl-drag, right-drag or middle-drag scrolls.'))
     host.append(sel)
 
     /* Name first. It used to be the last group on the form, below the extent, the contents, the
@@ -359,17 +380,60 @@ export class DefinePanel {
         onChange: (v) => {
           this.draft.all_streets = v === 'all'
           if (v === 'all') delete this.draft.roads
-          this.o.map.mode = v === 'all' ? 'draw' : 'pick'
+          // keep route mode when it is on: "named roads" in route mode is the many-spine picker
+          this.o.map.mode = v === 'all' ? 'draw' : this.o.map.mode === 'route' ? 'route' : 'pick'
           this.render()
         },
       }),
     )
     if (!this.draft.all_streets) {
-      rb.append(hint('Click roads to add · shift-click toggles'))
+      rb.append(hint(this.o.map.mode === 'route'
+        ? 'Click roads to add · ctrl/cmd-click toggles · then trim with start and end'
+        : 'Click roads to add · shift-click toggles'))
       if (!this.roads.size) rb.append(empty('nothing picked'))
       for (const r of this.roads) {
         const row = el('div', 'road-row')
         row.append(el('span', 'road-name', r))
+        if (this.o.map.mode === 'route') {
+          const chain = this.o.map.chainFor(r)
+          const cut = this.o.map.cutMetres(r)
+          row.append(el('span', 'road-trim', cut ? `${km(cut.a)} → ${km(cut.b)}` : `whole ${km(chain.lengthM)}`))
+          row.append(
+            button({
+              label: 'start',
+              variant: 'ghost',
+              title: `click ${r} to set where it starts`,
+              onClick: () => {
+                this.o.map.beginTrim(r, 'a')
+                toast(`click ${r} to set the start`)
+              },
+            }),
+            button({
+              label: 'end',
+              variant: 'ghost',
+              title: `click ${r} to set where it ends`,
+              onClick: () => {
+                this.o.map.beginTrim(r, 'b')
+                toast(`click ${r} to set the end`)
+              },
+            }),
+          )
+          if (cut) {
+            row.append(
+              button({
+                icon: 'arrow-uturn-left',
+                variant: 'ghost',
+                title: `keep all of ${r}`,
+                onClick: () => {
+                  this.o.map.routeCuts.delete(r)
+                  this.o.map.trimPending = null
+                  this.o.map.draw()
+                  this.render()
+                },
+              }),
+            )
+          }
+        }
         row.append(
           button({
             icon: 'x-mark',
@@ -377,6 +441,7 @@ export class DefinePanel {
             title: `remove ${r}`,
             onClick: () => {
               this.roads.delete(r)
+              this.o.map.routeCuts.delete(r)
               if (this.draft.primary === r) this.draft.primary = [...this.roads][0] ?? null
               this.o.map.draw()
               this.render()
@@ -575,6 +640,21 @@ export class DefinePanel {
   private async save() {
     const d = this.draft
     /*
+     * ROUTE. In route mode the person picks roads instead of drawing the area, but the bake still
+     * needs a REGION to bound them: a route with no clip would fetch one road across a continent. A
+     * ring drawn in Square/Polygon is the clip; with none, the current view is. Resolved before the
+     * extent check so it sees the region the route will actually bake.
+     */
+    const isRoute = this.o.map.mode === 'route'
+    let ring = this.o.map.ring.map((p): [number, number] => [p.lon, p.lat])
+    if (isRoute && ring.length < 3) {
+      const b = this.o.map.bbox()
+      ring = [[b.west, b.north], [b.east, b.north], [b.east, b.south], [b.west, b.south]]
+      d.lat = (b.north + b.south) / 2
+      d.lon = (b.east + b.west) / 2
+      d.radius_m = Math.round(((b.north - b.south) / 2) * 111132)
+    }
+    /*
      * ON THE FORM, NOT IN A TOAST. Both of these used to be `toast(..., 'warn')`: a message about
      * a specific field, shown somewhere else, for four seconds, with no indication of which field
      * and no way to read it again. Now the field is outlined, the message sits under it, the
@@ -588,22 +668,28 @@ export class DefinePanel {
       setGroupError(this.extentGroup, 'Drag an area on the map, or use the current view')
       problems.push({ field: this.extentGroup, message: '' })
     }
+    if (isRoute && !this.roads.size && this.extentGroup) {
+      problems.push({ field: this.extentGroup, message: 'Pick at least one route' })
+    }
     if (problems.length) {
       for (const p of problems) if (p.message) setFieldError(p.field, p.message)
       focusField(problems[0].field)
       return
     }
+    const kind = isRoute ? 'route' : 'network'
     const body: Record<string, unknown> = {
       slug: d.slug,
       name: d.name ?? d.slug,
       centre: { lat: d.lat, lon: d.lon },
       radius_m: d.radius_m,
+      kind,
       primary: d.primary,
-      all_streets: !!d.all_streets,
-      roads: [...this.roads],
+      all_streets: isRoute ? false : !!d.all_streets,
+      roads: isRoute ? [] : [...this.roads],
+      ...(isRoute ? { refs: [...this.roads], clip: ring, cuts: this.o.map.cutsOut() } : {}),
       note: d.note,
       surfaces: d.surfaces,
-      boundary: this.o.map.ring.map((p) => [p.lon, p.lat]),
+      boundary: ring,
       look: d.look && Object.keys(d.look).length ? d.look : undefined,
     }
     try {
@@ -612,8 +698,8 @@ export class DefinePanel {
             ...body,
             lat: d.lat,
             lon: d.lon,
-            kind: 'network',
-            boundary: this.o.map.ring.map((p) => [p.lon, p.lat]),
+            kind,
+            boundary: ring,
           })
         : await api.createWorld(body)
       for (const w of res.warnings ?? []) toast(w, 'warn', 6000)

@@ -30,6 +30,7 @@
 // geodesy. A map that stops repainting while you are not looking at it is correct behaviour.
 
 import type { Way } from './api'
+import { toast } from '../../ui/shell'
 
 /**
  * How many motorway shields one frame may carry.
@@ -117,7 +118,7 @@ const STYLE: Record<string, { w: number; c: string; minZoom: number }> = {
 const LINK = { w: 1.6, c: '#c08a5a', minZoom: 12 }
 const styleOf = (hw: string) => STYLE[hw] ?? (hw?.endsWith('_link') ? LINK : { w: 1.2, c: '#6b7a89', minZoom: 13 })
 
-export type Mode = 'pan' | 'draw' | 'pick'
+export type Mode = 'pan' | 'draw' | 'pick' | 'route'
 
 /** A lon/lat rectangle — what a world actually is. */
 interface Box { west: number; east: number; south: number; north: number }
@@ -132,6 +133,8 @@ export interface MapOpts {
   onBoundary: (ring: LonLat[], closed: boolean) => void
   /** a road was clicked in `pick` mode */
   onPick: (way: Way, additive: boolean) => void
+  /** the route trim changed in `route` mode (the two WGS84 points per picked route) */
+  onRouteCuts?: (cuts: Record<string, [[number, number], [number, number]]>) => void
   /** the cursor moved — for the coordinate readout */
   onHover: (p: LonLat, mPerPx: number) => void
 }
@@ -188,6 +191,16 @@ export class MapView {
   picked = new Set<string>()
   /** ways under the cursor, highlighted */
   hovered: number | null = null
+  /**
+   * Route mode: where each picked route is TRIMMED, as the two WGS84 points the person clicked
+   * (start and end). Absent means the whole route. Stored as POINTS, not metres, because the bake
+   * fetches its own chain of a ref (the longest one inside the clip) which is not necessarily the
+   * one on screen; it projects these points onto its own chain (routes.trim_line). The user asked
+   * for this: "set start and endpoints on a selected route if you don't want the whole thing".
+   */
+  routeCuts = new Map<string, { a: LonLat; b: LonLat }>()
+  /** route mode: the next click on this route sets this endpoint. Set by `beginTrim`. */
+  trimPending: { ident: string; end: 'a' | 'b' } | null = null
 
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
@@ -402,8 +415,10 @@ export class MapView {
       if (e.button === 1 || e.button === 2) e.preventDefault()
       c.setPointerCapture(e.pointerId)
       const x = e.offsetX, y = e.offsetY
-      // Ctrl-drag, right-drag and middle-drag scroll. Left-drag is the selection.
-      const pan = e.button === 1 || e.button === 2 || (e.button === 0 && (e.ctrlKey || e.metaKey))
+      // Ctrl-drag, right-drag and middle-drag scroll. Left-drag is the selection. In route mode
+      // Ctrl/Cmd-left is the MULTI-SELECT modifier, so it must not start a pan — pan there is
+      // middle/right drag (and the wheel).
+      const pan = e.button === 1 || e.button === 2 || (e.button === 0 && (e.ctrlKey || e.metaKey) && this.mode !== 'route')
       if (pan) {
         this.dragging = { kind: 'pan', x, y, moved: false }
         return
@@ -497,11 +512,12 @@ export class MapView {
         if (c.style.cursor !== 'crosshair') c.style.cursor = 'crosshair'
         return
       }
-      if (this.mode === 'pick') {
+      if (this.mode === 'pick' || this.mode === 'route') {
         const w = this.wayAt(e.offsetX, e.offsetY)
+        const want = this.mode === 'route' && this.trimPending ? 'crosshair' : w ? 'pointer' : ''
+        if (c.style.cursor !== want) c.style.cursor = want
         if (w?.id !== this.hovered) {
           this.hovered = w?.id ?? null
-          c.style.cursor = w ? 'pointer' : ''
           this.draw()
         }
       }
@@ -533,6 +549,33 @@ export class MapView {
       if (this.mode === 'pick') {
         const w = this.wayAt(e.offsetX, e.offsetY)
         if (w) this.o.onPick(w, e.shiftKey)
+        return
+      }
+      if (this.mode === 'route') {
+        const w = this.wayAt(e.offsetX, e.offsetY)
+        if (!w) return
+        const additive = e.shiftKey || e.ctrlKey || e.metaKey
+        if (this.trimPending) {
+          // "set start/end": this click is the endpoint, not a new selection
+          if (w.ident !== this.trimPending.ident) {
+            toast(`trim ${this.trimPending.end === 'a' ? 'start' : 'end'}: click on ${this.trimPending.ident}`)
+            return
+          }
+          const p = this.toLonLat(e.offsetX, e.offsetY)
+          const chain = this.chainFor(w.ident)
+          const at = (s: number): LonLat => {
+            const q = pointAtMetres(chain, s)
+            return { lon: q[0], lat: q[1] }
+          }
+          const cur = this.routeCuts.get(w.ident) ?? { a: at(0), b: at(chain.lengthM) }
+          const next = this.trimPending.end === 'a' ? { a: p, b: cur.b } : { a: cur.a, b: p }
+          this.routeCuts.set(w.ident, next)
+          this.trimPending = null
+          this.o.onRouteCuts?.(this.cutsOut())
+          this.draw()
+          return
+        }
+        this.o.onPick(w, additive)
       }
     })
     c.addEventListener('contextmenu', (e) => {
@@ -566,6 +609,90 @@ export class MapView {
     this.ringClosed = true
     this.o.onBoundary(this.ring, true)
     this.draw()
+  }
+
+  /* ---- route mode -------------------------------------------------------------------------- */
+
+  /**
+   * The picked route's geometry: its ways merged into the longest connected chain, as WGS84
+   * points with the along-track metres at each. The bake merges the same ways by connectivity
+   * (`network._chains`), so a trim the person sets here lands on the same line the bake keeps.
+   */
+  chainFor(ident: string): { pts: [number, number][]; cum: number[]; lengthM: number } {
+    const mine = this.ways.filter((w) => w.ident === ident && w.line.length >= 2)
+    if (!mine.length) return { pts: [], cum: [0], lengthM: 0 }
+    const used = new Set<number>()
+    const key = (p: [number, number]) => `${p[0].toFixed(7)},${p[1].toFixed(7)}`
+    const longest = mine.reduce((a, b) => (b.line.length > a.line.length ? b : a))
+    const pts: [number, number][] = [...longest.line]
+    used.add(longest.id)
+    let grew = true
+    while (grew) {
+      grew = false
+      for (const w of mine) {
+        if (used.has(w.id)) continue
+        const head = key(pts[0])
+        const tail = key(pts[pts.length - 1])
+        if (key(w.line[0]) === tail) { pts.push(...w.line.slice(1)); used.add(w.id); grew = true }
+        else if (key(w.line[w.line.length - 1]) === tail) { pts.push(...w.line.slice(0, -1).reverse()); used.add(w.id); grew = true }
+        else if (key(w.line[w.line.length - 1]) === head) { pts.unshift(...w.line.slice(0, -1)); used.add(w.id); grew = true }
+        else if (key(w.line[0]) === head) { pts.unshift(...w.line.slice(1).reverse()); used.add(w.id); grew = true }
+      }
+    }
+    const cum = [0]
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + metresBetween(pts[i - 1], pts[i]))
+    return { pts, cum, lengthM: cum[cum.length - 1] }
+  }
+
+  /** Where a lon/lat falls along a route, in metres from the route's own start. */
+  alongChain(ident: string, p: LonLat): number {
+    const { pts, cum } = this.chainFor(ident)
+    if (pts.length < 2) return 0
+    let best = 0
+    let bestD = Infinity
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay] = pts[i - 1]
+      const [bx, by] = pts[i]
+      const dx = bx - ax
+      const dy = by - ay
+      const len2 = dx * dx + dy * dy || 1
+      let t = ((p.lon - ax) * dx + (p.lat - ay) * dy) / len2
+      t = Math.max(0, Math.min(1, t))
+      const qx = ax + t * dx
+      const qy = ay + t * dy
+      const d = (p.lon - qx) ** 2 + (p.lat - qy) ** 2
+      if (d < bestD) {
+        bestD = d
+        best = cum[i - 1] + t * (cum[i] - cum[i - 1])
+      }
+    }
+    return best
+  }
+
+  /** Arm a trim: the next click on this route sets its start (`a`) or end (`b`). */
+  beginTrim(ident: string, end: 'a' | 'b') {
+    this.trimPending = { ident, end }
+    this.draw()
+  }
+
+  clearRouteCuts() {
+    this.routeCuts.clear()
+    this.trimPending = null
+  }
+
+  /** The trim anchors as `{ref: [[lon, lat], [lon, lat]]}` — the shape the bake reads. */
+  cutsOut(): Record<string, [[number, number], [number, number]]> {
+    const out: Record<string, [[number, number], [number, number]]> = {}
+    for (const [ident, c] of this.routeCuts) out[ident] = [[c.a.lon, c.a.lat], [c.b.lon, c.b.lat]]
+    return out
+  }
+
+  /** How far along the on-screen chain each trim anchor sits, in metres — for the panel's readout. */
+  cutMetres(ident: string): { a: number; b: number; lengthM: number } | null {
+    const cut = this.routeCuts.get(ident)
+    if (!cut) return null
+    const chain = this.chainFor(ident)
+    return { a: this.alongChain(ident, cut.a), b: this.alongChain(ident, cut.b), lengthM: chain.lengthM }
   }
 
   clearRing() {
@@ -1040,12 +1167,51 @@ export class MapView {
       }
     }
     g.globalAlpha = 1
+    this.paintRouteMarks(g)
     if (this.zoom >= 15) this.paintLabels(g)
   }
 
+  /**
+   * Route mode: the start and end of each picked route, as a marker on the line. The default is
+   * the whole route (both ends); a trim moves one of them along the line.
+   */
+  private paintRouteMarks(g: CanvasRenderingContext2D) {
+    if (this.mode !== 'route' || !this.picked.size) return
+    g.font = '11px var(--font-mono), ui-monospace, monospace'
+    g.textAlign = 'left'
+    for (const ident of this.picked) {
+      const chain = this.chainFor(ident)
+      if (chain.pts.length < 2) continue
+      const cut = this.routeCuts.get(ident)
+      const ends: { end: 'a' | 'b'; pt: [number, number]; colour: string }[] = [
+        { end: 'a', pt: cut ? [cut.a.lon, cut.a.lat] : pointAtMetres(chain, 0), colour: '#63d17a' },
+        { end: 'b', pt: cut ? [cut.b.lon, cut.b.lat] : pointAtMetres(chain, chain.lengthM), colour: '#e8933f' },
+      ]
+      for (const { end, pt, colour } of ends) {
+        const [x, y] = this.xyOf(pt[0], pt[1])
+        const pending = this.trimPending?.ident === ident && this.trimPending.end === end
+        g.beginPath()
+        g.arc(x, y, pending ? 7 : 5, 0, Math.PI * 2)
+        g.fillStyle = colour
+        g.globalAlpha = pending ? 1 : 0.9
+        g.fill()
+        g.lineWidth = 2
+        g.strokeStyle = '#0d1014'
+        g.stroke()
+        g.globalAlpha = 1
+        g.strokeStyle = 'rgba(13,16,20,0.85)'
+        g.lineWidth = 3
+        const label = pending ? `click ${end === 'a' ? 'start' : 'end'}` : end === 'a' ? 'start' : 'end'
+        g.strokeText(label, x + 8, y - 6)
+        g.fillStyle = colour
+        g.fillText(label, x + 8, y - 6)
+      }
+      g.globalAlpha = 1
+    }
+  }
+
   /** Road names, once per ident, on the longest visible segment of it. Cheap and readable. */
-  private paintLabels(g: CanvasRenderingContext2D) {
-    const placed = new Map<string, number>()
+  private paintLabels(g: CanvasRenderingContext2D) {    const placed = new Map<string, number>()
     g.font = '11px var(--font-mono), ui-monospace, monospace'
     g.fillStyle = '#a3b1bf'
     g.strokeStyle = 'rgba(13,16,20,0.8)'
@@ -1271,4 +1437,26 @@ function segDist2(px: number, py: number, ax: number, ay: number, bx: number, by
   const cx = ax + t * dx
   const cy = ay + t * dy
   return (px - cx) ** 2 + (py - cy) ** 2
+}
+
+/** Ground metres between two lon/lat points, equirectangular — enough to trim a route by eye. */
+function metresBetween(a: [number, number], b: [number, number]): number {
+  const midLat = ((a[1] + b[1]) / 2) * (Math.PI / 180)
+  const dx = (b[0] - a[0]) * Math.cos(midLat) * 111320
+  const dy = (b[1] - a[1]) * 110540
+  return Math.hypot(dx, dy)
+}
+
+/** The lon/lat at `s` metres along a chain's own cumulative distances. */
+function pointAtMetres(chain: { pts: [number, number][]; cum: number[] }, s: number): [number, number] {
+  const { pts, cum } = chain
+  if (pts.length < 2) return pts[0] ?? [0, 0]
+  const target = Math.max(0, Math.min(cum[cum.length - 1], s))
+  let i = 1
+  while (i < cum.length && cum[i] < target) i++
+  const span = cum[i] - cum[i - 1] || 1
+  const t = (target - cum[i - 1]) / span
+  const a = pts[i - 1]
+  const b = pts[i]
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 }

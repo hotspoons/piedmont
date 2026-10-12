@@ -417,6 +417,7 @@ const map = new MapView({
   onViewport: (bbox, zoom) => void loadRoads(bbox, zoom),
   onBoundary: (ring, closed) => define.onBoundary(ring, closed),
   onPick: (way, additive) => define.onPick(way, additive),
+  onRouteCuts: () => define.render(),
   onHover: (p, mpp) => {
     readoutEl.textContent = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}  ·  ${mpp < 1 ? `${(mpp * 100).toFixed(0)} cm` : mpp < 1000 ? `${mpp.toFixed(1)} m` : `${(mpp / 1000).toFixed(1)} km`}/px`
   },

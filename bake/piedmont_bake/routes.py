@@ -21,8 +21,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from shapely.geometry import LineString, Polygon
-from shapely.ops import unary_union
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import substring, unary_union
 
 from . import osm
 from .geo import Frame
@@ -74,6 +74,29 @@ def clip_line(line: LineString, poly: Polygon | None) -> LineString | None:
 
 def _d2(a: tuple[float, float], b: tuple[float, float]) -> float:
     return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
+
+
+def trim_line(line: LineString, cut, frame: Frame) -> LineString | None:
+    """`line` cut to the stretch between two WGS84 anchor points, each projected onto it.
+
+    The editor stores a trim as the POINTS the person clicked, not as metres along a chain: the
+    bake's chain of a ref (the longest one inside the clip) is not necessarily the one on screen.
+    Projecting the anchors onto this line is what makes the trim land where the person meant. A
+    missing or unreadable cut, or one that projects to a sliver, leaves the whole line.
+    """
+    if not cut or len(cut) != 2:
+        return line
+    try:
+        a = frame.from_wgs(float(cut[0][0]), float(cut[0][1]))
+        b = frame.from_wgs(float(cut[1][0]), float(cut[1][1]))
+    except (TypeError, IndexError, ValueError):
+        return line
+    da = line.project(Point(a))
+    db = line.project(Point(b))
+    lo, hi = (da, db) if da <= db else (db, da)
+    if hi - lo < 1.0:
+        return line
+    return substring(line, lo, hi)
 
 
 def join_refs(order: list[str], lines: dict[str, LineString]) -> LineString | None:
@@ -157,9 +180,16 @@ def resolve(site: dict, frame: Frame, cache: Path, out: Path, half_width: float)
     refs = [str(r) for r in site.get("refs") or []]
     if not refs:
         raise RuntimeError(f"route {site.get('slug')} names no refs")
+    cuts = site.get("cuts") or {}
     cache_p = out / "route.json"
+    saved = None
     if cache_p.exists() and not site.get("_force_route"):
-        saved = json.loads(cache_p.read_text())
+        candidate = json.loads(cache_p.read_text())
+        # A re-run reuses the cache only when the SAME refs and the SAME trim produced it; editing
+        # either on the map has to re-resolve, or a moved start/end would silently bake the old one.
+        if candidate.get("refs") == refs and (candidate.get("cuts") or {}) == cuts:
+            saved = candidate
+    if saved is not None:
         line = LineString(saved["route"])
         lines = {k: LineString(v) for k, v in saved["lines"].items()}
         boundary = Polygon(saved["boundary"])
@@ -168,6 +198,10 @@ def resolve(site: dict, frame: Frame, cache: Path, out: Path, half_width: float)
         if clip is None:
             raise RuntimeError(f"route {site.get('slug')} has no clip ring")
         lines = fetch_ref_lines(refs, clip, frame, cache)
+        for r in list(lines):  # apply each ref's trim before the refs are joined and buffered
+            trimmed = trim_line(lines[r], cuts.get(r), frame)
+            if trimmed is not None and not trimmed.is_empty:
+                lines[r] = trimmed
         missing = [r for r in refs if r not in lines]
         if missing:
             print(f"  route   WARNING no ways for {missing}", flush=True)
@@ -180,6 +214,8 @@ def resolve(site: dict, frame: Frame, cache: Path, out: Path, half_width: float)
             raise RuntimeError(f"route {site.get('slug')} produced an empty boundary")
         out.mkdir(parents=True, exist_ok=True)
         cache_p.write_text(json.dumps({
+            "refs": refs,
+            "cuts": cuts,
             "route": [[round(c[0], 2), round(c[1], 2)] for c in line.coords],
             "lines": {k: [[round(c[0], 2), round(c[1], 2)] for c in v.coords] for k, v in lines.items()},
             "boundary": [[round(c[0], 2), round(c[1], 2)] for c in boundary.exterior.coords],

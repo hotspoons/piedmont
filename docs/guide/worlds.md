@@ -32,6 +32,14 @@ globe button beside it opens the selected world in the game.
 (click the first point again to close it; drag a point to move it, click an edge to add one,
 Backspace removes the selected point). **Use the current view** takes whatever is on screen.
 
+**Route** is the third mode, for following several long roads across a region rather than baking a
+box. Click a road to add it; **Ctrl/Cmd-click** toggles one, so you can pick as many as you like
+(I‑70 *and* US‑15, say). Each picked route shows a green **start** marker and an orange **end**
+marker; press **start** or **end** on a row in **Roads** and then click the road to move that
+marker, and the bake keeps only the stretch between them. With no Square/Polygon area drawn, a
+route is bounded to whatever is on screen when you save — draw the region first if you want a
+larger one.
+
 **Name.** Type a name; the slug (the world's id in files and URLs) is derived from it and fixed once
 the world is saved. A description is optional.
 
@@ -46,8 +54,10 @@ below), and the editor states the area and the grid it will become.
 
 - **Every street**: every drivable road in the area.
 - **Named roads**: click roads on the map to add them (shift-click toggles). Only those are baked.
+  In **Route** selection this is the multi-road picker: Ctrl/Cmd-click toggles a road, and each
+  picked road gets a **start** and an **end** so you can bake only part of it.
 - **Spine**: the main road of the world. It is the road the game measures most carefully and the
-  default place you start.
+  default place you start. A route world's spine is one of its roads.
 
 **Look.** The defaults the world opens with: **style** (Realistic or Fantasy), **season**,
 **terrain relief** (an exaggeration factor, 1 = as measured) and, optionally, a fixed **water
