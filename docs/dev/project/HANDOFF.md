@@ -22,8 +22,8 @@ open acceptance item is a real-browser check. **The tiled-network plan**
 ([specs/PLAN-TILED-NETWORK.md](../specs/PLAN-TILED-NETWORK.md)) has landed Phase 0, the first Phase 1
 slice (per-tile-set network artifacts) and **both halves of Phase 4b** (coarse vector LODs written
 beside `vt/0`, and the editor map's `chooseVectorLevel` reading them — live-verified in a browser).
-The rest of Phase 1 (the per-tile-set OSM query), Phases 2–4 and the game viewer's coarse-vector
-adoption remain; they are tracked in [TODO.md](TODO.md).
+The rest of Phase 1 (the per-tile-set OSM query) and Phases 2–4 remain; they are tracked in
+[TODO.md](TODO.md).
 
 ## Next, in order
 

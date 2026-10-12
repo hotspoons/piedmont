@@ -42,6 +42,7 @@ import { actorExtension } from '../library/actors'
 import { weaponExtension } from '../library/weapons'
 import { soundsExtension } from '../library/sounds'
 import { vehicleExtension } from '../library/vehicles'
+import { trafficExtension } from '../library/trafficsets'
 import { levelBuilds, worldThings, type LevelBuild, type PlacementDoc, type SoundSlotInfo } from '../../game/world/worldthings'
 import type { PointsDoc } from '../../game/world/points'
 import { loadSpawnCatalog } from '../../assets/catalogmerge'
@@ -632,7 +633,7 @@ const assets = new AssetCatalog({
   world: () => selected,
   // the physics lane's Dynamics group, on the items that are vehicles (src/ui/vehicles.ts)
   extensions: [
-    vehicleExtension(), actorExtension(), weaponExtension(),
+    vehicleExtension(), actorExtension(), weaponExtension(), trafficExtension(),
     // what the selected world wears for its signs, signals, poles, gates and markers (src/fixtures.ts)
     fixturesExtension({
       slug: () => selected,

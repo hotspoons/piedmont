@@ -199,9 +199,11 @@ level bridges to `vt/0` at `TIER_MPP[1]`); `streamLevel` fetches its cells from 
 `streamTiles` fetches `vt/0`; buckets are tagged `b.level`; and the previous level's GPU buffers are
 freed on a switch (bucket kept, no refetch). Coarse tier-0 majors draw at any distance. Verified live
 in a browser on a backfilled `crofton-triangle` (z10 at ~40 m/px, z11 at ~20, full `vt/0` at ≤10).
-Tested in `apps/game/test/editor-maproads-level.test.ts`. **Still to do:** the game viewer's own
-branch pump (`world/scene.ts`) to read `vt.levels` too — today only the editor map does; and the
-class/length tables are first guesses to tune against real tiles.
+Tested in `apps/game/test/editor-maproads-level.test.ts`. The class/length tables are first guesses
+to tune against real tiles. The game's 3D world needs none of this: it streams its branch asphalt
+only within `STREAM_BUILD_M` (≤ 6 km) of the eye (`world/scene.ts` `gradeNear`), so it never fetches
+vectors coast to coast. Its minimap (`game/move/minimap.ts`) is the one wholesale reader — a worker
+loads the whole-network `context.json` once and tiles it itself — a separate piece from `vt/levels`.
 
 **Phase 5 — spine mode.** Reuse the current single-primary machinery as the selector: resolve the
 route, buffer it, pick the tile-sets it crosses and the metros to include, order them, then run the
