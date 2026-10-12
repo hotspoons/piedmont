@@ -12,16 +12,16 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 | 4 | **Lidar canopy includes roofs** | bake / flora | where a vendor left buildings unclassified; the game masks OSM footprints out of tree planting. The perf panel's tree lines explain bare ground cell by cell. |
 | 6 | **Tiled network: the per-tile-set OSM query** | bake | Phase 1 stops holding the whole network in one process — plan/query Overpass or clip a Geofabrik extract per tile-set. See Phase 1. **The next real step on the tiled network**: `roads()` still queries the whole site bbox and merges chains globally, so `plan` holds whole 100 km+ chains (`write_tilesets` then cuts them). The per-tile-set *sourcing* is what removes the long polies; the consumers are Phases 2–4. |
 | 8 | **MCP config leaks the bearer token to an unauthenticated caller** | services/worldeditor | `GET /api/agent/mcp/config` returns `auth.token` in the clear (`mcpauth.describe()`, deliberately, so the Agent tab can show it) — but the deployed host answered that GET with no credentials, so the token (which gates `shell_exec`, `program_write`, …) is readable by anyone who can reach the ingress. The code assumes the ingress authenticates; empirically it does not in front of this path. Fix is a deployment/auth decision (gate the route, or front the editor with auth), not a unilateral code change — Rich's call. |
+| 9 | **The bake volume fills and the worldeditor crash-loops** | ops | `worldeditor-data` is a 500 Gi PVC and it reached 100% on 2026-10-12: a sharded bake keeps its intermediates (`sites/<slug>/shards/`, `lidar/`, the per-shard `dem_1m.tif`) forever, so two big worlds plus the caches (`cache/ept` 236 Gi, `cache/usgs1m` 50 Gi) filled it. With no space the worldeditor dies on boot writing `coverage.json` (`EDQUOT`, errno -122) and a finalize dies inside `gdaladdo`. Nothing prunes a finished bake's intermediates, and the PVC has no growth/alerting. Needs an ops decision: prune `shards/`+`lidar/` after `finalize`, cap or evict `cache/ept`, or grow/split the volume. Freed by hand on 2026-10-12 (`cache/usgs1m`, `cache/laz`). |
 
 ## Recently fixed
 
-- **A shard block with nothing in the world crashed the whole bake** — `shards.world_lidar_area`
-  returned an empty `streets` geometry when a block owned no part of the world and carried no roads,
-  and `snap_bbox` on its NaN bounds killed the shard (`ValueError: cannot convert float NaN to
-  integer`). Any diagonal or L-shaped world has corner blocks like that; it stopped the
-  `i70-us15-maryland` bake at shard 19. Both `world_lidar_area`s now answer `None` when there is
-  nothing to read and the callers fall through to the elevation-model profiles. `bbff1eb`;
-  shard 19 now completes in seconds.
+- **A shard whose lidar tiles all fall outside its area is "no lidar here"** — the i70 bake then
+  died on shard 31: it fetched three TNM LAZ tiles, every one lay outside its area, so nothing was
+  written, but `lidar_tiled` still returned and `fetch_shard` profiled against a `dtm.tif` that was
+  never created (`RasterioIOError: .../lidar/dtm.tif`). `lidar_tiled` now raises `NoLidarHere` when
+  it wrote no tiles, the fact the caller already understands (fall through to the elevation-model
+  profiles, the same path `bbff1eb` uses). `6a0f02d`; tested.
 - **A service suite hung CI on ~half of pushes** — `runs-osm.test.mjs` passed every test and then
   never exited. `Runs.cancel` finishes a run while `#advance` is mid-flight, so the advance started
   the next phase and re-armed a watcher for an already-terminal run, whose log follower kept opening
