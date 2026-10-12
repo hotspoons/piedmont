@@ -12,6 +12,7 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 | 2 | **Stage panel has no control for a level's `program` or traffic `set`** | editor | the guide sends users to Shell mode or MCP `level_save`. |
 | 3 | **Geofabrik's published index can have empty region outlines** | services/worldeditor | 11 regions on 2026-10-10, `virginia.poly` 0 bytes. Routing refuses empty outlines and falls back to the volume's copy or the seed (`services/worldeditor/geofabrik.mjs`); an OSM import of Virginia may fail until Geofabrik fixes its files. |
 | 4 | **Lidar canopy includes roofs** | bake / flora | where a vendor left buildings unclassified; the game masks OSM footprints out of tree planting. The perf panel's tree lines explain bare ground cell by cell. |
+| 5 | **Port `agent/mcp-fixes` into piedmont** | editor / services | The arcade branch (`agent/mcp-fixes`, tip `c4be424`) fixed the MCP tools and was never merged, so none of it is here. Seven of ten findings still reproduce against today's code; port by intent — see [specs/PLAN-MCP-PORT.md](../specs/PLAN-MCP-PORT.md). Open: the document channel, explicit `shell_exec` cwd, `program_delete` on a folder, schema fixes, `projectedAt` for `shell_list`, `code_outline` flags, `code_definition` on API symbols, `program_list` `id`/`path`, and `ensureMachine()`. |
 
 ## Recently fixed
 

@@ -45,6 +45,7 @@ For how things work now, read the pages in [docs/dev](../README.md) and the code
 | [PLAN-EDITOR-IDE.md](PLAN-EDITOR-IDE.md) | the editor as a web IDE over the ECS, the assets and the map |
 | [PLAN-SPLAT-ROUTES.md](PLAN-SPLAT-ROUTES.md) | putting a captured gaussian-splat world inside the built one |
 | [PLAN-RIGGING.md](PLAN-RIGGING.md) | rigging vehicles and characters with Blender |
+| [PLAN-MCP-PORT.md](PLAN-MCP-PORT.md) | porting the arcade's `agent/mcp-fixes` into piedmont: which of its ten findings still reproduce, and how to port the survivors |
 | [PLAN-AUTH.md](PLAN-AUTH.md) | accounts, roles and per-user worlds in the world editor (not started) |
 
 ## Handoffs
