@@ -30,6 +30,7 @@
 // geodesy. A map that stops repainting while you are not looking at it is correct behaviour.
 
 import type { Way } from './api'
+import { mergeWays, nearestAlong, pointAtMetres, type Chain } from './routegeom'
 import { toast } from '../../ui/shell'
 
 /**
@@ -618,55 +619,13 @@ export class MapView {
    * points with the along-track metres at each. The bake merges the same ways by connectivity
    * (`network._chains`), so a trim the person sets here lands on the same line the bake keeps.
    */
-  chainFor(ident: string): { pts: [number, number][]; cum: number[]; lengthM: number } {
-    const mine = this.ways.filter((w) => w.ident === ident && w.line.length >= 2)
-    if (!mine.length) return { pts: [], cum: [0], lengthM: 0 }
-    const used = new Set<number>()
-    const key = (p: [number, number]) => `${p[0].toFixed(7)},${p[1].toFixed(7)}`
-    const longest = mine.reduce((a, b) => (b.line.length > a.line.length ? b : a))
-    const pts: [number, number][] = [...longest.line]
-    used.add(longest.id)
-    let grew = true
-    while (grew) {
-      grew = false
-      for (const w of mine) {
-        if (used.has(w.id)) continue
-        const head = key(pts[0])
-        const tail = key(pts[pts.length - 1])
-        if (key(w.line[0]) === tail) { pts.push(...w.line.slice(1)); used.add(w.id); grew = true }
-        else if (key(w.line[w.line.length - 1]) === tail) { pts.push(...w.line.slice(0, -1).reverse()); used.add(w.id); grew = true }
-        else if (key(w.line[w.line.length - 1]) === head) { pts.unshift(...w.line.slice(0, -1)); used.add(w.id); grew = true }
-        else if (key(w.line[0]) === head) { pts.unshift(...w.line.slice(1).reverse()); used.add(w.id); grew = true }
-      }
-    }
-    const cum = [0]
-    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + metresBetween(pts[i - 1], pts[i]))
-    return { pts, cum, lengthM: cum[cum.length - 1] }
+  chainFor(ident: string): Chain {
+    return mergeWays(this.ways.filter((w) => w.ident === ident))
   }
 
   /** Where a lon/lat falls along a route, in metres from the route's own start. */
   alongChain(ident: string, p: LonLat): number {
-    const { pts, cum } = this.chainFor(ident)
-    if (pts.length < 2) return 0
-    let best = 0
-    let bestD = Infinity
-    for (let i = 1; i < pts.length; i++) {
-      const [ax, ay] = pts[i - 1]
-      const [bx, by] = pts[i]
-      const dx = bx - ax
-      const dy = by - ay
-      const len2 = dx * dx + dy * dy || 1
-      let t = ((p.lon - ax) * dx + (p.lat - ay) * dy) / len2
-      t = Math.max(0, Math.min(1, t))
-      const qx = ax + t * dx
-      const qy = ay + t * dy
-      const d = (p.lon - qx) ** 2 + (p.lat - qy) ** 2
-      if (d < bestD) {
-        bestD = d
-        best = cum[i - 1] + t * (cum[i] - cum[i - 1])
-      }
-    }
-    return best
+    return nearestAlong(this.chainFor(ident), p)
   }
 
   /** Arm a trim: the next click on this route sets its start (`a`) or end (`b`). */
@@ -1437,26 +1396,4 @@ function segDist2(px: number, py: number, ax: number, ay: number, bx: number, by
   const cx = ax + t * dx
   const cy = ay + t * dy
   return (px - cx) ** 2 + (py - cy) ** 2
-}
-
-/** Ground metres between two lon/lat points, equirectangular — enough to trim a route by eye. */
-function metresBetween(a: [number, number], b: [number, number]): number {
-  const midLat = ((a[1] + b[1]) / 2) * (Math.PI / 180)
-  const dx = (b[0] - a[0]) * Math.cos(midLat) * 111320
-  const dy = (b[1] - a[1]) * 110540
-  return Math.hypot(dx, dy)
-}
-
-/** The lon/lat at `s` metres along a chain's own cumulative distances. */
-function pointAtMetres(chain: { pts: [number, number][]; cum: number[] }, s: number): [number, number] {
-  const { pts, cum } = chain
-  if (pts.length < 2) return pts[0] ?? [0, 0]
-  const target = Math.max(0, Math.min(cum[cum.length - 1], s))
-  let i = 1
-  while (i < cum.length && cum[i] < target) i++
-  const span = cum[i] - cum[i - 1] || 1
-  const t = (target - cum[i - 1]) / span
-  const a = pts[i - 1]
-  const b = pts[i]
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 }
