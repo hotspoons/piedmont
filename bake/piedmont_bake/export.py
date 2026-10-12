@@ -878,17 +878,24 @@ def _barriers(site_dir: Path, frame, ox: float, oy: float, bbox) -> list[dict]:
     return out
 
 
-def _sidewalks(site_dir: Path, frame, ox: float, oy: float, bbox) -> list[dict]:
-    """Sidewalks and crossings: `highway=footway` ways, and the roads that say they have one.
+def _paths(site_dir: Path, frame, ox: float, oy: float, bbox) -> dict[str, list[dict]]:
+    """The three non-carriageway ways on the ground: sidewalks, trails, and railways.
 
-    Crofton maps 626 `footway=sidewalk` ways and 446 `footway=crossing` ways explicitly, which is
-    the good case and most of the built-up part of the site. Another 78 roads carry
-    `sidewalk=both|left|right` with no separate way, and those get a line offset off the
-    carriageway — the same walk exists, OSM just recorded it as an attribute instead of a geometry.
+    SIDEWALKS are `highway=footway` ways, and the roads that say they have one. Crofton maps 626
+    `footway=sidewalk` ways and 446 `footway=crossing` ways explicitly, which is the good case and
+    most of the built-up part of the site. Another 78 roads carry `sidewalk=both|left|right` with no
+    separate way, and those get a line offset off the carriageway — the same walk exists, OSM just
+    recorded it as an attribute instead of a geometry. Whether a crossing is PAINTED is a real tag
+    and not a guess: `crossing:markings` is yes or ladder on 209 of Crofton's 644 crossing nodes and
+    explicitly `no` on 213.
 
-    Whether a crossing is PAINTED is a real tag and not a guess: `crossing:markings` is yes or
-    ladder on 209 of Crofton's 644 crossing nodes and explicitly `no` on 213. An unmarked crossing
-    gets a dropped kerb and no paint, which is what an unmarked crossing is.
+    TRAILS and RAILWAYS are their OWN layers, not sidewalk kinds. A sidewalk is local — it belongs to
+    one street and one cell; a trail or a railway can run from Maine to Georgia, and lumping it into
+    the sidewalk array made a continental through-route a "walk", streamed and counted as one. Given a
+    layer of its own it streams, tiles and (later) gets its own coarse LOD by length and name
+    (`vectorlod`), which is the only way a 2 000 km trail can be two features rather than two
+    thousand. The `surface`/`trailblazed` pair rides along raw and the paving is decided in
+    `world/trail.ts`.
     """
     gj_p = site_dir / "osm.geojson"
     if not gj_p.exists():
@@ -914,12 +921,12 @@ def _sidewalks(site_dir: Path, frame, ox: float, oy: float, bbox) -> list[dict]:
             zs = np.convolve(np.pad(np.nan_to_num(zs), 2, mode="edge"), np.ones(5) / 5, mode="valid")
         return np.nan_to_num(zs)
 
-    def emit(out, part, kind, width, marked, source):
+    def emit(lst, part, kind, width, marked, source):
         step = 3.0
         ss = np.arange(0.0, part.length, step).tolist() + [part.length]
         pts = np.array([part.interpolate(v).coords[0] for v in ss])
         zs = grade(pts)
-        out.append({
+        lst.append({
             "kind": kind,
             "width_m": round(float(width), 2),
             "marked": bool(marked),
@@ -935,7 +942,9 @@ def _sidewalks(site_dir: Path, frame, ox: float, oy: float, bbox) -> list[dict]:
                 pass
         return default
 
-    out: list[dict] = []
+    walks: list[dict] = []
+    trails: list[dict] = []
+    rail: list[dict] = []
     features = json.loads(gj_p.read_text())["features"]
     for f in features:
         p = f["properties"]
@@ -953,7 +962,7 @@ def _sidewalks(site_dir: Path, frame, ox: float, oy: float, bbox) -> list[dict]:
         for part in (ln.geoms if ln.geom_type == "MultiLineString" else [ln]):
             if part.is_empty or part.geom_type != "LineString" or part.length < 2:
                 continue
-            emit(out, part, fw, width_of(p, 1.8 if fw == "sidewalk" else 3.0), marked, "way")
+            emit(walks, part, fw, width_of(p, 1.8 if fw == "sidewalk" else 3.0), marked, "way")
 
     # roads that only SAY they have one
     for f in features:
@@ -979,10 +988,11 @@ def _sidewalks(site_dir: Path, frame, ox: float, oy: float, bbox) -> list[dict]:
                 for o in (off.geoms if off.geom_type == "MultiLineString" else [off]):
                     if o.geom_type != "LineString" or o.length < 10:
                         continue
-                    emit(out, o, "sidewalk", 1.8, False, "offset")
+                    emit(walks, o, "sidewalk", 1.8, False, "offset")
 
-    # TRAILS AND RAILWAYS. Not carriageways, so not roads; they ride `sidewalks` under their own
-    # `kind` and `buildSidewalks` routes those kinds to a ribbon builder rather than concrete. The
+    # TRAILS AND RAILWAYS. Not carriageways, so not roads; not sidewalks either, because a trail or
+    # a railway can span a continent where a sidewalk cannot. They get their own layers (`trails`,
+    # `rail`), so a 2 000 km trail streams and LODs as one through-route rather than a "walk". The
     # `surface`/`trailblazed` tags are carried raw and the paving is decided once, in trail.ts.
     for f in features:
         p = f["properties"]
@@ -1020,11 +1030,11 @@ def _sidewalks(site_dir: Path, frame, ox: float, oy: float, bbox) -> list[dict]:
             }
             if fid:
                 rec["id"] = fid
-            out.append(rec)
+            (rail if kind == "rail" else trails).append(rec)
 
     if src is not None:
         src.close()
-    return out
+    return {"sidewalks": walks, "trails": trails, "rail": rail}
 
 
 def _power(site_dir: Path, frame, ox: float, oy: float, bbox) -> dict:
@@ -1239,6 +1249,8 @@ def _first_xy(coords):
 #: built once. The value is the coordinate field, or None for a bare polyline (the item IS the list).
 _WAY_COORDS = {
     "sidewalks": "coords",
+    "trails": "coords",
+    "rail": "coords",
     "driveways": "coords",
     "barriers": "coords",
     "stubs": "coords",
@@ -1288,6 +1300,8 @@ _TILE_KEY = {
     "areas": lambda f: _first_xy(f.get("ring")),      # water
     # ways: the first coordinate, whatever the field is called
     "sidewalks": lambda f: _first_xy(f.get("coords")),
+    "trails": lambda f: _first_xy(f.get("coords")),
+    "rail": lambda f: _first_xy(f.get("coords")),
     "driveways": lambda f: _first_xy(f.get("coords")),
     "barriers": lambda f: _first_xy(f.get("coords")),
     "stubs": lambda f: _first_xy(f.get("coords")),
@@ -1310,14 +1324,15 @@ _TILE_KEY = {
 #: manifest field -> how `_vector_tiles` reads it. Flat fields are a list; the dicts are nested and
 #: only their listed sub-arrays are tiled (a top-level `summary`/`counts` stays in the manifest).
 #: This is the ONE list a new streamed array is added to, on the bake side and in the backfill.
-TILED_FLAT = ("buildings", "sidewalks", "driveways", "barriers", "parking", "landuse", "pois",
+TILED_FLAT = ("buildings", "sidewalks", "trails", "rail", "driveways", "barriers", "parking",
+              "landuse", "pois",
               "branches", "stubs", "siblings", "sidewalk_zones")
 TILED_NESTED = {"power": ("lines", "supports"), "signals": ("masts", "signs", "bars"),
                 "water": ("lines", "areas"), "cuts": ("faces",), "rock": ("polygons",),
                 "intersections": ("list",)}
 #: The arrays the viewer streams today. Grows one group at a time as the viewer learns to rebuild
 #: that group per cell; `_load_tiled` reads whatever a tree already has, so old and new trees mix.
-TILED_ACTIVE = ("buildings", "sidewalks", "parking", "barriers", "power", "signals",
+TILED_ACTIVE = ("buildings", "sidewalks", "trails", "rail", "parking", "barriers", "power", "signals",
                 "driveways", "siblings", "stubs", "intersections", "branches",
                 "cuts", "rock", "sidewalk_zones", "water", "landuse", "pois")
 
@@ -1856,6 +1871,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
         if features[name] and features[name].get("summary"):
             print(f"  {name:7s} {features[name]['summary']}", flush=True)
 
+    paths = _paths(site_dir, frame, ox, oy, bbox)
     out = {
         "slug": site["slug"],
         "ident": site.get("ident"),
@@ -1898,7 +1914,9 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
         "signals": _signals(site_dir, frame, ox, oy, bbox),
         "parking": _parking(site_dir, frame, ox, oy, bbox),
         "barriers": _barriers(site_dir, frame, ox, oy, bbox),
-        "sidewalks": _sidewalks(site_dir, frame, ox, oy, bbox),
+        "sidewalks": paths["sidewalks"],
+        "trails": paths["trails"],
+        "rail": paths["rail"],
         "landuse": enu_derived["landuse"],
         "pois": enu_derived["pois"],
         "flora": None if flora is None else _flora_block(flora),

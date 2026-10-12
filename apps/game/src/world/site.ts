@@ -287,6 +287,11 @@ export interface Manifest {
   barriers?: { kind: string; height_m: number; material?: string | null; coords: [number, number, number][] }[] | null
   /** sidewalks and crossings: explicit `highway=footway` ways plus offsets from `sidewalk=*` roads */
   sidewalks?: { kind: string; width_m: number; marked: boolean; source: string; coords: [number, number, number][]; surface?: string | null; trailblazed?: string | null; id?: string }[] | null
+  /** trails (`highway=path|footway|cycleway|bridleway|steps|pedestrian`), their OWN layer rather than a
+   *  sidewalk kind: a sidewalk is local, a trail can run Maine→Georgia (bake/export.py `_paths`) */
+  trails?: { kind: string; width_m: number; marked?: boolean; source?: string; coords: [number, number, number][]; surface?: string | null; trailblazed?: string | null; id?: string }[] | null
+  /** railways (`railway=rail|light_rail|tram|…`), their own layer for the same reason */
+  rail?: { kind: string; width_m: number; marked?: boolean; source?: string; coords: [number, number, number][]; surface?: string | null; trailblazed?: string | null; id?: string }[] | null
   /** power lines and their supports (OSM power=line|minor_line, tower|pole) */
   power?: { lines: { kind: string; voltage?: string | null; coords: [number, number, number][] }[]; supports: { kind: string; x: number; y: number; z: number; height_m: number }[] } | null
   /** network sites: every road that is not the primary spine */

@@ -98,6 +98,44 @@ as the correspondence key, but the unit of work is `(tile-set, segment)`.
 A spine bake is a **chain of tile-sets** chosen and ordered by the spine. The spine never becomes a
 data structure the bake carries; it resolves selection, then the tiled pipeline runs.
 
+## Low-detail vectors for the coarse tiles
+
+The tiling above keeps one tile-set bounded; this keeps what a tile-set *draws* bounded when the eye
+is far away. The bake's vector tiles are one flat level of ~1 km cells carrying every feature
+(`export._vector_tiles`), so zoomed out the editor's map and any flag-scale view still fetch and draw
+all of them — high-resolution vectors spanning coast to coast, which is both the wrong thing to draw
+from 100 km up and a budget problem.
+
+The scheme is trailworks' (`pipeline/bake/tiles.py`), on piedmont's quadtree levels z (z14 ≈ 1 km
+leaf, z11 ≈ 10 km, z8 ≈ 80 km). A coarse vector tile lives **beside the raster tile at the same z**,
+so the viewer already knows which one it wants, and it carries the distance-reading layers — piedmont's
+are **roads**, **trails**, **rail** and **streams** — reduced as the tile grows:
+
+| z (edge) | roads kept | trails / rail | streams |
+|---|---|---|---|
+| ≥ 12 (≤ 4 km) | every drivable way | every kind | every kind |
+| 11 (~10 km) | + secondary | named, ≥ 0.5 km | named, ≥ 1.5 km |
+| 10 (~20 km) | motorway, trunk, primary | named, ≥ 1.5 km | named, ≥ 4 km |
+| 9 (~40 km) | motorway, trunk | named, ≥ 3 km | named, ≥ 10 km |
+| ≤ 8 (~80 km+) | motorway only | named, ≥ 8 km | named, ≥ 30 km |
+
+**Trails and rail are their own layers, and had to become so first.** They used to ride `sidewalks`
+under their own `kind`, which treats a Maine-to-Georgia trail as a localized "walk" — streamed,
+counted and tiled as one. A walk is local; a trail or a railway spans states. `export._paths` now
+emits `sidewalks`, `trails` and `rail` as separate manifest layers, each tiled into every cell it
+crosses on its own key, so a long trail is one feature identity (dissolved and LOD'd as a whole)
+rather than a thousand walk fragments. The viewer routes them through the same build path for now
+(`furniture.buildSidewalks` unions the three) and will give them their own layer in Phase 4b.
+
+Two things make this read well rather than just thin out. **Trails and streams never vanish** for
+being "minor" — the prime directive from trailworks — they are gated only by length and name, so a
+long trail or river still crosses a coarse tile. And coarse ways are **dissolved by identity**
+(`ref`/`name`) *before* the length gate, because OSM delivers one road as hundreds of fragments and
+"10 km of I-95" only exists after the merge; the survivors are then **decimated to the tile's own
+scale** (`simplify ≈ edge / 512`). `piedmont_bake/vectorlod.py` is these tables and the reduction,
+tested; the wiring (per-layer coarse populations during the pyramid bake, a `vt.levels` index, and
+the viewer's zoom→level choice) is the work below.
+
 ## Phases
 
 **Phase 0 — the tile-set primitive (started).** `piedmont_bake/netsets.py`: the tile-set grid, the
@@ -122,6 +160,12 @@ read, as PLAN-SHARDED-BAKE Phase 0 already points at.)
 **Phase 4 — finalize as a tile-set union.** The finalizer assembles `web/` and a **tileset index**
 `manifest.json` (tile-set → its fragments), not one country manifest. The viewer loads neighbour
 tiles for cross-seam continuity (the seam nodes make this exact). Publishing becomes per tile-set.
+
+**Phase 4b — coarse vector LODs, with the pyramid.** `pyramid.bake` emits, beside each raster tile, a
+coarse vector bundle for the distance-reading layers (`vectorlod.coarse_layer`) keyed to the same z, so
+`web/vt/<z>/` grows a level as the raster pyramid does and the manifest carries a `vt.levels` index.
+The editor's map and the game pick the coarsest level that fits the eye and descend as detail arrives
+— `world/scene.ts`'s bucket loader and `editor/view/maproads.ts` are the two consumers.
 
 **Phase 5 — spine mode.** Reuse the current single-primary machinery as the selector: resolve the
 route, buffer it, pick the tile-sets it crosses and the metros to include, order them, then run the
@@ -153,6 +197,9 @@ acceptance is not byte-equality with the single bake — it is "the same world":
    as the bake log already does).
 5. **`piedmont_bake.verify` passes** on the assembled world, and the viewer streams it with no seam
    visible at speed.
+6. **Coarse vectors stay small** — at the coarsest level a tile carries only named, long features
+   (roads by class, trails and streams by length), and the bytes a flag-scale view fetches are a
+   fraction of the zoomed-in set; measured per level on `dc-maryland-nova-suburbs`.
 
 Prove it first on a **2×2 tile-set split of Crofton** (cheap, every seam), then on
 `dc-maryland-nova-suburbs`.
@@ -171,6 +218,9 @@ Prove it first on a **2×2 tile-set split of Crofton** (cheap, every seam), then
   Geofabrik extract clipped per tile-set is probably the answer, and that is an ingestion job of its
   own (see [OVERPASS-PLANET.md](OVERPASS-PLANET.md)).
 - **The `world`/canopy global raster** is fetched whole today; it must tile too.
+- **Vector LOD level→zoom mapping.** The viewer picks a pyramid z from metres-per-pixel; the coarse
+  vector levels must hang off the same choice, and the class/length tables in `vectorlod.py` are
+  first guesses to tune against real tiles (they are one table, not baked into callers).
 
 ## What we are NOT doing
 

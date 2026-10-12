@@ -1245,7 +1245,15 @@ export async function buildSidewalks(
   const group = new THREE.Group()
   group.name = 'sidewalks'
   const counts = { walks: 0, crossings: 0, marked: 0, bars: 0, metres: 0, kerbFlat: 0, overRoad: 0, corners: 0, trails: 0, rail: 0 }
-  const runs = manifest.sidewalks ?? []
+  const runs = [
+    // Trails and railways are their own layers now (bake/export.py `_paths`): a walk is local, a trail
+    // can span a continent. They still stream through this builder's routing until they get a layer
+    // of their own; `trailKind` below routes them out of the concrete sweep exactly as before, and an
+    // old bake that carried them under `sidewalks` keeps working.
+    ...(manifest.sidewalks ?? []),
+    ...(manifest.trails ?? []),
+    ...(manifest.rail ?? []),
+  ]
   if (!runs.length) return { group, counts }
 
   const concrete = new Chunked(T.FURNITURE_CHUNK_M)

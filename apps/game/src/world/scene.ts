@@ -4081,6 +4081,8 @@ if (uLodOn > 0.5) {
       parking: (manifest.parking ?? []).filter((p) => (p.ring[0] ? keep(p.ring[0][0], p.ring[0][1]) : false)),
       barriers: (manifest.barriers ?? []).filter((b) => lineInDisc(b.coords) === home),
       sidewalks: (manifest.sidewalks ?? []).filter((b) => lineInDisc(b.coords) === home),
+      trails: (manifest.trails ?? []).filter((b) => lineInDisc(b.coords) === home),
+      rail: (manifest.rail ?? []).filter((b) => lineInDisc(b.coords) === home),
       driveways: (manifest.driveways ?? []).filter((d) => lineInDisc(d.coords) === home),
       power: manifest.power ? {
         lines: manifest.power.lines.filter((l) => lineInDisc(l.coords) === home),
@@ -4211,13 +4213,13 @@ if (uLodOn > 0.5) {
   // (`xByNode`) need the whole intersection list. They are bucketed here — once — and merged with
   // the tile, so a far cell still gets the driveways and junctions that fall in it.
   const CELL = 1000
-  type Bucket = { masts: NonNullable<Manifest['signals']>['masts']; signs: NonNullable<Manifest['signals']>['signs']; bars: NonNullable<NonNullable<Manifest['signals']>['bars']>; parking: NonNullable<Manifest['parking']>; barriers: NonNullable<Manifest['barriers']>; sidewalks: NonNullable<Manifest['sidewalks']>; driveways: NonNullable<Manifest['driveways']>; lines: NonNullable<Manifest['power']>['lines']; supports: NonNullable<Manifest['power']>['supports']; intersections: NonNullable<Manifest['intersections']>['list'] }
+  type Bucket = { masts: NonNullable<Manifest['signals']>['masts']; signs: NonNullable<Manifest['signals']>['signs']; bars: NonNullable<NonNullable<Manifest['signals']>['bars']>; parking: NonNullable<Manifest['parking']>; barriers: NonNullable<Manifest['barriers']>; sidewalks: NonNullable<Manifest['sidewalks']>; trails: NonNullable<Manifest['trails']>; rail: NonNullable<Manifest['rail']>; driveways: NonNullable<Manifest['driveways']>; lines: NonNullable<Manifest['power']>['lines']; supports: NonNullable<Manifest['power']>['supports']; intersections: NonNullable<Manifest['intersections']>['list'] }
   const buckets = new Map<string, Bucket>()
   const bucket = (x: number, y: number): Bucket => {
     const k = `${Math.floor(x / CELL)},${Math.floor(y / CELL)}`
     let b = buckets.get(k)
     if (!b) {
-      b = { masts: [], signs: [], bars: [], parking: [], barriers: [], sidewalks: [], driveways: [], lines: [], supports: [], intersections: [] }
+      b = { masts: [], signs: [], bars: [], parking: [], barriers: [], sidewalks: [], trails: [], rail: [], driveways: [], lines: [], supports: [], intersections: [] }
       buckets.set(k, b)
     }
     return b
@@ -4234,6 +4236,8 @@ if (uLodOn > 0.5) {
     for (const p of spread.parking ?? []) { const q = p.ring[0]; if (q) bucket(q[0], q[1]).parking.push(p) }
     for (const p of spread.barriers ?? []) { const q = p.coords[0]; if (q) bucket(q[0], q[1]).barriers.push(p) }
     for (const p of spread.sidewalks ?? []) { const q = p.coords[0]; if (q) bucket(q[0], q[1]).sidewalks.push(p) }
+    for (const p of spread.trails ?? []) { const q = p.coords[0]; if (q) bucket(q[0], q[1]).trails.push(p) }
+    for (const p of spread.rail ?? []) { const q = p.coords[0]; if (q) bucket(q[0], q[1]).rail.push(p) }
     for (const p of spread.driveways ?? []) { const q = p.coords[0]; if (q) bucket(q[0], q[1]).driveways.push(p) }
     for (const p of spread.power?.lines ?? []) { const q = p.coords[0]; if (q) bucket(q[0], q[1]).lines.push(p) }
     for (const p of spread.power?.supports ?? []) bucket(p.x, p.y).supports.push(p)
@@ -4258,6 +4262,8 @@ if (uLodOn > 0.5) {
       parking: (tiled?.parking as Manifest['parking']) ?? b?.parking ?? [],
       barriers: (tiled?.barriers as Manifest['barriers']) ?? b?.barriers ?? [],
       sidewalks: (tiled?.sidewalks as Manifest['sidewalks']) ?? b?.sidewalks ?? [],
+      trails: (tiled?.trails as Manifest['trails']) ?? b?.trails ?? [],
+      rail: (tiled?.rail as Manifest['rail']) ?? b?.rail ?? [],
       power: (tiled?.power as Manifest['power']) ?? (manifest.power ? { lines: b?.lines ?? [], supports: b?.supports ?? [] } : null),
       driveways: (tiled?.driveways as Manifest['driveways']) ?? b?.driveways ?? [],
       intersections: (tiled?.intersections as Manifest['intersections']) ?? (manifest.intersections ? { ...manifest.intersections, list: b?.intersections ?? [] } : null),

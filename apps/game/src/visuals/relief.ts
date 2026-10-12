@@ -95,6 +95,8 @@ export function reliefManifest(m: Manifest): void {
   for (const s of m.stubs ?? []) coords3(s.coords)
   for (const b of m.barriers ?? []) coords3(b.coords)
   for (const s of m.sidewalks ?? []) coords3(s.coords)
+  for (const t of m.trails ?? []) coords3(t.coords)
+  for (const r of m.rail ?? []) coords3(r.coords)
   for (const p of m.parking ?? []) zOf(p)
   if (m.power) {
     for (const l of m.power.lines) coords3(l.coords)

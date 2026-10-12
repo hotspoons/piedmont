@@ -67,6 +67,28 @@ class VectorTilesTest(unittest.TestCase):
             self.assertEqual(idx["counts"]["masts"], 1)
             self.assertEqual(idx["buildings"], [{"x": 0, "y": 0, "n": 1}])
 
+    def test_trails_and_rail_are_their_own_layers(self):
+        # A trail or a railway is not a sidewalk kind: it lands under its own key and streams on its
+        # own, so a path that spans states is never counted or streamed as a localized walk.
+        arrays = {
+            "sidewalks": [{"kind": "sidewalk", "coords": [[15.0, 15.0, 0.0], [30.0, 15.0, 0.0]]}],
+            "trails": [{"kind": "path", "id": "t1", "coords": [[15.0, 15.0, 0.0], [30.0, 15.0, 0.0]]}],
+            "rail": [{"kind": "rail", "id": "r1", "coords": [[15.0, 15.0, 0.0], [30.0, 15.0, 0.0]]}],
+        }
+        with tempfile.TemporaryDirectory() as d:
+            web = Path(d)
+            idx = export._vector_tiles(web, arrays)
+            cell = json.loads((web / "vt" / "0" / "0_0.json").read_text())
+            self.assertEqual(len(cell["sidewalks"]), 1)
+            self.assertEqual(len(cell["trails"]), 1)
+            self.assertEqual(len(cell["rail"]), 1)
+            self.assertEqual(idx["counts"]["trails"], 1)
+            self.assertEqual(idx["counts"]["rail"], 1)
+        out = {"trails": [{"kind": "path"}], "rail": [{"kind": "rail"}]}
+        export._empty_tiled(out)
+        self.assertEqual(out["trails"], [])
+        self.assertEqual(out["rail"], [])
+
     def test_empty_tiled_keeps_a_compact_junction_paint(self):
         # the full intersection list streams; the paint facts the base road is cut around stay.
         out = {
