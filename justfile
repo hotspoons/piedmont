@@ -124,6 +124,10 @@ bake-export slug="all":
 bake-report:
     cd bake && {{ py }} -m piedmont_bake report
 
+# reclaim a shipped world's bake intermediates (shards/, lidar/, overviews); `just bake-prune all --all`
+bake-prune slug="all" *args:
+    cd bake && {{ py }} -m piedmont_bake prune {{ slug }} {{ args }}
+
 # --- world editor: draw a world on a map, bake it, publish it ------------------
 # services/worldeditor is the pod's backend and apps/game/world.html is its page. Two processes in
 # development, one image in the cluster; see services/worldeditor/README.md. Run the service, then

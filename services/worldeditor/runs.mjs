@@ -583,7 +583,13 @@ export class Runs {
       if (o.lidarHalfWidth) out.push('--lidar-half-width', String(o.lidarHalfWidth))
       return out
     }
-    return ['finalize', run.slug]
+    const out = ['finalize', run.slug]
+    // Reclaim the volume. A finished world is `web/` — the manifest references nothing else — so the
+    // shard trees, the merged point cloud and the mosaic overviews are dead weight once the export
+    // is written. Leaving them filled the 500 Gi PVC on 2026-10-12 and the worldeditor crash-looped
+    // on EDQUOT. Set PIEDMONT_KEEP_INTERMEDIATES=1 to keep them (a re-export reads the mosaics).
+    if (!/^(1|true|yes)$/i.test(process.env.PIEDMONT_KEEP_INTERMEDIATES ?? '')) out.push('--prune')
+    return out
   }
 
   /** The plan the plan Job wrote: how many shards the world was cut into. */

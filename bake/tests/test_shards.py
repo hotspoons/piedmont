@@ -422,3 +422,65 @@ class WorldTileNamesTest(unittest.TestCase):
         self.assertEqual(b[1], [(9, 12)])  # the same place has the same name from another bbox
         own = network_tiles.tile_index((304000.0, 4286000.0, 312000.0, 4297000.0), box(311100, 4296100, 311900, 4296900))
         self.assertEqual(own[1], [(7, 10)], "without an origin the bbox's own corner anchors the grid, as before")
+
+
+class PruneTest(unittest.TestCase):
+    """`prune_intermediates` keeps the serve-time contract and drops the rest.
+
+    2026-10-12: nothing pruned a finished bake, so two big worlds' shard trees, merged point clouds
+    and mosaic overviews filled the 500 Gi volume and the worldeditor crash-looped on EDQUOT. The
+    manifest references only `web/`, so those are all dead once the world is exported.
+    """
+
+    def _site(self, td: Path) -> Path:
+        site = td / "world"
+        (site / "web" / "pyr").mkdir(parents=True)
+        (site / "web" / "pyr" / "8_1_1.jpg").write_bytes(b"x" * 100)
+        (site / "shards" / "0").mkdir(parents=True)
+        (site / "shards" / "0" / "dem_1m.tif").write_bytes(b"y" * 5000)
+        (site / "lidar" / "tiles").mkdir(parents=True)
+        (site / "lidar" / "tiles" / "1_1.dsm.tif").write_bytes(b"z" * 7000)
+        (site / "canopy_global.tif").write_bytes(b"c" * 3000)
+        (site / "dem_1m.tif").write_bytes(b"d" * 9000)
+        (site / "dem_1m.tif.ovr").write_bytes(b"o" * 2000)
+        (site / "manifest.json").write_text("{}")
+        (site / "context.json").write_text("{}")
+        return site
+
+    def test_it_drops_the_intermediates_and_keeps_web_and_the_contract(self):
+        with tempfile.TemporaryDirectory() as td:
+            site = self._site(Path(td))
+            r = shards.prune_intermediates(site)
+            self.assertFalse((site / "shards").exists())
+            self.assertFalse((site / "lidar").exists())
+            self.assertFalse((site / "canopy_global.tif").exists())
+            self.assertFalse((site / "dem_1m.tif.ovr").exists(), "the overview is rebuilt by gdaladdo")
+            self.assertTrue((site / "web" / "pyr" / "8_1_1.jpg").exists(), "the served tree survives")
+            self.assertTrue((site / "dem_1m.tif").exists(), "a re-export's mosaic survives by default")
+            self.assertTrue((site / "manifest.json").exists() and (site / "context.json").exists())
+            self.assertEqual(r["bytes"], 5000 + 7000 + 3000 + 2000)
+            self.assertIn("shards", r["removed"])
+
+    def test_all_also_drops_the_merged_rasters(self):
+        with tempfile.TemporaryDirectory() as td:
+            site = self._site(Path(td))
+            shards.prune_intermediates(site, all=True)
+            self.assertFalse((site / "dem_1m.tif").exists())
+
+    def test_dry_run_reports_the_same_without_removing(self):
+        with tempfile.TemporaryDirectory() as td:
+            site = self._site(Path(td))
+            r = shards.prune_intermediates(site, dry_run=True)
+            self.assertTrue((site / "shards" / "0" / "dem_1m.tif").exists())
+            self.assertTrue((site / "lidar").exists())
+            self.assertEqual(r["bytes"], 5000 + 7000 + 3000 + 2000)
+            self.assertTrue(r["dry_run"])
+
+    def test_a_site_with_nothing_to_prune_is_not_an_error(self):
+        with tempfile.TemporaryDirectory() as td:
+            site = Path(td) / "empty"
+            (site / "web").mkdir(parents=True)
+            r = shards.prune_intermediates(site)
+            self.assertEqual(r["bytes"], 0)
+            self.assertEqual(r["removed"], [])
+

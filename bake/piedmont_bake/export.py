@@ -441,6 +441,55 @@ def _lanes_of(p: dict) -> int:
     return 4 if hw in ("motorway", "trunk", "primary") else 2
 
 
+# Signal nodes of one junction are close, OR on the SAME way and merely near: a divided highway's
+# two carriageways carry one signal each and sit as far apart as the median is wide (67 m at Route 3
+# and Johns Hopkins Road), so distance alone never grouped them. See `_signals`.
+SIGNAL_JUNCTION_R = 45.0
+SIGNAL_SHARED_WAY_R = 140.0
+
+
+def cluster_signals(nodes: list[dict], wayset: list[set], junction_r: float = SIGNAL_JUNCTION_R, shared_r: float = SIGNAL_SHARED_WAY_R) -> list[list[int]]:
+    """The connected components of the signal-node relation, near-linearly.
+
+    `nodes[i]` needs `x`/`y` in site metres; `wayset[i]` is the set of way ids node `i` sits on. Two
+    nodes are related when closer than `junction_r`, or within `shared_r` and sharing a way. The
+    relation is symmetric, so the groups are its connected components. It *used* to be an all-pairs
+    greedy closure, O(n^2 x group): on the 62 km dc-metro world (TODO #10) the finalizer sat in the
+    `any(linked(i, j) for j in grp)` inner loop for hours with nothing printed. A BFS over a uniform
+    grid of `shared_r` cells only ever looks in the 3x3 neighbourhood a node can reach at that
+    radius. Groups come back ordered by their lowest node index.
+    """
+    buckets: dict[tuple[int, int], list[int]] = {}
+    for i, n in enumerate(nodes):
+        buckets.setdefault((int(n["x"] // shared_r), int(n["y"] // shared_r)), []).append(i)
+
+    def linked(i: int, j: int) -> bool:
+        d = math.hypot(nodes[i]["x"] - nodes[j]["x"], nodes[i]["y"] - nodes[j]["y"])
+        return d <= junction_r or (d <= shared_r and bool(wayset[i] & wayset[j]))
+
+    seen = [False] * len(nodes)
+    groups: list[list[int]] = []
+    for seed in range(len(nodes)):
+        if seen[seed]:
+            continue
+        seen[seed] = True
+        grp = [seed]
+        stack = [seed]
+        while stack:
+            i = stack.pop()
+            n = nodes[i]
+            cx, cy = int(n["x"] // shared_r), int(n["y"] // shared_r)
+            for gx in (cx - 1, cx, cx + 1):
+                for gy in (cy - 1, cy, cy + 1):
+                    for j in buckets.get((gx, gy), ()):
+                        if not seen[j] and linked(i, j):
+                            seen[j] = True
+                            grp.append(j)
+                            stack.append(j)
+        groups.append(grp)
+    return groups
+
+
 def _signals(site_dir: Path, frame, ox: float, oy: float, bbox) -> dict:
     """Traffic signals, stop and give-way signs.
 
@@ -498,30 +547,8 @@ def _signals(site_dir: Path, frame, ox: float, oy: float, bbox) -> dict:
     # per carriageway and as far apart as the median is wide -- 67 m at Route 3 and Johns Hopkins
     # Road, against a 45 m radius, so they never grouped and each was treated as its own junction.
     # What ties them together is not distance, it is that the crossing road runs through both.
-    JUNCTION_R = 45.0
-    SHARED_WAY_R = 140.0
     wayset = [{id(w) for w, _ in n["ways"]} for n in nodes]
-
-    def linked(i: int, j: int) -> bool:
-        d = math.hypot(nodes[i]["x"] - nodes[j]["x"], nodes[i]["y"] - nodes[j]["y"])
-        if d <= JUNCTION_R:
-            return True
-        return d <= SHARED_WAY_R and bool(wayset[i] & wayset[j])
-
-    unassigned = list(range(len(nodes)))
-    groups: list[list[int]] = []
-    while unassigned:
-        seed = unassigned.pop()
-        grp = [seed]
-        changed = True
-        while changed:
-            changed = False
-            for i in list(unassigned):
-                if any(linked(i, j) for j in grp):
-                    grp.append(i)
-                    unassigned.remove(i)
-                    changed = True
-        groups.append(grp)
+    groups = cluster_signals(nodes, wayset)
 
     # ONE MAST PER APPROACH, NOT ONE PER NODE.
     #
@@ -1871,7 +1898,23 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
         if features[name] and features[name].get("summary"):
             print(f"  {name:7s} {features[name]['summary']}", flush=True)
 
-    paths = _paths(site_dir, frame, ox, oy, bbox)
+    # path/power/signal/parking/barrier extraction each walk the whole OSM set and can run for
+    # minutes; the heartbeat names the one that is slow, so a big world never goes silent here
+    # (TODO #10: dc-metro sat for hours with no line between `water` and `cross`).
+    with progress.heartbeat("paths", "sidewalks, trails, rail"):
+        paths = _paths(site_dir, frame, ox, oy, bbox)
+    with progress.heartbeat("ways", "driveways"):
+        driveways = _service_ways(site_dir, frame, ox, oy, bbox)
+    with progress.heartbeat("ways", "stubs"):
+        stubs = _stub_roads(site_dir, frame, ox, oy, bbox)
+    with progress.heartbeat("ways", "power"):
+        power = _power(site_dir, frame, ox, oy, bbox)
+    with progress.heartbeat("ways", "signals"):
+        signals = _signals(site_dir, frame, ox, oy, bbox)
+    with progress.heartbeat("ways", "parking"):
+        parking = _parking(site_dir, frame, ox, oy, bbox)
+    with progress.heartbeat("ways", "barriers"):
+        barriers = _barriers(site_dir, frame, ox, oy, bbox)
     out = {
         "slug": site["slug"],
         "ident": site.get("ident"),
@@ -1908,12 +1951,12 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
         "photos": [{"file": p["file"], "heading_deg": p.get("heading_deg"), "taken": p.get("taken")} for p in site.get("photos", [])],
         "lidar": {k: manifest.get("lidar", {}).get(k) for k in ("dataset", "points_in_road_band", "classes")},
         "buildings": enu_derived["buildings"],
-        "driveways": _service_ways(site_dir, frame, ox, oy, bbox),
-        "stubs": _stub_roads(site_dir, frame, ox, oy, bbox),
-        "power": _power(site_dir, frame, ox, oy, bbox),
-        "signals": _signals(site_dir, frame, ox, oy, bbox),
-        "parking": _parking(site_dir, frame, ox, oy, bbox),
-        "barriers": _barriers(site_dir, frame, ox, oy, bbox),
+        "driveways": driveways,
+        "stubs": stubs,
+        "power": power,
+        "signals": signals,
+        "parking": parking,
+        "barriers": barriers,
         "sidewalks": paths["sidewalks"],
         "trails": paths["trails"],
         "rail": paths["rail"],

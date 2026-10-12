@@ -531,6 +531,58 @@ def add_overviews_all(site_dir: Path, lidar: bool = True) -> dict:
     return out
 
 
+# --- pruning -----------------------------------------------------------------------------------
+#
+# A finished world is `web/` plus the small root JSON/geojson the editor and the viewer's fallback
+# read. Everything the shards and the finalizer wrote to get there — the per-shard trees, the merged
+# point cloud, the mosaic overviews — is an intermediate. On a country-sized world that is tens of
+# gigabytes and nothing removed it, so on 2026-10-12 the volume filled and the worldeditor
+# crash-looped writing `coverage.json` (EDQUOT). `prune` keeps the serve-time contract and drops the
+# rest.
+#
+# KEPT (small, or the only copy a re-export needs): the root JSON/geojson and the merged rasters
+# `dem_1m.tif`/`naip_1m.tif`/`horizon_30m.tif`/`canopy_global.tif`. DROPPED: `shards/`, `lidar/` and
+# every `.ovr` under the site (`gdaladdo` rebuilds the overviews). `all=True` also drops the merged
+# rasters — re-fetchable from their sources, and for a 60 km world the largest intermediates left.
+
+PRUNE_DIRS = ("shards", "lidar")
+PRUNE_FILES = ("canopy_global.tif",)
+PRUNE_MORE_FILES = ("dem_1m.tif", "naip_1m.tif", "horizon_30m.tif", "canopy_global.tif")
+
+
+def prune_intermediates(site_dir: Path, all: bool = False, dry_run: bool = False) -> dict:
+    """Remove a finished bake's intermediates; return how much that frees.
+
+    Only intermediates are ever candidates: `web/` and the root JSON/geojson are never touched, and
+    the merged rasters are kept unless `all=True`. `dry_run` reports without removing.
+    """
+    dirs = [site_dir / d for d in PRUNE_DIRS if (site_dir / d).exists()]
+    names = list(PRUNE_FILES) + (list(PRUNE_MORE_FILES) if all else [])
+    files = [site_dir / n for n in names if (site_dir / n).exists()]
+    # External overviews live beside the merged rasters; the ones under a pruned directory are
+    # counted by that directory, so skip them here or the report double-counts.
+    ovrs = [
+        p
+        for p in site_dir.rglob("*.ovr")
+        if not any(part in PRUNE_DIRS for part in p.relative_to(site_dir).parts)
+    ]
+    targets: list[Path] = [*dirs, *files, *sorted(ovrs)]
+
+    total, files_n, removed = 0, 0, []
+    for t in targets:
+        got = [f for f in t.rglob("*") if f.is_file()] if t.is_dir() else [t]
+        total += sum(f.stat().st_size for f in got if f.exists())
+        files_n += len(got)
+        removed.append(str(t.relative_to(site_dir)))
+        if dry_run:
+            continue
+        if t.is_dir():
+            shutil.rmtree(t, ignore_errors=True)
+        else:
+            t.unlink(missing_ok=True)
+    return {"bytes": total, "files": files_n, "removed": removed, "dry_run": dry_run}
+
+
 def merge_branches(parts: list[Path], dest: Path) -> int:
     """Union the shards' `branches.json`, keyed by chain id. Whole chains mean no real overlap."""
     by_id: dict[str, dict] = {}

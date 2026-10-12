@@ -492,6 +492,31 @@ def cmd_finalize(a: argparse.Namespace) -> None:
     ex = export.export_site(site_dir)
     export.write_index(DATA / "sites")
     print(f"  web     {', '.join(ex['layers'])} ({ex['bytes'] / 2**20:.1f} MiB) -> {site_dir / 'web'}")
+    if a.prune:
+        r = shards.prune_intermediates(site_dir, all=a.prune_all)
+        print(f"  prune   freed {r['bytes'] / 2**30:.2f} GiB ({r['files']} files): {', '.join(r['removed']) or 'nothing'}")
+
+
+def cmd_prune(a: argparse.Namespace) -> None:
+    """Drop a finished bake's intermediates to reclaim the volume (see `shards.prune_intermediates`).
+
+    Run it after a world is verified in the viewer: the manifest references only `web/`, so the
+    shard trees, the merged point cloud and the mosaic overviews are dead weight. A sharded
+    `finalize` does this itself when passed `--prune`.
+    """
+    from . import shards
+
+    n, total = 0, 0
+    for d in _sites(a.slug):
+        n += 1
+        r = shards.prune_intermediates(d, all=a.all, dry_run=a.dry_run)
+        verb = "would free" if a.dry_run else "freed"
+        detail = f": {', '.join(r['removed'])}" if r["removed"] else ""
+        print(f"{d.name:24s} {verb} {r['bytes'] / 2**30:.2f} GiB ({r['files']} files){detail}")
+        total += r["bytes"]
+    if not n:
+        sys.exit(f"no site matched {a.slug!r}")
+    print(f"{'would free' if a.dry_run else 'freed'} {total / 2**30:.2f} GiB in total")
 
 
 def cmd_report(a: argparse.Namespace) -> None:
@@ -713,7 +738,14 @@ def main() -> None:
     sh.set_defaults(fn=cmd_shard)
     fn = sub.add_parser("finalize", help="sharded bake step 3: union the shards and export the world")
     fn.add_argument("slug")
+    fn.add_argument("--prune", action="store_true", help="drop the intermediates once web/ is written")
+    fn.add_argument("--prune-all", action="store_true", help="also drop the merged rasters (re-export inputs)")
     fn.set_defaults(fn=cmd_finalize)
+    pr = sub.add_parser("prune", help="drop a finished bake's intermediates (shards/, lidar/, overviews)")
+    pr.add_argument("slug", nargs="?", default="all")
+    pr.add_argument("--all", action="store_true", help="also drop the merged rasters (re-export inputs)")
+    pr.add_argument("--dry-run", action="store_true")
+    pr.set_defaults(fn=cmd_prune)
     a = p.parse_args()
     a.fn(a)
 

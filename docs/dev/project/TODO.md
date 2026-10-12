@@ -8,14 +8,37 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 
 | # | TODO | Area | Notes |
 |---|---|---|---|
-| 3 | **Geofabrik's published index can have empty region outlines** | services/worldeditor | 11 regions on 2026-10-10, `virginia.poly` 0 bytes. Routing refuses empty outlines and falls back to the volume's copy or the seed (`services/worldeditor/geofabrik.mjs`); an OSM import of Virginia may fail until Geofabrik fixes its files. |
-| 4 | **Lidar canopy includes roofs** | bake / flora | where a vendor left buildings unclassified; the game masks OSM footprints out of tree planting. The perf panel's tree lines explain bare ground cell by cell. |
+| 3 | **Geofabrik's published index can have empty region outlines** | services/worldeditor | 11 regions on 2026-10-10, `virginia.poly` 0 bytes. Routing refuses empty outlines and falls back to the volume's copy or the seed (`services/worldeditor/geofabrik.mjs`); an OSM import of Virginia may fail until Geofabrik fixes its files. That fallback is now pinned by tests (`geofabrik.test.mjs`: a hole in the live index keeps the volume's outline and is written back; a region nobody can outline is reported and never routed to). Nothing more to do here until Geofabrik fixes its index. |
 | 6 | **Tiled network: the per-tile-set OSM query** | bake | Phase 1 stops holding the whole network in one process — plan/query Overpass or clip a Geofabrik extract per tile-set. See Phase 1. **The next real step on the tiled network**: `roads()` still queries the whole site bbox and merges chains globally, so `plan` holds whole 100 km+ chains (`write_tilesets` then cuts them). The per-tile-set *sourcing* is what removes the long polies; the consumers are Phases 2–4. |
-| 8 | **MCP config leaks the bearer token to an unauthenticated caller** | services/worldeditor | `GET /api/agent/mcp/config` returns `auth.token` in the clear (`mcpauth.describe()`, deliberately, so the Agent tab can show it) — but the deployed host answered that GET with no credentials, so the token (which gates `shell_exec`, `program_write`, …) is readable by anyone who can reach the ingress. The code assumes the ingress authenticates; empirically it does not in front of this path. Fix is a deployment/auth decision (gate the route, or front the editor with auth), not a unilateral code change — Rich's call. |
-| 9 | **The bake volume fills and the worldeditor crash-loops** | ops | `worldeditor-data` is a 500 Gi PVC and it reached 100% on 2026-10-12: a sharded bake keeps its intermediates (`sites/<slug>/shards/`, `lidar/`, the per-shard `dem_1m.tif`) forever, so two big worlds plus the caches (`cache/ept` 236 Gi, `cache/usgs1m` 50 Gi) filled it. With no space the worldeditor dies on boot writing `coverage.json` (`EDQUOT`, errno -122) and a finalize dies inside `gdaladdo`. Nothing prunes a finished bake's intermediates, and the PVC has no growth/alerting. Needs an ops decision: prune `shards/`+`lidar/` after `finalize`, cap or evict `cache/ept`, or grow/split the volume. Freed by hand on 2026-10-12 (`cache/usgs1m`, `cache/laz`, then both worlds' intermediates after their finalizes completed — i70's `lidar/` + mosaic overviews, and dc's `shards/` + `lidar/` + mosaic overviews, ~188 Gi in all: the manifest references only `web/`, so the root `.tif.ovr`/`lidar/`/`shards/` are intermediates once the world is verified). That took the volume from 100% to 57%. |
-| 10 | **`export_site` goes superlinear on a huge world** | bake | `dc-maryland-nova-suburbs` (62 km radius, ~3800 km² tiles) sat for hours in one CPU-bound, I/O-free step of `export_site` after the `water` measurement — before `intersections.merge_into` (whose `cross` heartbeat never printed), so inside `_paths`/`_service_ways`/`_stub_roads`/`_power`/`_signals`/`_parking`/`_barriers`. `_signals`' node clustering (`while unassigned: … for i in unassigned: any(linked(i,j) for j in grp)`, export.py ~513) is O(n²·group)-ish and is the prime suspect; the other helpers have no heartbeat, so a big world goes silent here. The i70 world finalizes in ~1 h; dc-metro did not in 4 h+. Needs a measured profile on dc-metro (py-spy: the bake pod has no `CAP_SYS_PTRACE`, so it must run outside it) and a spatial index / heartbeat in the offending helper. |
+| 8 | **MCP config leaks the bearer token to an unauthenticated caller** | services/worldeditor | `GET /api/agent/mcp/config` returns `auth.token` in the clear (`mcpauth.describe()`, deliberately, so the Agent tab can show it) — but the deployed host answered that GET with no credentials, so the token (which gates `shell_exec`, `program_write`, …) is readable by anyone who can reach the ingress. The code assumes the ingress authenticates; empirically it does not in front of this path. **A code-side gate cannot close this alone**: the Agent tab has to read the token to show it (that is the same-origin page), and the sibling `POST /api/agent/mcp/config` can *set* the token with no credentials either — gating the read while leaving the write open buys nothing. The fix is an edge/deployment decision — authenticate `/api/agent/*` (or the whole editor) at the ingress, or put the config route behind the agent tunnel's credential — Rich's call, not a unilateral code change. |
 
 ## Recently fixed
+
+- **A finished bake's intermediates are pruned (the volume no longer fills)** — nothing removed a
+  shipped world's `shards/`, merged `lidar/`, `canopy_global.tif` or mosaic `.ovr`s, so two big
+  worlds filled the 500 Gi `worldeditor-data` PVC and the worldeditor crash-looped on `EDQUOT`
+  (TODO #9). A world is `web/` (the manifest references nothing else), so
+  `shards.prune_intermediates` drops the rest — the merged rasters are kept unless `--all`. New
+  `piedmont_bake prune <slug|all> [--all] [--dry-run]`, and a sharded `finalize` prunes itself when
+  passed `--prune`, which the worldeditor service now does by default (`PIEDMONT_KEEP_INTERMEDIATES=1`
+  opts out for a re-export). Tested in `bake/tests/test_shards.py`.
+- **`export_site`'s signal clustering is linear, and every silent helper has a heartbeat** — the
+  finalizer's `_signals` grouped traffic-signal nodes with an all-pairs greedy closure
+  (`any(linked(i, j) for j in grp)`), O(n²·group): on the 62 km dc-metro world it sat in that loop
+  for hours with nothing printed (TODO #10). `linked` is symmetric, so the groups are its connected
+  components; `cluster_signals` now BFSes over a uniform grid of the 140 m shared-way radius, visiting
+  only the 3×3 cells a node can reach. `_paths`/`_service_ways`/`_stub_roads`/`_power`/`_signals`/
+  `_parking`/`_barriers` each run under `progress.heartbeat`, so a slow world names the helper that is
+  slow instead of going quiet. Tested in `bake/tests/test_signals.py`.
+- **Lidar canopy and roofs (TODO #4): already handled, closed** — the CHM is "unclassified points
+  above ground", so where a vendor left buildings unclassified a roof reads as a crown. But every
+  canopy layer the game consumes is masked over the OSM footprints before it ships: the tiled/network
+  path (`network_tiles.mask_shapes` → `export_tiles`/`overview`, roads + buildings) and the
+  single-image path (`export_site` zeroes the canopy under every footprint, `export.py` ~1671). The
+  game masks footprints again at planting for worlds already published
+  (`apps/game/src/world/footprintmask.ts`). The only unmasked copy left is the raw `lidar/chm.tif`,
+  which is a measurement input (the flora species-height cross-check and the beside-road canopy
+  profile), not a placement. Nothing to change.
 
 - **The road stood 100 ft above the terrain, and coarse tiles cut walls through it (I-70 east)** —
   Rich saw the road surface floating over the ground and green vertical "towers" along the eastbound

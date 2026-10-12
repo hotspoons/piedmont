@@ -14,7 +14,8 @@ and the traps in each source. This page is the map.
 cd bake
 .venv/bin/python -m piedmont_bake fetch <slug>          # bake one site (or `all`); --skip lidar for a quick pass
 .venv/bin/python -m piedmont_bake export <slug>         # rewrite web/ without fetching again
-.venv/bin/python -m piedmont_bake plan|shard|finalize   # a sharded bake, step by step
+.venv/bin/python -m piedmont_bake plan|shard|finalize   # a sharded bake, step by step (finalize --prune drops intermediates)
+.venv/bin/python -m piedmont_bake prune <slug|all>     # reclaim a shipped world's intermediates (--all, --dry-run)
 .venv/bin/python -m piedmont_bake publish <slug>        # mirror to an S3-compatible bucket
 .venv/bin/python -m piedmont_bake.verify                # is every site safe to publish?
 .venv/bin/python -m unittest discover -s tests          # the unit tests
@@ -63,7 +64,13 @@ A world too big for one job goes **plan → shard → finalize** (`shards.py`):
    and writes `shards/<i>/` in the site layout.
 3. **finalize** (one job): mosaics the per-shard rasters, unions tiles and branches, stitches the
    primary road's profile by cumulative `s`, de-duplicates features by OSM id, fetches the global
-   canopy where lidar left gaps, and runs the same `export_site` a single bake runs.
+   canopy where lidar left gaps, and runs the same `export_site` a single bake runs. Once `web/` is
+   written it prunes the intermediates it no longer needs (`--prune`, which the world editor passes by
+   default): `shards/`, the merged `lidar/`, `canopy_global.tif` and the mosaic `.ovr`s. A finished
+   world is `web/` — the manifest references nothing else — so leaving them is what filled the 500 Gi
+   bake volume. `piedmont_bake prune <slug|all>` does the same to an already-shipped world; keep the
+   intermediates for a re-export with `PIEDMONT_KEEP_INTERMEDIATES=1`, or drop the merged rasters too
+   with `--all`.
 
 The world editor shards automatically above a 5 km half-width, in blocks of at most 10 km, up to
 36 of them (`PIEDMONT_EDITOR_SHARD_ABOVE_M`, `_SHARD_SIDE_M`, `_MAX_SHARDS`); a bake request's
