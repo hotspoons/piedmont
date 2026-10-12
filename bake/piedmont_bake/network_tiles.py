@@ -328,6 +328,12 @@ def lidar_tiled(frame: Frame, bbox, clip, chains: list[dict], ldir: Path, cache:
         lidar._write(Path(f"{stem}.building_n.tif"), a["bld_n"].reshape(n, n), tr, crs)
         written.append((tx, ty))
     pw.close()
+    if not written:
+        # Every source tile lay outside the area, or held nothing usable: there is no raster to
+        # write here, and `profile_tiled` would open a `dtm.tif` that does not exist. Say it the
+        # way the caller already understands, so it falls back to the elevation model (i70's
+        # shard 31: 3 TNM tiles fetched, all "outside the area").
+        raise NoLidarHere("no lidar tiles cover this shard's area")
     for kind in _TILE_KINDS:
         files = [str(tdir / f"{tx}_{ty}.{kind}.tif") for tx, ty in written]
         if files:

@@ -235,6 +235,18 @@ class LidarTiledRoadBandTest(unittest.TestCase):
         self.assertIsNotNone(nt._resume_lidar(FRAME, bbox, chains, ldir, self.streets))
         self.assertIsNone(nt._resume_lidar(FRAME, bbox, chains, ldir, world))
 
+    def test_every_source_outside_the_area_is_no_lidar_here(self):
+        # A shard whose fetched tiles all fall outside its area writes no raster; before, lidar_tiled
+        # returned anyway and the caller died opening the dtm.tif it expected (i70's shard 31: three
+        # TNM tiles fetched, all "outside the area").
+        def batches(frame, bbox, cache, clip, meta, dem=None, jobs=16, road_band=None):
+            yield "synthetic", {}
+
+        chains = [{"id": "r1", "line": self.road}]
+        with mock.patch.object(lidar, "point_batches", batches):
+            with self.assertRaises(nt.NoLidarHere):
+                nt.lidar_tiled(FRAME, tuple(self.region.bounds), self.region, chains, Path(self.tmp.name) / "none", Path(self.tmp.name), origin=(self.ox, self.oy), road_band=self.streets)
+
 
 class StreamRoadBandTest(unittest.TestCase):
     """stream_ept over a world with the streets as road_band, against stream_ept over the streets:
