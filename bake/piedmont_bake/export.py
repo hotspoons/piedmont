@@ -1982,6 +1982,7 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
     # grading is the viewer's: the same manifest the viewer will read is what it is built from.
     # `layers` is the dict `out["layers"]` already refers to, so the block lands in the manifest.
     pyr = os.environ.get("PIEDMONT_PYRAMID", "1").strip().lower()
+    pl = None
     if tiled and pyr not in ("0", "false", "no", "off"):
         try:
             from . import pyramid as _pyr
@@ -2008,7 +2009,29 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
     # `out` — tiling `signals` or `sidewalks` before them would hand those passes empty arrays.
     # Small sites stay inline, and the editor keeps reading `manifest.buildings`.
     if tiled and len(enu_derived["buildings"]) >= VECTOR_TILE_MIN:
-        out["vt"] = _vector_tiles(web, _tile_arrays(out))
+        arrays = _tile_arrays(out)
+        out["vt"] = _vector_tiles(web, arrays)
+        # --- coarse vector LODs, marking Phase 4b ------------------------------------------------
+        # Beside the raster pyramid, a coarse vector bundle per level for the four distance-reading
+        # layers (`vtiles`, reduction by `vectorlod`): so a zoomed-out view fetches 10 km of vectors
+        # for a 10 km view instead of every 1 km tile coast to coast. Keyed to the SAME z/x/y as the
+        # tile the eye is in, so a consumer already knows which one to ask for. A flat bake (no
+        # pyramid) has no levels to key to and writes none — `vt/0` is the whole story there.
+        if pl:
+            try:
+                from . import vtiles
+
+                _, mid_lat = frame.anchor
+                levels = vtiles.write_levels(web, frame, arrays, pl["zmin"], pl["zmax"], mid_lat)
+                if levels:
+                    out["vt"]["levels"] = levels
+                    tot = sum(v["count"] for v in levels.values())
+                    print(f"  vt-lod  {len(levels)} coarse levels "
+                          f"z{min(int(z) for z in levels)}..z{max(int(z) for z in levels)}, {tot} features", flush=True)
+            except BakeFault:
+                raise
+            except Exception as exc:
+                print(f"  vt-lod  SKIPPED: {exc.__class__.__name__}: {exc}", flush=True)
         _empty_tiled(out)
         c = out["vt"]["counts"]
         print(f"  vt      {len(out['vt']['cells'])} tiles: {c.get('buildings', 0)} footprints, "
