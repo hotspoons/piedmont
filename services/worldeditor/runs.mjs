@@ -603,6 +603,12 @@ export class Runs {
    * known. Whole-phase at a time: `run.jobs` is the set any one of which failing fails the run.
    */
   async #startPhase(run) {
+    // A CANCELLED OR FINISHED RUN MUST NOT ARM ANOTHER PHASE. `cancel` finishes the run while
+    // `#advance` is still mid-flight (it is awaited inside the phase watcher's tick), so the
+    // advance would start the next phase and re-arm a watcher for a run already terminal. That
+    // watcher then kept opening the run's log file, and after the caller removed the run's
+    // directory it died with ENOENT (services/worldeditor/runs-osm.test.mjs, on a loaded CI runner).
+    if (this.done.has(run.id)) return
     const phase = run.phase ?? 'plan'
     const created = []
     if (phase === 'plan') {
@@ -635,6 +641,7 @@ export class Runs {
 
   /** Poll every Job in the phase; advance when all succeed, fail (and cancel the rest) on any failure. */
   #watchPhase(run) {
+    if (this.done.has(run.id)) return
     let stopped = false
     this.live.set(run.id, { stop: () => { stopped = true } })
     const tick = async () => {
@@ -683,6 +690,7 @@ export class Runs {
   }
 
   async #advance(run) {
+    if (this.done.has(run.id)) return
     if (run.phase === 'plan') run.phase = 'shard'
     else if (run.phase === 'shard') run.phase = 'finalize'
     else {
@@ -716,6 +724,7 @@ export class Runs {
           continue
         }
         const sink = createWriteStream(this.store.logFile(run.id), { flags: 'a' })
+        sink.on('error', () => {})
         let carry = ''
         await new Promise((resolve) => {
           res.on('data', (chunk) => {
@@ -742,7 +751,7 @@ export class Runs {
           res.on('error', resolve)
         })
         sink.end()
-        await this.#save(run)
+        await this.#save(run).catch(() => {})
         if (run.state === 'done' || run.state === 'failed') return
         await sleep(1500)
       }
@@ -753,6 +762,7 @@ export class Runs {
 
   /** Poll the Job, attach to its pod's log, and stop when it ends. One of these per live run. */
   #watchJob(run) {
+    if (this.done.has(run.id)) return
     let stopped = false
     const stop = () => {
       stopped = true
@@ -834,6 +844,10 @@ export class Runs {
         continue
       }
       const sink = createWriteStream(this.store.logFile(run.id), { flags: 'a' })
+      // The run's directory can go away while a stream is still open (a test's cleanup, a wiped
+      // volume); an unhandled 'error' on the sink is an uncaughtException, which the test runner
+      // turns into a failed suite.
+      sink.on('error', () => {})
       let carry = ''
       await new Promise((resolve) => {
         res.on('data', (chunk) => {
@@ -859,7 +873,7 @@ export class Runs {
         res.on('error', resolve)
       })
       sink.end()
-      await this.#save(run)
+      await this.#save(run).catch(() => {})
       if (run.state === 'done' || run.state === 'failed') return
       await sleep(1500)
     }

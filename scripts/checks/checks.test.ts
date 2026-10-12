@@ -55,7 +55,16 @@ describe.concurrent('service tests (node --test)', () => {
       // node's own per-test limit, under vitest's 180 s: a hung test then fails BY NAME in the TAP
       // block this test reports, instead of vitest timing out the whole file anonymously (CI,
       // 2026-10-11: "Test timed out in 180000ms" and no way to tell which suite)
-      const r = await run(process.execPath, ['--test', '--test-reporter=tap', '--test-timeout=150000', file])
+      //
+      // --test-force-exit is a belt to the braces: the runner can leave its own stdout/stderr
+      // PIPEWRAP handles open, so a suite whose every test passed could still never exit on a
+      // loaded runner (an async_hooks trace of the lingering handles names
+      // `createWritableStdioStream` -> `process.getStdout` in `internal/test_runner`). The root
+      // cause — `Runs` re-arming a phase watcher for a run `cancel` had already finished, so a
+      // follower kept opening the (since removed) log file — is fixed in runs.mjs; this makes the
+      // exit deterministic regardless. A test that genuinely hangs is still caught by
+      // --test-timeout, by name.
+      const r = await run(process.execPath, ['--test', '--test-force-exit', '--test-reporter=tap', '--test-timeout=150000', file])
       const tail = r.out.split('\n').slice(-40).join('\n')
       expect(r.hung, `${file} did not exit within 165 s; the last of its output:\n${tail}`).toBe(false)
       expect(r.code, `${file}\n${report(r.out)}`).toBe(0)
