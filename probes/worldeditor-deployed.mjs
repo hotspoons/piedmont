@@ -10,7 +10,7 @@
 // while the browser is served something else. So this asks a browser, with the cache off, and
 // compares against what the local tree builds.
 import { chromium } from 'playwright'
-const base = process.argv[2] ?? 'https://worldeditor.richard-siomporas.basedweights.com'
+const base = process.argv[2] ?? 'https://piedmont.richard-siomporas.basedweights.com'
 const b = await chromium.launch()
 const p = await b.newPage()
 p.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 160)))

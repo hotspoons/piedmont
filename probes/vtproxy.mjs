@@ -13,16 +13,16 @@
 // viewer at it with `?data=`:
 //
 //     node probes/vtproxy.mjs                       # listens on :5190
-//     # then load:  http://localhost:5186/#dc-metro-take-2?data=http://127.0.0.1:5190
+//     # then load:  http://localhost:5186/#dc-maryland-nova-suburbs?data=http://127.0.0.1:5190
 //
 // (Or, to expose it to a browser elsewhere, tunnel this port and pass that URL as `?data=`.)
 // It is a stopgap: when the world is next baked, delete it. `probes/.build/bridgefix.mjs` drives
 // the overpass across it and against the raw remote to show the difference.
 import http from 'node:http'
 
-const REMOTE = process.env.VT_REMOTE ?? 'https://worldeditor.richard-siomporas.basedweights.com'
+const REMOTE = process.env.VT_REMOTE ?? 'https://piedmont.richard-siomporas.basedweights.com'
 const PORT = Number(process.env.VT_PORT ?? 5190)
-const SLUG = process.env.VT_SLUG ?? 'dc-metro-take-2'
+const SLUG = process.env.VT_SLUG ?? 'dc-maryland-nova-suburbs'
 const SIZE = Number(process.env.VT_SIZE ?? 1000)
 
 // id -> { rec, cells:Set<string> }

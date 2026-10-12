@@ -8,8 +8,8 @@
 // ways in them (a regional Overpass answers out of its area with an empty 200, which caches as a
 // perfectly ordinary empty tile), and the painter has to have stroked some of them in view.
 //
-//   PORT=5187 node probes/coastline.mjs
-//   BASE=https://worldeditor.richard-siomporas.basedweights.com node probes/coastline.mjs
+//   PORT=5186 node probes/coastline.mjs
+//   BASE=https://piedmont.richard-siomporas.basedweights.com node probes/coastline.mjs
 import { chromium } from 'playwright'
 
 const PORT = process.env.PORT ?? '5185'

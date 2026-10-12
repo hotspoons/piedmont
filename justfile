@@ -142,7 +142,12 @@ worldeditor-app:
 # splats and the asset service come from there; the page comes from this tree. The way to profile
 # a deployed world with local tooling. Operator shell: `APEX_BRIDGE=apex-dev just remote`, then
 # `just bridge 'apex.perf()' 5186`.
-remote url="https://worldeditor.richard-siomporas.basedweights.com" port="5186":
+#
+# The default is piedmont's own deployment (the `piedmont` namespace) — NOT the arcade's
+# `worldeditor.richard-siomporas.basedweights.com` in `default`, which a previous default named and
+# which holds the arcade-era worlds on a separate volume. Override for the arcade: `just remote
+# url=https://worldeditor.richard-siomporas.basedweights.com`.
+remote url="https://piedmont.richard-siomporas.basedweights.com" port="5186":
     PIEDMONT_EDITOR_REMOTE={{ url }} PIEDMONT_PORT={{ port }} APEX_BRIDGE="${APEX_BRIDGE}" npm run dev -w apps/game
 
 # the world editor's probe; `just worldeditor-probe prove` runs the negatives (each check fed something
