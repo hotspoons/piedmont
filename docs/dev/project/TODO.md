@@ -10,8 +10,10 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 |---|---|---|---|
 | 3 | **Geofabrik's published index can have empty region outlines** | services/worldeditor | 11 regions on 2026-10-10, `virginia.poly` 0 bytes. Routing refuses empty outlines and falls back to the volume's copy or the seed (`services/worldeditor/geofabrik.mjs`); an OSM import of Virginia may fail until Geofabrik fixes its files. |
 | 4 | **Lidar canopy includes roofs** | bake / flora | where a vendor left buildings unclassified; the game masks OSM footprints out of tree planting. The perf panel's tree lines explain bare ground cell by cell. |
+| 5 | **Tiled network: the game minimap reads the whole network** | viewer / bake | `game/move/minimap.ts`'s worker loads the whole-network export (`context.json`, ~47 MB on dc-metro) once and tiles it itself, so the flag-scale map is a coast-to-coast high-resolution read — the thing the coarse `vt.levels` bundles exist to replace. Separate from `vt/0`: `context.json` is the network export, not vector tiles. |
 | 6 | **Tiled network: the per-tile-set OSM query** | bake | Phase 1 stops holding the whole network in one process — plan/query Overpass or clip a Geofabrik extract per tile-set. See Phase 1. |
 | 7 | **MCP port: prove it in a real browser** | editor / services | the port is in and unit-tested (`316d583`); the remaining acceptance item is a real-browser check with the Shell tab never opened. See [specs/PLAN-MCP-PORT.md](../specs/PLAN-MCP-PORT.md) *Done when*. |
+| 8 | **MCP config leaks the bearer token to an unauthenticated caller** | services/worldeditor | `GET /api/agent/mcp/config` returns `auth.token` in the clear (`mcpauth.describe()`, deliberately, so the Agent tab can show it) — but the deployed host answered that GET with no credentials, so the token (which gates `shell_exec`, `program_write`, …) is readable by anyone who can reach the ingress. The code assumes the ingress authenticates; empirically it does not in front of this path. Fix is a deployment/auth decision (gate the route, or front the editor with auth), not a unilateral code change — Rich's call. |
 
 ## Recently fixed
 
