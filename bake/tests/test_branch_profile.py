@@ -138,5 +138,55 @@ class ProfileTiledEquivalenceTest(unittest.TestCase):
         self.assertEqual(serial, parallel)
 
 
+class SampleOutsideRasterTest(unittest.TestCase):
+    """A station outside this shard's raster is NaN, not the nearest EDGE pixel.
+
+    `lidar.profile` clamped out-of-bounds row/col to the raster edge, so a shard that did not cover
+    a station still answered for it with a finite value. `shards.stitch_profile`'s "first finite
+    wins" took that value wherever the OWNING shard's own cell was a hole, and on i70 one shard's
+    edge — the constant 144.93 — leaked into 1,624 stations: every overpass read as a ditch
+    (2026-10-12). The edge here is 999 so a clamp cannot be mistaken for the interior 5.
+    """
+
+    def setUp(self):
+        import rasterio
+        from rasterio.transform import from_origin
+
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        west, north, n = OX, OY + 100.0, 100
+        for name, val in (("dtm", 5.0), ("chm", 0.0)):
+            a = np.full((n, n), val, np.float32)
+            a[:, -1] = 999.0  # the far edge: a clamped far-away station would read this
+            with rasterio.open(
+                self.dir / f"{name}.tif", "w", driver="GTiff", height=n, width=n, count=1,
+                dtype="float32", crs="EPSG:32618", transform=from_origin(west, north, 1.0, 1.0),
+                nodata=-9999.0,
+            ) as dst:
+                dst.write(a, 1)
+        # runs from inside the raster (x=OX..OX+100) off its east edge to x=OX+300
+        self.line = LineString([(OX, OY + 50.0), (OX + 300.0, OY + 50.0)])
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _split(self, raw):
+        inside = [z for z, s in zip(raw["road_z"], raw["s"]) if s < 80.0]
+        outside = [z for z, s in zip(raw["road_z"], raw["s"]) if s > 150.0]
+        return inside, outside
+
+    def test_outside_is_nan_not_the_edge(self):
+        import math
+
+        raw = nt.profile_tiled(self.line, self.dir, None, fill=False)
+        inside, outside = self._split(raw)
+        self.assertTrue(inside and all(abs(z - 5.0) < 1e-6 for z in inside))
+        self.assertTrue(outside and all(math.isnan(z) for z in outside))
+
+    def test_the_filled_run_bridges_the_gap_without_the_edge(self):
+        raw = nt.profile_tiled(self.line, self.dir, None, fill=True)
+        self.assertTrue(all(abs(z - 5.0) < 1e-6 for z in raw["road_z"]))  # never 999
+
+
 if __name__ == "__main__":
     unittest.main()

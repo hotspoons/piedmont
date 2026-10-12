@@ -269,6 +269,46 @@ def _our_lines(site_dir: Path):
     return MultiLineString(out) if out else None
 
 
+#: A stubbed road is a GRADED surface: it does not dive into a hole the DEM has under it and come
+#: back within a bridge's reach. `DEM_DIP_MIN_M` is the depth (metres) that marks such a hole, and
+#: `DEM_DIP_MAX_M` the run (metres) it spans — the same shape `lidar.profile` lifts a deck onto.
+DEM_DIP_MIN_M = 1.5
+DEM_DIP_MAX_M = 120.0
+
+
+def _hold_grade(zs, step_m: float = 4.0):
+    """Lift short dips out of a stubbed road's sampled heights, as `lidar.profile` lifts a deck.
+
+    A stubbed road that crosses one of our carriageways ON A BRIDGE leaves the bridge's own shadow
+    in the bare-earth DEM: the ground under the deck, metres below it. Sampled as-is the stub dives
+    into the ditch the bridge spans and reads as a ditch, never a bridge — Ernstville Road, 6.7 m
+    down and back over 140 m (2026-10-12). A graded road is flat across a bridge, so any run that
+    sits `DEM_DIP_MIN_M` below its own local grade for no longer than `DEM_DIP_MAX_M` is bridged to
+    the grade. Pure, so "a stub rides its deck" is a unit test and not only a look at a screen."""
+    a = np.asarray(zs, dtype=float)
+    n = a.shape[0]
+    if n < 3:
+        return a
+    win = max(1, int(round(60.0 / step_m)))
+    local = np.array([np.median(a[max(0, i - win) : i + win + 1]) for i in range(n)])
+    below = np.isfinite(a) & ((local - a) >= DEM_DIP_MIN_M)
+    out = a.copy()
+    i = 0
+    while i < n:
+        if not below[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < n and below[j + 1]:
+            j += 1
+        # a dip that reaches the stub's own end has no grade to hold to (mirrors lidar step 1b)
+        if (j - i + 1) * step_m <= DEM_DIP_MAX_M and i >= 3 and j <= n - 4:
+            grade = np.interp(np.arange(i, j + 1), [i - 3, j + 3], [a[i - 3], a[j + 3]])
+            out[i : j + 1] = grade
+        i = j + 1
+    return out
+
+
 def _stub_span(meet: float, length: float, stub_m: float) -> tuple[float, float]:
     """The stretch of a non-network way to draw around a junction with one of ours.
 
@@ -355,6 +395,9 @@ def _stub_roads(site_dir: Path, frame, ox: float, oy: float, bbox) -> list[dict]
                     zs[~ok] = np.interp(np.flatnonzero(~ok), np.flatnonzero(ok), zs[ok])
                     if len(zs) > 4:
                         zs = np.convolve(np.pad(np.nan_to_num(zs), 2, mode="edge"), np.ones(5) / 5, mode="valid")
+                    # ...then ride the deck: a stub crossing one of ours on a bridge must not follow
+                    # the DEM down into the ditch the bridge spans (Ernstville Road, 2026-10-12).
+                    zs = _hold_grade(zs, 4.0)
                 else:
                     zs = np.zeros(len(pts))
             else:

@@ -577,9 +577,25 @@ def profile(spine: LineString, dtm: np.ndarray, chm: np.ndarray, tr, pts: dict, 
     normal = np.column_stack([-d[:, 1], d[:, 0]])  # left of travel
 
     def sample(arr, xy):
+        # A station OUTSIDE this raster has no sample here — it is not the nearest edge pixel.
+        # Clamping to the edge returned an arbitrary finite value, and `shards.stitch_profile`'s
+        # "first finite wins" then accepted it wherever the OWNING shard's own cell was a hole
+        # (a bridge, a culvert, heavy canopy): on i70 that leaked one shard's raster edge — the
+        # constant 144.93 — into 1,624 stations, so the road dove into that "ditch" at every
+        # overpass (2026-10-12). `profile_tiled(fill=False)` regains its documented meaning: NaN
+        # outside the block "for `shards.stitch_profile` to hand them to the neighbouring shard",
+        # and `_fill_along` bridges what no shard can answer.
         r, c = rasterio.transform.rowcol(tr, xy[:, 0], xy[:, 1])
-        r, c = np.clip(np.asarray(r), 0, arr.shape[0] - 1), np.clip(np.asarray(c), 0, arr.shape[1] - 1)
-        return arr[r, c]
+        r = np.asarray(r)
+        c = np.asarray(c)
+        h, w = int(arr.shape[0]), int(arr.shape[1])
+        inside = (r >= 0) & (r < h) & (c >= 0) & (c < w)
+        out = np.asarray(arr[np.clip(r, 0, h - 1), np.clip(c, 0, w - 1)], dtype=float)
+        if out.ndim == 0:
+            return out if bool(inside) else np.nan
+        out = out.copy()
+        out[~inside] = np.nan
+        return out
 
     ground_z = sample(dtm, p)
     surface_z = ground_z.copy()
