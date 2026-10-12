@@ -576,6 +576,13 @@ export class MapView {
           this.draw()
           return
         }
+        if (!additive) {
+          // A plain click SELECTS THIS ONE. Ctrl/Cmd (and shift) add or remove one route at a time —
+          // that is the multi-select route mode is for. The routes dropped here take their trims
+          // with them, so a start set on a route that is no longer picked cannot linger into a save.
+          for (const id of this.picked) if (id !== w.ident) this.routeCuts.delete(id)
+          this.picked.clear()
+        }
         this.o.onPick(w, additive)
       }
     })

@@ -235,7 +235,7 @@ export class DefinePanel {
       },
     }))
     sb0.append(hint(selMode === 'route'
-      ? 'Click a road to add it. Ctrl/Cmd-click toggles one, so several routes can be picked. On any picked route, set a start and an end and the bake keeps only that stretch.'
+      ? 'Click a road to select just it. Ctrl/Cmd-click adds or removes one, so several routes can be picked. On any picked route, set a start and an end and the bake keeps only that stretch.'
       : selMode === 'polygon'
         ? 'Click to place points. Click the first point to close. Drag a point to move it, click an edge to add one, Backspace removes the selected point. Ctrl-drag, right-drag or middle-drag scrolls.'
         : 'Drag a box. Drag a corner or an edge to resize it, then switch to Polygon to add or remove corners. Ctrl-drag, right-drag or middle-drag scrolls.'))
@@ -388,7 +388,7 @@ export class DefinePanel {
     )
     if (!this.draft.all_streets) {
       rb.append(hint(this.o.map.mode === 'route'
-        ? 'Click roads to add · ctrl/cmd-click toggles · then trim with start and end'
+        ? 'Click a road to select it · ctrl/cmd-click adds or removes · then trim with start and end'
         : 'Click roads to add · shift-click toggles'))
       if (!this.roads.size) rb.append(empty('nothing picked'))
       for (const r of this.roads) {
