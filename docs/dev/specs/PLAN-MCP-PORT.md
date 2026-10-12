@@ -85,8 +85,14 @@ and `npx vitest run` is green. The one thing left is the real-browser check, whi
       folder case is `services/worldeditor/program-delete.test.mjs`, failing before the store change
       and passing after.
 - [x] `npx vitest run` from the root exits 0.
-- [ ] Checked in a real browser with the Shell tab never opened: `shell_exec` succeeds on the first
-      call (~7 s cold), the second reuses the machine, the visible pane is undisturbed, and opening
-      the Shell tab afterwards shows the machine the agent started. Separately, an MCP-side
-      `program_write` shows up in the page shell's `cat`. **Outstanding — needs a browser.**
+- [x] Checked in a real browser with the Shell tab never opened: `shell_exec` succeeds on the first
+      call, the second reuses the machine, the visible pane is undisturbed, and opening the Shell tab
+      afterwards shows the machine the agent started. Separately, an MCP-side `program_write` shows up
+      in the page shell's `cat`. Verified 2026-10-12 by `services/worldeditor/mcp-browser-check.mjs`
+      (13/13): a headless Chromium on `/world.html` against a local `server.mjs` (so nothing else owns
+      the bridge), then `shell_exec`/`program_write`/`tools/list` over `POST /api/agent/mcp`. The
+      machine came up pre-warmed on attach, so the first call was 120 ms rather than a cold ~7 s. The
+      check also caught that a **stale `apps/game/dist`** still had the pre-`ensureMachine` bridge:
+      the built app has to be current or the first call answers with the old "open the Shell tab
+      once".
 

@@ -12,7 +12,6 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 | 4 | **Lidar canopy includes roofs** | bake / flora | where a vendor left buildings unclassified; the game masks OSM footprints out of tree planting. The perf panel's tree lines explain bare ground cell by cell. |
 | 5 | **Tiled network: the game minimap reads the whole network** | viewer / bake | `game/move/minimap.ts`'s worker loads the whole-network export (`context.json`, ~47 MB on dc-metro) once and tiles it itself, so the flag-scale map is a coast-to-coast high-resolution read — the thing the coarse `vt.levels` bundles exist to replace. Separate from `vt/0`: `context.json` is the network export, not vector tiles. |
 | 6 | **Tiled network: the per-tile-set OSM query** | bake | Phase 1 stops holding the whole network in one process — plan/query Overpass or clip a Geofabrik extract per tile-set. See Phase 1. |
-| 7 | **MCP port: prove it in a real browser** | editor / services | the port is in and unit-tested (`316d583`); the remaining acceptance item is a real-browser check with the Shell tab never opened. See [specs/PLAN-MCP-PORT.md](../specs/PLAN-MCP-PORT.md) *Done when*. |
 | 8 | **MCP config leaks the bearer token to an unauthenticated caller** | services/worldeditor | `GET /api/agent/mcp/config` returns `auth.token` in the clear (`mcpauth.describe()`, deliberately, so the Agent tab can show it) — but the deployed host answered that GET with no credentials, so the token (which gates `shell_exec`, `program_write`, …) is readable by anyone who can reach the ingress. The code assumes the ingress authenticates; empirically it does not in front of this path. Fix is a deployment/auth decision (gate the route, or front the editor with auth), not a unilateral code change — Rich's call. |
 
 ## Recently fixed
@@ -28,6 +27,12 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
   world needs no change: it streams branch asphalt only within `STREAM_BUILD_M` (≤ 6 km) of the eye
   (`world/scene.ts` `gradeNear`), so it never fetches vectors coast to coast. See
   [specs/PLAN-TILED-NETWORK.md](../specs/PLAN-TILED-NETWORK.md) Phase 4b.
+- **MCP port verified in a real browser** — the last acceptance box (`docs/dev/specs/PLAN-MCP-PORT.md`
+  *Done when*) is ticked. `services/worldeditor/mcp-browser-check.mjs` drives a headless Chromium on
+  `/world.html` against a local `server.mjs` (so nothing else owns the bridge) and checks the whole
+  flow over `POST /api/agent/mcp`: `shell_exec` succeeds with the Shell tab never opened, the second
+  call reuses the machine, the visible pane is undisturbed, an MCP `program_write` shows up in the page
+  shell's `cat`, and opening the Shell tab afterwards shows the machine the agent started — 13/13.
 - **World editor: Assets mode had no Traffic tab** — `worldedit/main.ts` built its `AssetCatalog`
   without `trafficExtension()`, which `editor/main.ts` and the viewer both pass, so traffic sets could
   only be edited from `/editor.html` or MCP. Wired in; Assets mode now shows Catalog, Materials,
