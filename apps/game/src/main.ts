@@ -1376,6 +1376,8 @@ async function loadSite(slug: string) {
     },
     /** how far the minimap's photograph is from its linework, at the bake's own control points */
     minimapRegistration: () => minimap?.registration() ?? null,
+    /** where the minimap's road linework comes from (vector cells, not the whole network) */
+    minimapVectors: () => minimap?.vectorStats() ?? null,
     /** the address index, for probes: `search('1053 route 3')` */
     search: (q: string) => (searchIndex.ready ? searchIndex.find(q) : null),
     searchCounts: () => ({ ready: searchIndex.ready, ...searchIndex.counts }),

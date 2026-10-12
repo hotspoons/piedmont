@@ -40,9 +40,11 @@ import { DATA_BASE, loadVectorTile, type Manifest } from '../../world/site'
 import type { Site } from '../../world/scene'
 import { bucketRoads, ROAD_STYLES, type Bucket, type RoadLine } from './maproads.data'
 import { layoutLabels, readableAngle, type LabelCand } from './maplabels'
+import { TIER_MPP, chooseVectorLevel } from '../../world/vectorlevel'
 
-/** metres per CSS pixel at or below which each tier is drawn (tier 1 is "z14": ≤ 10 m a pixel) */
-export const TIER_MPP = [Infinity, 10, 2.5]
+// the level policy is shared with the game's minimap — see world/vectorlevel.ts
+export { TIER_MPP, chooseVectorLevel }
+
 /** the side of a tier-1/2 cell, metres */
 const CELL_M = 4000
 /** tier-1/2 segments kept on the GPU (136 B each), least recently seen buckets dropped past this */
@@ -51,45 +53,6 @@ const MAX_SEGMENTS = 450_000
 const BUILD_MS = 4
 /** label candidates examined a frame, at most */
 const MAX_CANDS = 6000
-
-/**
- * Which coarse vector level fits the eye, or null to use `vt/0`.
- *
- * `vt.levels` (bake/vtiles.py) is the pyramid's coarse end, keyed by quadtree z; each level's cells
- * are `cell_m` metres and carry only the distance-reading layers. A map picks the COARSEST level
- * whose cells still fit the view a few times across — few tiles, and detail scaled to the distance —
- * and falls to `vt/0` (null) once even the finest coarse level is too coarse to read, i.e. zoomed in.
- *
- * `viewPx` is the view's long side in CSS pixels; `mpp` its metres a pixel, so `mpp · viewPx` is the
- * ground span. A level fits when its cell is at most half that span (≈2 cells across, the minimum
- * that shows a road's shape rather than a dot).
- *
- * NO DEAD BAND. The fine tiles only stream at or below `minMpp` (`TIER_MPP[1]`, the "z14" zoom). If
- * no coarse level fits yet the eye is still coarser than that, the FINEST coarse level bridges the
- * gap — better a slightly-too-coarse tile than a screen with no new roads on it — and it hands over
- * to `vt/0` exactly at `minMpp`.
- */
-export function chooseVectorLevel(
-  levels: Record<string, { cell_m: number }> | undefined,
-  mpp: number,
-  viewPx = 1000,
-  minMpp = TIER_MPP[1],
-): string | null {
-  if (!levels) return null
-  const half = (mpp * viewPx) / 2
-  let best: string | null = null
-  let bestCell = 0
-  let finest: string | null = null
-  let finestCell = Infinity
-  for (const z of Object.keys(levels)) {
-    const cell = levels[z]?.cell_m ?? 0
-    if (cell <= 0) continue
-    if (cell < finestCell) { finest = z; finestCell = cell }
-    if (cell <= half && cell >= bestCell) { best = z; bestCell = cell }
-  }
-  if (best) return best
-  return finest && mpp > minMpp ? finest : null
-}
 
 interface Built {
   b: Bucket

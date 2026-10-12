@@ -13,8 +13,9 @@
  * of that — nor the arrays — touches the main thread.
  *
  * Protocol (minimap.ts):
- *   → { type: 'load', url, fallback, frame }        fetch + project the roads
+ *   → { type: 'load', url, fallback, frame }        fetch + project the roads (a bake with no vt)
  *   → { type: 'lines', layer: 'spine'|'siblings', lines: Float32Array[] }   our carriageways
+ *   → { type: 'cell', key, layers: { [cls]: Float32Array[] } }   one cell's polylines by class
  *   → { type: 'tile', id, k, tx, ty, px, levelPxPerM, dpr }
  *   ← { type: 'ready', roads }  |  { type: 'tile', id, bitmap }  |  { type: 'error', message }
  */
@@ -32,11 +33,12 @@ const CLASS_STYLE: Record<string, { w: number; c: string; minPxPerM: number }> =
   unclassified: { w: 1.5, c: '#c9c9c9', minPxPerM: 0.12 },
   service: { w: 1, c: '#9a9a9a', minPxPerM: 0.3 },
   track: { w: 1, c: '#8a7a5a', minPxPerM: 0.3 },
+  trail: { w: 1, c: '#6fae6f', minPxPerM: 0.05 },
   railway: { w: 2, c: '#7a5aa0', minPxPerM: 0.02 },
   waterway: { w: 1.5, c: '#5a8ad0', minPxPerM: 0.05 },
 }
 /** draw order, background first; our own carriageways go on top of all of it */
-const ORDER = ['waterway', 'railway', 'track', 'service', 'unclassified', 'residential', 'tertiary', 'secondary', 'motorway_link', 'primary', 'trunk', 'motorway', 'siblings', 'spine']
+const ORDER = ['waterway', 'trail', 'railway', 'track', 'service', 'unclassified', 'residential', 'tertiary', 'secondary', 'motorway_link', 'primary', 'trunk', 'motorway', 'siblings', 'spine']
 const OWN: Record<string, { w: number; c: string; minPxPerM: number }> = {
   siblings: { w: 2, c: '#ff8c00', minPxPerM: 0 },
   spine: { w: 3, c: '#ffdc00', minPxPerM: 0 },
@@ -50,6 +52,12 @@ const CHUNK = 32
 const CELL = 500
 const chunks: Chunk[] = []
 const grid = new Map<string, number[]>()
+/**
+ * Vector cells already taken (`vt/<z>:<x>,<y>`), so a cell the map re-asks for — the view moved off
+ * it and back — is not added twice. The main thread streams only what the view covers and never the
+ * whole network; this is the guard that makes that safe against duplicates.
+ */
+const seenCells = new Set<string>()
 
 function add(style: string, pts: Float32Array): void {
   const si = ORDER.indexOf(style)
@@ -167,6 +175,14 @@ self.onmessage = async (e: MessageEvent) => {
       ;(self as unknown as Worker).postMessage({ type: 'ready', roads })
     } else if (msg.type === 'lines') {
       for (const pts of msg.lines as Float32Array[]) add(msg.layer as string, pts)
+    } else if (msg.type === 'cell') {
+      const key = msg.key as string
+      if (seenCells.has(key)) return
+      seenCells.add(key)
+      // one array PER POLYLINE, not per class: `add` treats an array as one line, so a class's
+      // polylines concatenated would join the end of one road to the start of the next (spider webs)
+      const layers = msg.layers as Record<string, Float32Array[]>
+      for (const cls of Object.keys(layers)) for (const pts of layers[cls]) add(cls, pts)
     } else if (msg.type === 'tile') {
       const bitmap = tile(msg.k as number, msg.tx as number, msg.ty as number, msg.px as number, msg.levelPxPerM as number, msg.dpr as number)
       ;(self as unknown as Worker).postMessage({ type: 'tile', id: msg.id, bitmap }, [bitmap])

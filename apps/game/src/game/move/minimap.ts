@@ -15,8 +15,10 @@
 //
 // The two buttons are Heroicons like the rest of the interface, not glyphs from whichever font
 // the browser had, and the size you drag it to is remembered in this browser.
-import { DATA_BASE, type Manifest } from '../../world/site'
+import { DATA_BASE, loadVectorTile, type Manifest } from '../../world/site'
 import { button } from '../../ui/shell'
+import { cellsCovering, chooseMapLevel } from '../../world/vectorlevel'
+import { mapLayersOf, type MapLine } from './mapvectors'
 import { enuProjector, siteProjector, utmProjector } from './siteproj'
 
 /**
@@ -70,6 +72,16 @@ export class MiniMap {
   private reqKey = new Map<number, string>()
   private reqSeq = 0
   private sentSiblings = 0
+  /**
+   * WHERE THE BASELINE LINEWORK COMES FROM. A tiled world streams its vector cells for the view —
+   * never the whole network — so `vtMode` is set when the manifest carries `vt` and the worker is fed
+   * `cell` messages instead of the one `load` (see `ensureVectors`). A bake with no vector tiles keeps
+   * the old path: the worker fetches `context.json` (or the raw extract) once and tiles it.
+   */
+  private vtMode = false
+  /** vector cells already asked for, `${dir}:${x},${y}`; the worker is the real dedup, this is cheap */
+  private taken = new Set<string>()
+  private vtWarned = false
   private lastMarker: { x: number; y: number; yaw: number } | null = null
   private spine: Float32Array
   private pxPerM = 0.25 // zoom
@@ -117,6 +129,9 @@ export class MiniMap {
 
   constructor(parent: HTMLElement, manifest: Manifest) {
     this.manifest = manifest
+    // a tiled world streams its vector cells for the view; a bake with no `vt` reads the whole
+    // network once in the worker, as before
+    this.vtMode = !!manifest.vt?.dir
     this.el = document.createElement('div')
     this.el.id = 'minimap'
     this.canvas = document.createElement('canvas')
@@ -331,6 +346,26 @@ export class MiniMap {
     return { points: n * n, maxM: +max.toFixed(2), meanM: +(sum / (n * n)).toFixed(2), worst }
   }
 
+  /**
+   * For probes: where the map's baseline linework comes from, and how much of it there is.
+   *
+   * `mode` is `cells` when the map streams vector tiles for the view (a tiled world) and `whole` when
+   * it falls back to the one context.json read. `dir` is the level it is streaming, `cells` how many
+   * it has taken, `tiles` how many raster tiles the worker has returned. "Does the map read the whole
+   * network" is not answerable from a screenshot.
+   */
+  vectorStats(): { mode: string; dir: string | null; cell_m: number; cells: number; tiles: number } {
+    const vt = this.manifest.vt
+    const { z, cell_m } = chooseMapLevel(vt?.levels, vt?.size_m ?? 0, 1 / this.pxPerM, Math.max(this.w, this.h))
+    return {
+      mode: this.vtMode ? 'cells' : 'whole',
+      dir: z ? `vt/${z}` : (vt?.dir ?? null),
+      cell_m,
+      cells: this.taken.size,
+      tiles: this.tiles.size,
+    }
+  }
+
   private async load() {
     const L = this.manifest.layers.naip
     if (L) {
@@ -344,14 +379,74 @@ export class MiniMap {
       }
       img.src = `${DATA_BASE}/sites/${this.manifest.slug}/web/${L.file}`
     }
-    // the roads: the worker fetches, parses and projects them (context.json, or the raw extract for
-    // a site baked before it) and draws them into tiles — none of it on this thread
-    this.worker?.postMessage({
-      type: 'load',
-      url: new URL(`${DATA_BASE}/sites/${this.manifest.slug}/context.json`, location.href).href,
-      fallback: new URL(`${DATA_BASE}/sites/${this.manifest.slug}/osm.geojson`, location.href).href,
-      frame: this.manifest.frame,
-    })
+    // THE BASELINE LINEWORK. A tiled world streams only the vector cells the view covers
+    // (`ensureVectors`, called from `drawTiles`), so nothing here reads the whole network. A bake
+    // with no vector tiles falls back to the old path: the worker fetches `context.json` once — or
+    // the raw extract for a site baked before it — parses and projects every road, and tiles it.
+    if (!this.vtMode) {
+      this.worker?.postMessage({
+        type: 'load',
+        url: new URL(`${DATA_BASE}/sites/${this.manifest.slug}/context.json`, location.href).href,
+        fallback: new URL(`${DATA_BASE}/sites/${this.manifest.slug}/osm.geojson`, location.href).href,
+        frame: this.manifest.frame,
+      })
+    }
+  }
+
+  /**
+   * Stream the vector cells the view covers, at the level that fits its scale.
+   *
+   * THE WHOLE POINT (TODO #5): the map used to load the site's entire network export — `context.json`,
+   * ~47 MB on dc-metro — and tile it. Instead it asks `vt.levels` (bake/vtiles.py) for the level whose
+   * cells fit the view (`chooseVectorLevel`, the same policy as the editor's map), takes the cells that
+   * cross the view box, and hands each cell's linework to the worker as one `cell` message — never
+   * more than a handful of cells, and never one it already has. Zoomed in it is the 1 km `vt/0` cells
+   * (shared with the 3D stream's cache); zoomed out it is the coarse bundle, majors only.
+   *
+   * `loadVectorTile` is the same LRU the 3D world streams with, so a cell already near the eye costs
+   * no fetch. A cell's linework is in SITE METRES already — unlike context.json, nothing is projected.
+   */
+  private ensureVectors(x0: number, y0: number, x1: number, y1: number) {
+    const vt = this.manifest.vt
+    if (!this.vtMode || !vt?.dir || !this.worker) return
+    const { z, cell_m: cell } = chooseMapLevel(vt.levels, vt.size_m, 1 / this.pxPerM, Math.max(this.w, this.h))
+    const dir = z ? `vt/${z}` : vt.dir
+    if (!(cell > 0)) return
+    for (const c of cellsCovering(cell, x0, y0, x1, y1)) {
+      const key = `${dir}:${c.x},${c.y}`
+      if (this.taken.has(key)) continue
+      this.taken.add(key)
+      void this.fetchCell(dir, cell, c.x, c.y, key)
+    }
+  }
+
+  /** One vector cell, fetched (or taken from the LRU) and handed to the worker as plan linework. */
+  private async fetchCell(dir: string, cell: number, ix: number, iy: number, key: string) {
+    let lines: MapLine[]
+    try {
+      lines = mapLayersOf(await loadVectorTile(this.manifest.slug, dir, ix, iy))
+    } catch (e) {
+      if (!this.vtWarned) { this.vtWarned = true; console.warn('minimap: vector cell', key, e) }
+      return
+    }
+    if (!lines.length) return
+    // one Float32Array PER POLYLINE, grouped by class — the worker strokes each class once, but a
+    // concatenated array would be read as one line and join road ends (spider webs)
+    const by = new Map<string, Float32Array[]>()
+    for (const l of lines) {
+      const arr = new Float32Array(l.coords.length * 2)
+      for (let i = 0; i < l.coords.length; i++) { arr[i * 2] = l.coords[i][0]; arr[i * 2 + 1] = l.coords[i][1] }
+      const list = by.get(l.cls)
+      if (list) list.push(arr)
+      else by.set(l.cls, [arr])
+    }
+    const layers: Record<string, Float32Array[]> = {}
+    const transfer: ArrayBuffer[] = []
+    for (const [cls, arrs] of by) { layers[cls] = arrs; for (const a of arrs) transfer.push(a.buffer as ArrayBuffer) }
+    this.worker?.postMessage({ type: 'cell', key, layers }, transfer)
+    // the tiles this cell crosses were drawn without it; drop them so they are drawn again
+    this.invalidate(ix * cell, iy * cell, (ix + 1) * cell, (iy + 1) * cell)
+    this.paint(this.lastMarker)
   }
 
   /** What the worker sends back: the roads are in (every tile is stale), or one tile. */
@@ -629,6 +724,9 @@ export class MiniMap {
     const levelPx = TILE_BASE * TILE_STEP ** k
     const S = TILE_PX / levelPx
     const R = Math.hypot(W, H) / 2 / this.pxPerM
+    // the baseline linework: a tiled world streams the vector cells this view covers, at the level
+    // that fits its scale — no whole-network read (see ensureVectors)
+    this.ensureVectors(this.centre.x - R, this.centre.y - R, this.centre.x + R, this.centre.y + R)
     const tx0 = Math.floor((this.centre.x - R) / S), tx1 = Math.floor((this.centre.x + R) / S)
     const ty0 = Math.floor((this.centre.y - R) / S), ty1 = Math.floor((this.centre.y + R) / S)
     const side = S * this.pxPerM
