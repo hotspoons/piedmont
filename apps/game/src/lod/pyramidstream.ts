@@ -27,6 +27,7 @@ import type { Anchor } from '@apex/engine/geo/wgs84'
 import { childrenOf, diff, holdWhileRefining, tileBoundsOf, tileKey, tileMetres, type TileId } from '@apex/engine/geo/pyramid'
 import { PyramidSet, loadPyrTile, type PyrEntry, type PyrIndex, type PyrTile } from './tiles'
 import { loadBakedTexture, type TexChoice } from '../assets/textures'
+import { bilinear } from '../world/site'
 import * as T from '../tuning'
 
 export interface PyramidStreamOpts {
@@ -75,6 +76,66 @@ export interface PyramidStreamOpts {
 /** A tile that has left the wanted set stays this many metres of travel, so the boundary does not flap. */
 const HYSTERESIS_M = 220
 
+/** The cross the drop stays off, at u = 0.5 / v = 0.5, so a shared edge vertex never opens a ditch. */
+const DROP_INSET = 0.012
+
+/** Which of a coarse tile's four quadrants a normalised (u, v) falls in: +u east, +v south. */
+const quadOf = (u: number, v: number) => (u >= 0.5 ? 1 : 0) + (v >= 0.5 ? 2 : 0)
+
+/** Inside the quadrant, off the shared cross AND off the tile's outer border — the vertices a sink
+ *  is allowed to move. The border is left alone for the same reason as the cross: it is shared with
+ *  the neighbouring coarse tile, and sinking it opens a cliff against ground that did not sink. */
+function insideQuad(u: number, v: number, inset = DROP_INSET): boolean {
+  if (u <= inset || u >= 1 - inset || v <= inset || v >= 1 - inset) return false
+  return (u >= 0.5 ? u > 0.5 + inset : u < 0.5 - inset) && (v >= 0.5 ? v > 0.5 + inset : v < 0.5 - inset)
+}
+
+/**
+ * The height a tile's mesh draws at an ENU point, or NaN where the tile does not own it. The same
+ * bilinear read `PyramidSet.heightAt` does, but pinned to ONE tile instead of the finest resident.
+ */
+function tileSurface(t: PyrTile, x: number, z: number): number {
+  const hy = -z
+  const rf = t.dem.rf
+  if (!rf.contains(x, hy, t.dem.layer.res / 2)) return Number.NaN
+  const g = rf.toGrid(x, hy)
+  const h = bilinear(t.dem.data, t.dem.layer.size[0], t.dem.layer.size[1], g[0], g[1])
+  return rf.toEnuUp(g[0], g[1], h)
+}
+
+/**
+ * Per quadrant, how far a coarse surface stands above the finer surface drawn over it.
+ *
+ * The sink that keeps a parent under its child has to be measured, not guessed: a constant tuned on
+ * one world is too small for a graded cut or a deep fill in a bigger one, and the amount it is too
+ * small by grows with the world rather than with the knob. `childAt(qi, x, z)` is the surface of the
+ * finer tile that covers quadrant `qi` at a coarse vertex (viewer frame, z = -north), or NaN where
+ * that tile does not own the point. It is asked for that tile and no other on purpose: `heightAt`
+ * would instead answer with whichever neighbouring tile wins the ENU-frame overlap along a seam — a
+ * sliver a pixel wide — and a spurious cliff there would sink the whole quadrant by that error. The
+ * returned per-quadrant value is the largest positive difference over its vertices, so the parent
+ * lands below the child everywhere a vertex was checked. `stride` only exists to skip vertices on a
+ * pathologically dense grid — it can miss a one-vertex peak, so the stream walks every vertex.
+ */
+export function coveredNeed(
+  uv: { count: number; getX(i: number): number; getY(i: number): number },
+  base: Float32Array,
+  mask: number,
+  childAt: (qi: number, x: number, z: number) => number,
+  stride = 1,
+): [number, number, number, number] {
+  const need: [number, number, number, number] = [0, 0, 0, 0]
+  for (let i = 0; i < uv.count; i += stride) {
+    const u = uv.getX(i)
+    const v = 1 - uv.getY(i)
+    const qi = quadOf(u, v)
+    if (!(mask & (1 << qi)) || !insideQuad(u, v)) continue
+    const above = base[i * 3 + 1] - childAt(qi, base[i * 3], base[i * 3 + 2])
+    if (Number.isFinite(above) && above > need[qi]) need[qi] = above
+  }
+  return need
+}
+
 /** Coarse levels are red, fine levels are blue — one colour per pyramid slot, shared with the legend. */
 function levelColor(z: number, zmin: number, zmax: number): string {
   const t = zmax === zmin ? 1 : (z - zmin) / (zmax - zmin)
@@ -107,6 +168,12 @@ interface Held {
   mask: number
   /** the drop distance last written into this mesh, so the knob can move it again */
   drop: number
+  /** whether that drop was the measured one, so toggling PYR_DROP_AUTO re-seats */
+  auto: boolean
+  /** per quadrant, the measured metres to sink (PYR_DROP_AUTO), cached between seats */
+  need?: [number, number, number, number]
+  /** per quadrant, the z of the tile that was measured — a change means re-measure */
+  coverZ?: number[]
   /** vertex positions before any drop, so a quadrant can come back up to the metre */
   basePos: Float32Array | null
 }
@@ -135,6 +202,12 @@ export class PyramidStream {
   private tunedDrop = Number.NaN
   private tunedError = Number.NaN
   private tunedCone = Number.NaN
+  /**
+   * Coarse tiles whose measured sink has to be recomputed because a descendant arrived or left.
+   * `seat()` is called on every arrival and would otherwise re-sample `heightAt` over every held
+   * parent's grid each time; only the ancestors of what actually changed need the walk.
+   */
+  private readonly dropDirty = new Set<string>()
   /**
    * What a tile costs, for budgeting a fetch before it lands. Seeded from a measured crownsville
    * tile (213 KiB pack + a 512x512 float32 DEM + the same for canopy) and then replaced by this
@@ -386,12 +459,14 @@ export class PyramidStream {
         this.o.group.add(mesh)
         this.o.set.add(tile)
         this.o.onTile?.(tile)
-        const held: Held = { tile, mesh, geo, mat, photo: null, compressed: false, mask: 0, drop: -1, basePos: null }
+        const held: Held = { tile, mesh, geo, mat, photo: null, compressed: false, mask: 0, drop: -1, auto: false, basePos: null }
         this.held.set(k, held)
         this.loads++
         this.paint(held)
         // A child arriving drops the coarse ground under it; a parent arriving after its
-        // children arrives already dropped. Both are the same walk.
+        // children arrives already dropped. Both are the same walk. Mark the coarser tiles above
+        // this one dirty so a repeat seat re-measures their sink rather than trusting the last.
+        this.dirtyAncestors(k)
         this.seat()
         // The walk bails when the eye has not moved, which is correct for the selection and wrong
         // for the queue: a car parked at the spawn would take one batch of tiles and then leave
@@ -461,7 +536,20 @@ export class PyramidStream {
     this.o.set.remove(k)
     this.held.delete(k)
     this.drops++
+    this.dirtyAncestors(k)
     this.seat()
+  }
+
+  /** A tile arrived or left: every coarser tile above it must re-measure how far it must sink. */
+  private dirtyAncestors(k: string) {
+    const parts = k.split('/')
+    let z = Number(parts[0]), x = Number(parts[1]), y = Number(parts[2])
+    while (z > this.o.index.zmin) {
+      z -= 1
+      x >>= 1
+      y >>= 1
+      this.dropDirty.add(`${z}/${x}/${y}`)
+    }
   }
 
   /**
@@ -475,6 +563,7 @@ export class PyramidStream {
    */
   private seat() {
     const masks = new Map<string, number>()
+    const covers = new Map<string, (PyrTile | undefined)[]>()
     for (const h of this.held.values()) {
       let z = h.tile.z
       let x = h.tile.x
@@ -490,6 +579,12 @@ export class PyramidStream {
           const cy = h.tile.y >> shift
           const qi = (cx === px * 2 ? 0 : 1) + (cy === py * 2 ? 0 : 2)
           masks.set(pk, (masks.get(pk) ?? 0) | (1 << qi))
+          // Remember WHAT covers each quadrant: the sink is measured against that tile's own
+          // surface, not the finest resident one, so a neighbour that wins a frame overlap on the
+          // seam cannot stand in and report a cliff that is not there.
+          let cov = covers.get(pk)
+          if (!cov) covers.set(pk, (cov = [undefined, undefined, undefined, undefined]))
+          if (!cov[qi] || h.tile.z > cov[qi]!.z) cov[qi] = h.tile
         }
         z = pz
         x = px
@@ -497,14 +592,17 @@ export class PyramidStream {
       }
     }
     const drop = T.PYR_DROP_M
+    const auto = T.PYR_DROP_AUTO > 0
     for (const [k, h] of this.held) {
       const mask = masks.get(k) ?? 0
-      if (mask === h.mask && h.drop === drop && (mask === 0 || h.basePos)) continue
-      this.dropQuadrants(h, mask, drop)
+      const dirty = this.dropDirty.has(k)
+      if (mask === h.mask && h.drop === drop && h.auto === auto && !dirty && (mask === 0 || h.basePos)) continue
+      this.dropQuadrants(h, mask, drop, auto, covers.get(k))
     }
+    this.dropDirty.clear()
   }
 
-  private dropQuadrants(h: Held, mask: number, drop: number) {
+  private dropQuadrants(h: Held, mask: number, drop: number, auto: boolean, cover?: (PyrTile | undefined)[]) {
     const pos = h.geo.getAttribute('position') as THREE.BufferAttribute
     const uv = h.geo.getAttribute('uv') as THREE.BufferAttribute | undefined
     if (!uv) return
@@ -512,20 +610,46 @@ export class PyramidStream {
     const src = h.basePos
     const dst = pos.array as Float32Array
     dst.set(src)
+    // A knob toggle (measure on/off) invalidates the cache: re-measure every quadrant.
+    if (h.auto !== auto) {
+      h.need = undefined
+      h.coverZ = undefined
+    }
     if (mask !== 0) {
       // Stay off the cross at u = 0.5 / v = 0.5. Those vertices are shared with a quadrant
       // that may still be the only ground, and dropping them opens a ditch along the seam.
-      const inset = 0.012
+      let need: [number, number, number, number]
+      if (auto) {
+        if (!h.need) h.need = [0, 0, 0, 0]
+        if (!h.coverZ) h.coverZ = [-9, -9, -9, -9]
+        // Re-measure a quadrant only when the tile covering it changed. `seat` walks every held
+        // tile on every arrival, and measuring every covered vertex each time is a lookup per
+        // vertex; a quadrant whose child has not changed cannot have a new answer.
+        let changed = 0
+        for (let qi = 0; qi < 4; qi++) {
+          const cz = mask & (1 << qi) ? (cover?.[qi]?.z ?? -9) : -9
+          if (cz === h.coverZ[qi]) continue
+          h.coverZ[qi] = cz
+          h.need[qi] = 0
+          changed |= 1 << qi
+        }
+        if (changed) {
+          const fresh = coveredNeed(uv, src, changed, (qi, x, z) => {
+            const c = cover?.[qi]
+            return c ? tileSurface(c, x, z) : Number.NaN
+          })
+          for (let qi = 0; qi < 4; qi++) if (changed & (1 << qi)) h.need[qi] = fresh[qi]
+        }
+        need = h.need
+      } else {
+        need = [0, 0, 0, 0]
+      }
       for (let i = 0; i < uv.count; i++) {
         const u = uv.getX(i)
         const v = 1 - uv.getY(i)
-        const east = u >= 0.5
-        const south = v >= 0.5
-        const qi = (east ? 1 : 0) + (south ? 2 : 0)
-        if (!(mask & (1 << qi))) continue
-        const uIn = east ? u > 0.5 + inset : u < 0.5 - inset
-        const vIn = south ? v > 0.5 + inset : v < 0.5 - inset
-        if (uIn && vIn) dst[i * 3 + 1] = src[i * 3 + 1] - drop
+        const qi = quadOf(u, v)
+        if (!(mask & (1 << qi)) || !insideQuad(u, v)) continue
+        dst[i * 3 + 1] = src[i * 3 + 1] - Math.max(drop, need[qi] + drop)
       }
     }
     pos.needsUpdate = true
@@ -535,6 +659,7 @@ export class PyramidStream {
     if (mask !== 0 || h.mask !== 0) h.geo.computeVertexNormals()
     h.mask = mask
     h.drop = drop
+    h.auto = auto
   }
 
   /** Turn the legend tint on. The colour is applied in the terrain shader, not as a material multiply. */

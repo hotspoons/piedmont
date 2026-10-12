@@ -17,6 +17,21 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 
 ## Recently fixed
 
+- **The road stood 100 ft above the terrain, and coarse tiles cut walls through it (I-70 east)** —
+  Rich saw the road surface floating over the ground and green vertical "towers" along the eastbound
+  side at the east end of I-70. Root cause was one thing, not the sibling carriageway grade he first
+  suspected (that path is off for a network site — `i70-us15-maryland` draws its carriageways as
+  `branches`, not `siblings`): the coarse terrain tile under the eye is drawn over the finer, graded
+  one, and the sink that keeps it below the child was the constant `PYR_DROP_M` (8 m). On a
+  country-sized world the z10/z11 surface stands **up to ~115 m** above the finer tile beneath it (a
+  graded cut or a hill the coarse raster misses), so 8 m let the coarse tile punch straight through
+  the fine ground and the road on it. Sink is now MEASURED: `PYR_DROP_AUTO` (F6 ▸ tiles, on) samples
+  the tile that actually covers each quadrant through its own raster and sinks by the largest
+  overflow found, plus `PYR_DROP_M` as margin (the knob is now a floor). Sampled per quadrant and
+  cached, re-measured only when the covering tile changes. `PYR_DROP_M` alone still works (turn
+  measure off). Also smoothed the road-band sibling's hard 60 m switch from the spine's grade to its
+  own DEM — a 40–80 m ramp instead of a step — which is the same wall on an older site.
+
 - **A shard whose lidar tiles all fall outside its area is "no lidar here"** — the i70 bake then
   died on shard 31: it fetched three TNM LAZ tiles, every one lay outside its area, so nothing was
   written, but `lidar_tiled` still returned and `fetch_shard` profiled against a `dtm.tif` that was

@@ -1485,16 +1485,20 @@ if (uLodOn > 0.5) {
     }
   })()
   // the other carriageway of a divided highway shares the spine's grade — including its bridge
-  // decks, which the lidar profile measured on OUR lanes only. Within 60 m laterally the sibling
+  // decks, which the lidar profile measured on OUR lanes only. Close to the spine the sibling
   // takes the spine's road height (plus 0.4 m like the spine); further out it is its own road on
-  // the DEM (a ramp peeling away, a frontage road).
+  // the DEM (a ramp peeling away, a frontage road). The band between the two is a RAMP, not a
+  // step: a hard cut at 60 m left a vertical wall wherever the road stood on a fill, which on an
+  // interchange reads as a tower in the road (Rich, 2026-10-12).
   const sibAts: { at: (s: number) => { pos: THREE.Vector3; dir: THREE.Vector3 }; len: number; spineS: (s: number) => number }[] = []
   for (const sib of siblings) {
     if (sib.length < 2) continue
     const raw2 = sib.map(([x, y]) => {
       const wz = -y
       const n = nearestSpine(x, wz)
-      const z = n.dist < 60 ? n.y : bareAt(x, y) + 0.4
+      const ground = bareAt(x, y) + 0.4
+      const t = THREE.MathUtils.smoothstep(n.dist, 40, 80)
+      const z = n.y + (ground - n.y) * t
       return new THREE.Vector3(x, z, wz)
     })
     const c2 = new THREE.CatmullRomCurve3(raw2, false, 'centripetal')
