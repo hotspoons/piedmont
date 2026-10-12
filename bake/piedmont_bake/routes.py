@@ -143,18 +143,45 @@ def to_wgs_ring(poly: Polygon, frame: Frame) -> list[list[float]]:
     return [[round(float(lo), 7), round(float(la), 7)] for lo, la in zip(lon, lat)]
 
 
+_RE_META = ".^$*+?()[]{}|\\"
+
+
+def _esc(v: str) -> str:
+    """Escape a road name or ref for Overpass's regex, which is POSIX ERE and unanchored by default."""
+    return "".join("\\" + c if c in _RE_META else c for c in str(v))
+
+
+def way_keys(way: dict) -> set[str]:
+    """Every name a way could be asked for by: each `ref` split on `;`, and its `name`.
+
+    The editor labels a road `name || ref` (services/worldeditor/layers.mjs), so a route picked on
+    the map carries the NAME when a road has one, while a hand-written site in `sites.json` names
+    the `ref` ("I 70"). Matching both is what lets either name the same road.
+    """
+    tags = way.get("tags") or {}
+    keys = {p.strip() for p in str(tags.get("ref") or "").split(";") if p.strip()}
+    name = str(tags.get("name") or "").strip()
+    if name:
+        keys.add(name)
+    return keys
+
+
 def fetch_ref_lines(refs: list[str], clip: Polygon, frame: Frame, cache: Path) -> dict[str, LineString]:
-    """The longest chain of each ref within the clip, clipped to it. One Overpass query for all refs."""
+    """The longest chain of each ref within the clip, clipped to it. One Overpass query for all refs.
+
+    A `ref` here is a route name in either sense the two callers use: the OSM `ref` (`I 70`) or the
+    road's `name` (what the editor stores). The query matches either tag, and a returned way is
+    filed under every key that matches (`way_keys`).
+    """
     minx, miny, maxx, maxy = clip.bounds
     w, s, e, n = frame.bbox_wgs(minx, miny, maxx, maxy)
-    esc = lambda v: v.replace("(", "\\(").replace(")", "\\)").replace(".", "\\.")  # noqa: E731
-    alt = "|".join(esc(r) for r in sorted(set(refs)))
-    q = f'[out:json][timeout:300];way({s},{w},{n},{e})[highway][ref~"(^|;)({alt})(;|$)"];out geom;'
+    alt = "|".join(_esc(r) for r in sorted(set(refs)))
+    # `[~"^(ref|name)$"~...]` is Overpass's any-tag matcher: the road's ref OR its name.
+    q = f'[out:json][timeout:300];way({s},{w},{n},{e})[highway][~"^(ref|name)$"~"(^|;)({alt})(;|$)"];out geom;'
     ways = [x for x in osm.overpass(q, cache)["elements"] if x.get("geometry") and x.get("nodes")]
     by_ref: dict[str, list[dict]] = {}
     for wy in ways:
-        for r in str(wy.get("tags", {}).get("ref") or "").split(";"):
-            r = r.strip()
+        for r in way_keys(wy):
             if r in refs:
                 by_ref.setdefault(r, []).append(wy)
     from . import network  # local: network imports this module's siblings, avoid a cycle at import

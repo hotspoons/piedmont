@@ -126,6 +126,38 @@ class TrimTest(unittest.TestCase):
         self.assertEqual(routes.trim_line(self.line, ["nope", "also-nope"], self.frame).length, 1000)
 
 
+class MatchTest(unittest.TestCase):
+    """A ref a route names is matched on the OSM `ref` OR the road's `name`.
+
+    The editor labels a road `name || ref` (services/worldeditor/layers.mjs), so a route picked on
+    the map carries a NAME ("Robert Crain Highway"); a hand-written site names the `ref` ("US 301").
+    `way_keys` reads both off a way, and the Overpass query filters on either tag.
+    """
+
+    def test_each_split_ref_is_a_key(self):
+        wy = {"tags": {"ref": "I 70;US 40", "name": "Baltimore National Pike"}}
+        self.assertEqual(
+            routes.way_keys(wy),
+            {"I 70", "US 40", "Baltimore National Pike"},
+        )
+
+    def test_a_name_only_way_is_matched_by_its_name(self):
+        self.assertEqual(routes.way_keys({"tags": {"name": "Robert Crain Highway"}}), {"Robert Crain Highway"})
+
+    def test_a_way_with_neither_is_matched_by_nothing(self):
+        self.assertEqual(routes.way_keys({"tags": {}}), set())
+        self.assertEqual(routes.way_keys({}), set())
+
+    def test_blank_pieces_are_dropped(self):
+        self.assertEqual(routes.way_keys({"tags": {"ref": "I 70 ; ;US 40", "name": "  "}}), {"I 70", "US 40"})
+
+    def test_esc_regex_metacharacters(self):
+        # a name with a dot or a bracket must not turn into a regex wildcard in the query
+        self.assertEqual(routes._esc("St. John's Rd (Old)"), "St\\. John's Rd \\(Old\\)")
+        self.assertEqual(routes._esc("US 301 [Business]"), "US 301 \\[Business\\]")
+        self.assertEqual(routes._esc("I 70|US 40"), "I 70\\|US 40")
+
+
 class ResolveSiteTest(unittest.TestCase):
     def test_to_wgs_ring_round_trips_through_the_frame(self):
         frame = Frame.at(-77.52, 39.47)
