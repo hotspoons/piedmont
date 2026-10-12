@@ -67,6 +67,25 @@ def cmd_sites(_: argparse.Namespace) -> None:
 
 
 
+def _resolve_route(site: dict, half_width: float) -> dict:
+    """A `route` site resolves to a network site (a `boundary` from its `refs`); others pass through.
+
+    One place, so `fetch`, `plan`, `shard` and `finalize` all see the SAME resolved boundary. The
+    resolution is cached in `<site>/route.json` (see `routes.resolve`), so a re-run does not query
+    Overpass again.
+    """
+    if site.get("kind") != "route":
+        return site
+    from . import routes
+    from .geo import Frame
+
+    frame = Frame.at(site["lon"], site["lat"])
+    out = DATA / "sites" / site["slug"]
+    out.mkdir(parents=True, exist_ok=True)
+    hw = float(site.get("half_width_m", half_width))
+    return routes.resolve(site, frame, CACHE / "overpass", out, hw)
+
+
 def _keep_provenance(previous: dict | None, fresh: dict) -> dict:
     """A cached re-fetch returns {"file", "cached": true}; keep the first run's source tiles and
     dates under it instead of losing them (terrain-and-data agent, 2026-09-21)."""
@@ -81,6 +100,7 @@ def fetch_site(site: dict, half_length: float, half_width: float, lidar_half_wid
 
     from . import dem, geo, geology, lidar, naip, osm
 
+    site = _resolve_route(site, half_width)
     if site.get("kind") == "network":  # cadre §6: one region of roads as one world (terrain-and-data agent)
         from . import network
 
@@ -326,6 +346,7 @@ def cmd_plan(a: argparse.Namespace) -> None:
     if not wanted:
         sys.exit(f"no site {a.slug!r}")
     for site in wanted:
+        site = _resolve_route(site, a.half_width)
         slug = site["slug"]
         out = DATA / "sites" / slug
         out.mkdir(parents=True, exist_ok=True)
@@ -360,7 +381,7 @@ def cmd_shard(a: argparse.Namespace) -> None:
     if not wanted:
         sys.exit(f"no site {a.slug!r}")
     skip = set(filter(None, a.skip.split(",")))
-    network.fetch_shard(wanted[0], a.index, a.half_width, a.lidar_half_width, skip, DATA, CACHE)
+    network.fetch_shard(_resolve_route(wanted[0], a.half_width), a.index, a.half_width, a.lidar_half_width, skip, DATA, CACHE)
 
 
 def cmd_finalize(a: argparse.Namespace) -> None:

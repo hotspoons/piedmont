@@ -467,5 +467,36 @@
   "note": "the Crofton triangle as a WORLD rather than a road band: every drivable street, and imagery/lidar/vegetation over the whole rectangle the network spans rather than a 150 m buffer around each road. radius_m raised from 2600 so the US 3 x Johns Hopkins junction is inside the road graph. See docs/dev/specs/PLAN-OPEN-WORLD.md",
   "world": true,
   "world_margin_m": 400
+ },
+ {
+  "slug": "i70-us15-maryland",
+  "kind": "route",
+  "refs": [
+   "I 70",
+   "US 15"
+  ],
+  "clip": [
+   [
+    -78.1,
+    38.9
+   ],
+   [
+    -76.4,
+    38.9
+   ],
+   [
+    -76.4,
+    39.73
+   ],
+   [
+    -78.1,
+    39.73
+   ]
+  ],
+  "lat": 39.47,
+  "lon": -77.52,
+  "half_width_m": 400,
+  "world": true,
+  "tiled": true
  }
 ]
