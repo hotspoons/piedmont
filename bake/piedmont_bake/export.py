@@ -1914,7 +1914,11 @@ def export_site(site_dir: Path, web: Path | None = None) -> dict:
     try:
         from . import intersections as _intersections
 
-        _xc = _intersections.merge_into(out, site_dir, frame)
+        # the clustering here was all-pairs until 2026-10-11 and ran ~an hour on one core with nothing
+        # on the line (dc-maryland-nova-suburbs, 88k junction nodes); it is O(n) now, but keep the
+        # heartbeat so a bigger world can never go quiet at this stage again
+        with progress.heartbeat("cross", "intersections"):
+            _xc = _intersections.merge_into(out, site_dir, frame)
         if _xc:
             print(f"  cross   {_xc['intersections']} intersections: {_xc['signalised']} signalised ({_xc['masts']} masts), "
                   f"{_xc['two_way_stop']} two-way + {_xc['all_way_stop']} all-way stop ({_xc['stop_signs']} signs), {_xc['blades']} blades", flush=True)

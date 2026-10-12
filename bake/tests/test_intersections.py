@@ -18,6 +18,8 @@ The site is synthetic: a fake frame makes UTM and ENU the same plane, which is a
 from __future__ import annotations
 
 import json
+import math
+import random
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -165,6 +167,58 @@ class RouteGrouping(unittest.TestCase):
         ix = built["list"][0]
         self.assertEqual(ix["control"], "all_way_stop")
         self.assertTrue(any(a["stop"] for a in ix["approaches"]))
+
+
+def _old_cluster(nodes: list[dict], radius: float) -> list[list[int]]:
+    """The all-pairs loop `_cluster_nodes` replaced: the regression oracle for membership AND order."""
+    unassigned = list(range(len(nodes)))
+    clusters = []
+    while unassigned:
+        grp = [unassigned.pop()]
+        moved = True
+        while moved:
+            moved = False
+            for i in list(unassigned):
+                if any(math.dist((nodes[i]["x"], nodes[i]["y"]), (nodes[k]["x"], nodes[k]["y"])) <= radius for k in grp):
+                    grp.append(i)
+                    unassigned.remove(i)
+                    moved = True
+        clusters.append(grp)
+    return clusters
+
+
+class Clustering(unittest.TestCase):
+    """The junction clustering is O(n) now; the clusters, and the order of clusters and members, must
+    be exactly what the old all-pairs loop produced — a re-bake has to write the same manifest."""
+
+    def test_matches_the_old_all_pairs_loop(self):
+        from piedmont_bake.intersections import _cluster_nodes
+
+        for size, spread, seed in [(0, 0, 1), (1, 0, 2), (2, 0, 3), (60, 300, 4), (400, 600, 5), (800, 250, 6)]:
+            rng = random.Random(seed)
+            nodes = [{"x": rng.uniform(0, spread), "y": rng.uniform(0, spread)} for _ in range(size)]
+            self.assertEqual(_cluster_nodes(nodes), _old_cluster(nodes, 20.0), f"size {size} spread {spread}")
+
+    def test_a_chain_is_one_cluster_and_isolated_points_are_singletons(self):
+        from piedmont_bake.intersections import _cluster_nodes
+
+        nodes = [{"x": 15.0 * i, "y": 0.0} for i in range(10)]  # each within 20 m of the next
+        nodes.append({"x": 0.0, "y": 1000.0})
+        nodes.append({"x": 1000.0, "y": 1000.0})
+        got = _cluster_nodes(nodes)
+        self.assertEqual(len(got), 3)
+        self.assertEqual(sorted(len(g) for g in got), [1, 1, 10])
+
+    def test_a_large_network_returns_promptly(self):
+        # 20,000 nodes on a jittered 10 m grid: one connected mesh. The old loop was ~4e8 distance
+        # comparisons here (minutes); this must return, and cover every node, in about a second.
+        from piedmont_bake.intersections import _cluster_nodes
+
+        rng = random.Random(7)
+        nodes = [{"x": (i % 200) * 10.0 + rng.uniform(-2, 2),
+                  "y": (i // 200) * 10.0 + rng.uniform(-2, 2)} for i in range(20_000)]
+        got = _cluster_nodes(nodes)
+        self.assertEqual(sum(len(g) for g in got), len(nodes))
 
 
 if __name__ == "__main__":

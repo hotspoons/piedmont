@@ -34,6 +34,7 @@ raster except the DEM for a fallback z; the viewer re-grounds every post it plac
 """
 from __future__ import annotations
 
+import heapq
 import json
 import math
 from collections import Counter
@@ -400,6 +401,98 @@ def _signal_and_stop_nodes(site_dir: Path, frame) -> tuple[list, list]:
     return sig, stop
 
 
+def _cluster_nodes(nodes: list[dict], radius: float = CLUSTER_R) -> list[list[int]]:
+    """Group junction nodes into one record per physical crossing: connected components under
+    "within `radius` of another member".
+
+    The membership is the SAME clustering the old all-pairs loop produced, because that loop was
+    also computing the connected components:
+
+        unassigned = list(range(len(nodes)))
+        while unassigned:
+            grp = [unassigned.pop()]
+            moved = True
+            while moved:
+                moved = False
+                for i in list(unassigned):
+                    if any(dist(i, k) <= radius for k in grp):
+                        grp.append(i); unassigned.remove(i); moved = True
+            clusters.append(grp)
+
+    A node joined the moment it was within `radius` of ANY member, and the group only grew, so the
+    candidates adjacent to it only grew too. But the order is not "smallest adjacent first": each
+    pass scanned the still-unassigned nodes ASCENDING and added each adjacent one, so a node reached
+    mid-pass joined in that same pass only if its index lay ABOVE the pass cursor, and one below
+    waited for the next pass. This reproduces that: a min-heap holds every still-unassigned adjacent
+    node, `cut` is the pass cursor, and a node below `cut` is set aside and re-offered on the next
+    pass. A cell grid of side `radius` makes each node's neighbours local, so the search is O(n log n)
+    where the old loop was O(n²). At dc-maryland-nova-suburbs (87,985 nodes) the old loop was ~7.7e9
+    distance comparisons and held the finalize for about an hour with nothing printed (2026-10-11);
+    the grid version clusters the identical result in 0.24 s. Cluster order (seeds from the highest
+    index down) and member order are preserved, so a re-bake writes the same manifest;
+    `test_intersections` pins both against a copy of the old loop.
+    """
+    n = len(nodes)
+    if n < 2:
+        return [[i] for i in range(n)]
+
+    # Cell grid, side = radius: two nodes within `radius` differ by at most one cell on each axis,
+    # so the nine cells around a node cover every possible neighbour.
+    inv = 1.0 / radius
+    grid: dict[tuple[int, int], list[int]] = {}
+    for i, nd in enumerate(nodes):
+        grid.setdefault((math.floor(nd["x"] * inv), math.floor(nd["y"] * inv)), []).append(i)
+
+    def neighbours(i: int):
+        x, y = nodes[i]["x"], nodes[i]["y"]
+        cx, cy = math.floor(x * inv), math.floor(y * inv)
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for j in grid.get((cx + dx, cy + dy), ()):
+                    if j != i and math.dist((x, y), (nodes[j]["x"], nodes[j]["y"])) <= radius:
+                        yield j
+
+    assigned = bytearray(n)
+    queued = bytearray(n)
+    clusters: list[list[int]] = []
+    for seed in range(n - 1, -1, -1):
+        if assigned[seed]:
+            continue
+        assigned[seed] = 1
+        grp = [seed]
+        heap: list[int] = []
+
+        def offer(j: int) -> None:
+            if not assigned[j] and not queued[j]:
+                queued[j] = 1
+                heapq.heappush(heap, j)
+
+        for j in neighbours(seed):
+            offer(j)
+        while heap:
+            # One pass: the heap drains ascending, and `cut` is the highest index added so far. A node
+            # reached during the pass above `cut` joins now (the old scan had not yet reached it); one
+            # below `cut` was already passed and waits for the next pass.
+            cut = -1
+            deferred: list[int] = []
+            while heap:
+                i = heapq.heappop(heap)
+                if assigned[i]:
+                    continue
+                if i < cut:
+                    deferred.append(i)
+                    continue
+                assigned[i] = 1
+                grp.append(i)
+                cut = i
+                for j in neighbours(i):
+                    offer(j)
+            for j in deferred:
+                heapq.heappush(heap, j)
+        clusters.append(grp)
+    return clusters
+
+
 def build(site_dir: Path, frame, max_chars: int = 17) -> dict:
     """Every intersection on this site, with control, phases, stop bars and name blades."""
     roads = _roads(site_dir, frame)
@@ -421,19 +514,7 @@ def build(site_dir: Path, frame, max_chars: int = 17) -> dict:
         x = sum(j["x"] for _, j in recs) / len(recs)
         y = sum(j["y"] for _, j in recs) / len(recs)
         nodes.append({"node": nid, "x": x, "y": y, "recs": recs})
-    unassigned = list(range(len(nodes)))
-    clusters = []
-    while unassigned:
-        grp = [unassigned.pop()]
-        moved = True
-        while moved:
-            moved = False
-            for i in list(unassigned):
-                if any(math.dist((nodes[i]["x"], nodes[i]["y"]), (nodes[k]["x"], nodes[k]["y"])) <= CLUSTER_R for k in grp):
-                    grp.append(i)
-                    unassigned.remove(i)
-                    moved = True
-        clusters.append(grp)
+    clusters = _cluster_nodes(nodes)
 
     sig_nodes, stop_nodes = _signal_and_stop_nodes(site_dir, frame)
 
