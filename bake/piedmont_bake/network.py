@@ -658,8 +658,12 @@ def world_lidar_area(site: dict, region, streets):
     are the same.
     """
     if not lidar_reads_region(site) or region is None or region.is_empty:
-        return streets
-    return unary_union([region, streets])
+        area = streets
+    else:
+        area = unary_union([region, streets])
+    # A world with nothing to read (an empty region AND no streets) answers None, so its caller
+    # skips lidar instead of asking `snap_bbox` for the bounds of an empty geometry.
+    return None if area is None or area.is_empty else area
 
 
 def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set[str], data: Path, cache: Path) -> None:
@@ -786,19 +790,24 @@ def fetch_site(site: dict, half_width: float, lidar_half_width: float, skip: set
     # at the right height instead of at sea level.
     #
     no_lidar: str | None = None
-    if "lidar" not in skip and tiled:
+    if "lidar" in skip or not tiled:
+        meta = None
+    else:
         from . import network_tiles
 
         ldir = out / "lidar"
         larea = world_lidar_area(site, region, lidar_road_band)
-        lbbox = snap_bbox(larea.bounds)
-        try:
-            meta = network_tiles.lidar_tiled(frame, lbbox, larea, R["chains"], ldir, cache, road_band=lidar_road_band)
-        except network_tiles.NoLidarHere as exc:
-            no_lidar = str(exc)
+        if larea is None or larea.is_empty:
+            # Nothing to read the point cloud over; `snap_bbox` on empty bounds would be NaN.
+            no_lidar = "nothing to read the point cloud over"
             meta = None
-    else:
-        meta = None
+        else:
+            lbbox = snap_bbox(larea.bounds)
+            try:
+                meta = network_tiles.lidar_tiled(frame, lbbox, larea, R["chains"], ldir, cache, road_band=lidar_road_band)
+            except network_tiles.NoLidarHere as exc:
+                no_lidar = str(exc)
+                meta = None
     if no_lidar is None and "lidar" not in skip and tiled:
         pts = meta.pop("pts")
         idx = {c["id"]: i + 1 for i, c in enumerate(R["chains"])}
@@ -1067,7 +1076,14 @@ def fetch_shard(site: dict, index: int, half_width: float, lidar_half_width: flo
 
     branches: list[dict] = []
     no_lidar: str | None = None
-    if "lidar" not in skip:
+    if "lidar" in skip:
+        meta = None
+    elif larea is None or larea.is_empty:
+        # This block owns no part of the world and carries no streets: there is no point cloud to
+        # read, and `snap_bbox(larea.bounds)` would be NaN. Fall through to the elevation model.
+        no_lidar = "no owned tiles inside the world and no streets"
+        meta = None
+    else:
         from . import network_tiles
 
         ldir = sdir / "lidar"
@@ -1079,8 +1095,6 @@ def fetch_shard(site: dict, index: int, half_width: float, lidar_half_width: flo
         except network_tiles.NoLidarHere as exc:
             no_lidar = str(exc)
             meta = None
-    else:
-        meta = None
     if no_lidar is None and meta is not None:
         pts = meta.pop("pts")
         from . import network_tiles

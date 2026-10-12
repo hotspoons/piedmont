@@ -195,7 +195,12 @@ def world_lidar_area(plan: dict, index: int, world, streets):
     if mine is not None and world is not None:
         mine = mine.intersection(world)
     parts = [g for g in (mine, streets) if g is not None and not g.is_empty]
-    return unary_union(parts) if parts else streets
+    # NOTHING AT ALL is a real answer: a block whose owned tiles all fall outside the world and
+    # that carries no streets has no point cloud to read. Returning `streets` here (an empty
+    # geometry) instead used to reach `snap_bbox(larea.bounds)` and die on NaN.
+    if not parts:
+        return None
+    return unary_union(parts)
 
 
 def profile_owner(line, s: list[float], blocks: list[dict]) -> list[int]:

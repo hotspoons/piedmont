@@ -70,6 +70,13 @@ class ShardAreaTest(unittest.TestCase):
         a1 = shards.world_lidar_area(self.plan, 1, box(*self.bbox), self.streets.intersection(box(502000.0, 4300000.0, 504000.0, 4302000.0)))
         self.assertAlmostEqual(a0.intersection(a1).area, 300.0 * 300.0, delta=1.0, msg="only the shared street is read twice")
 
+    def test_nothing_to_read_is_none_not_an_empty_geometry(self):
+        # A block whose owned tiles all fall outside the world and that carries no streets has
+        # nothing to read. This used to come back as an empty geometry, and the shard died on
+        # `snap_bbox(larea.bounds)` (ValueError: cannot convert float NaN to integer).
+        world = box(900000.0, 9000000.0, 901000.0, 9001000.0)  # nowhere near the plan
+        self.assertIsNone(shards.world_lidar_area(self.plan, 0, world, LineString()))
+
 
 class SiteAreaTest(unittest.TestCase):
     def test_a_network_reads_its_region_and_its_streets(self):
@@ -84,6 +91,10 @@ class SiteAreaTest(unittest.TestCase):
         self.assertTrue(a.equals(streets))
         self.assertFalse(network.lidar_reads_region({"lidar_area": "Streets "}))
         self.assertTrue(network.lidar_reads_region({}))
+
+    def test_a_world_with_nothing_to_read_is_none(self):
+        # an empty region and no streets: the caller skips lidar rather than snapping NaN bounds
+        self.assertIsNone(network.world_lidar_area({}, LineString(), LineString()))
 
 
 class RoadBandDepthTest(unittest.TestCase):
