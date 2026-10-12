@@ -9,7 +9,7 @@ For an agent picking up piedmont after the split from siomporas-arcade. Read thi
 | Area | State |
 |---|---|
 | Repository | Pushed to `github.com/hotspoons/piedmont`, `main`. Imported from arcade `34933bd` ([ORIGIN.md](ORIGIN.md)), then renamed, documented and fixed. |
-| Local gate | `npx tsc -b`, `npx vitest run` (1026 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (358), `npm run build`: all pass on Node 24. |
+| Local gate | `npx tsc -b`, `npx vitest run` (1033 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (369), `npm run build`: all pass on Node 24. |
 | CI | Green. A service suite (`runs-osm.test.mjs`) hung CI on roughly half of pushes — all its tests passed, the process just never exited. Root cause: `Runs.cancel` finishes a run while `#advance` is mid-flight, so the advance started the next phase and re-armed a watcher for an already-terminal run, whose log follower then opened the run's (removed) log file. Fixed 2026-10-12 (`a1439b0`): the phase watchers no-op on a terminal run, sinks tolerate a vanished directory, and the checks wrapper passes `--test-force-exit`. Reproduced and cleared at 16-way concurrency (96 runs). |
 | Images | All six published on ghcr as `latest`: `piedmont-bake`, `-worldeditor`, `-assetsvc`, `-recon`, `-blender`, `-core`. The core image's CI smoke ran its inner dockerd, a nested container and the world editor on the Docker runner, on amd64 and arm64. |
 | Dev container | Fixed but **never built**: Debian trixie base needs `"moby": false`; Node 24; OpenChamber with opencode's PATH on the extension host. Rich's first build is its first test. |
@@ -33,6 +33,14 @@ single original, so the `s` semantics only become per-segment once Phase 3 repla
 with per-segment profiles. Naively feeding halo-local chains through `netsets.assign` now would
 double-count a seam-spanning road (each halo clips it at a different start). Phases 2–4 and the
 sourcing are tracked in [TODO.md](TODO.md) #6.
+
+**The bake backlog is closed** (2026-10-12): a finished world's intermediates are now pruned
+(`piedmont_bake prune`, `finalize --prune` by default — TODO #9, the volume that filled), `export_site`
+no longer goes silent or superlinear on a huge world (`cluster_signals` + heartbeats — TODO #10), the
+Geofabrik empty-outline fallback is pinned by tests (TODO #3), and the lidar-canopy/roofs item is
+closed as already handled by the canopy mask on both bake paths plus the game's footprint mask
+(TODO #4). Only the MCP config-token exposure (TODO #8) is left, and it is an edge/deployment
+decision — see TODO.md.
 
 **Route selection** (2026-10-12, `ad7cab5`/`0d6dac7`/`7011c82`) is the many-road selector: a third
 selection mode beside Square and Polygon where a plain click selects just the road, Ctrl/Cmd-click
@@ -82,10 +90,6 @@ needs Rich's explicit approval first. Ask with the concrete diff in hand.
 
 Tracked as TODOs in [TODO.md](TODO.md) — add and close them there.
 
-- **World editor: Assets mode has no Traffic tab** (traffic sets are only editable from
-  `/editor.html`'s Assets dialog or MCP). Looks like a bug.
-- **Stage panel has no control for a level's `program` or traffic `set`**; the guide sends users to
-  Shell mode or MCP `level_save`.
 - **Geofabrik's published index can have empty region outlines** (11 regions on 2026-10-10,
   `virginia.poly` 0 bytes). Routing refuses empty outlines and falls back to the volume's copy or
   the seed (`services/worldeditor/geofabrik.mjs`); an OSM import of Virginia may fail until Geofabrik
