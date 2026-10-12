@@ -8,7 +8,6 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 
 | # | TODO | Area | Notes |
 |---|---|---|---|
-| 2 | **Stage panel has no control for a level's `program` or traffic `set`** | editor | the guide sends users to Shell mode or MCP `level_save`. |
 | 3 | **Geofabrik's published index can have empty region outlines** | services/worldeditor | 11 regions on 2026-10-10, `virginia.poly` 0 bytes. Routing refuses empty outlines and falls back to the volume's copy or the seed (`services/worldeditor/geofabrik.mjs`); an OSM import of Virginia may fail until Geofabrik fixes its files. |
 | 4 | **Lidar canopy includes roofs** | bake / flora | where a vendor left buildings unclassified; the game masks OSM footprints out of tree planting. The perf panel's tree lines explain bare ground cell by cell. |
 | 6 | **Tiled network: the per-tile-set OSM query** | bake | Phase 1 stops holding the whole network in one process — plan/query Overpass or clip a Geofabrik extract per tile-set. See Phase 1. |
@@ -32,6 +31,12 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
   only be edited from `/editor.html` or MCP. Wired in; Assets mode now shows Catalog, Materials,
   Service, Blender, Vehicles, Actors, Weapons, **Traffic**, Fixtures, Sounds, Buildings (verified in a
   headless browser against `/world.html`).
+- **Stage panel: a level's `program` and a traffic simulation's `set` had no control** — both were
+  JSON-only, so the guide sent users to Shell mode or MCP `level_save` (`worldedit/stage.ts`). The
+  panel now offers a **program** picker filled from `GET /api/programs` (the `program` field on the
+  editor's `Level` type too) and, on each **traffic** simulation, a **set** picker filled from the
+  traffic-set builds. Both verified in a headless browser against `/world.html` (the labels appear and
+  persist), and the guide's Stage section and Assets tab table updated to match.
 - **Port `agent/mcp-fixes` into piedmont** — the arcade branch (`agent/mcp-fixes`) was never merged,
   so all nine live findings were ported by intent against today's code (`316d583`): the document
   channel (`apiFetch` broadcasts `documentsChanged` to every page, `Shell.refresh` pulls the text

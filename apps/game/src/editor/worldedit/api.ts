@@ -378,6 +378,9 @@ export interface Level {
   name?: string | null
   defaults?: { time?: string; weather?: string; season?: string }
   mode?: string
+  /** a program under `programs/` (e.g. `crofton/jam.ts`), built and run when the level opens. The
+   *  runtime's `world/level.ts` has always carried this; the editor only learned it here. */
+  program?: string | null
   /** a point id from the world's points.json: where the level starts; absent is the world's home */
   start?: string | null
   order?: number

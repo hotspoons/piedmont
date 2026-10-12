@@ -15,7 +15,7 @@ import { button, el, toast } from '../../ui/shell'
 import { bodyOf, empty, group, readout, select, textField, toggle } from '../../ui/controls'
 import { icon } from '../../ui/icons'
 import { api, type Level } from './api'
-import { assetsvc, type AssetItem } from '../../assets/assetsvc'
+import { assetsvc, type AssetItem, type Build } from '../../assets/assetsvc'
 import { typeOf } from '../../assets/classes'
 // PROFILES only — `profiles.ts` is pure data with no imports of its own, so the world editor does
 // not drag Rapier into its bundle to offer five strings, and there is no second copy to drift.
@@ -48,6 +48,9 @@ export class StagePanel {
   private points = new Map<string, { id: string; name: string; kind: string; mode?: string }[]>()
   /** what the library holds that can be driven; empty when the asset service is not configured */
   private vehicles: AssetItem[] = []
+  /** the programs under `programs/` and the traffic set builds, for the level's program and set pickers */
+  private programs: string[] = []
+  private trafficSets: string[] = []
   private draft: Level | null = null
   private dirty = false
   private problems: { errors: string[]; warnings: string[] } = { errors: [], warnings: [] }
@@ -70,6 +73,13 @@ export class StagePanel {
        * service is optional, and a level whose car you cannot choose is still a level you can edit.
        */
       this.vehicles = await assetsvc.list().then((all) => all.filter((it) => typeOf(it) === 'vehicle')).catch(() => [])
+      /*
+       * The programs and the traffic sets, for the two pickers that had no control (TODO #2). Both
+       * non-fatal: a level is still a level when the program list or the asset service is missing,
+       * and the field falls back to a plain empty choice.
+       */
+      this.programs = await api.programs().then((r) => r.programs.map((p) => p.id)).catch(() => [])
+      this.trafficSets = await assetsvc.builds<Build<unknown>>('traffic').then((ts) => ts.map((t) => t.id)).catch(() => [])
     } catch (e) {
       this.levels = []
       toast(`levels: ${(e as Error).message}`, 'warn', 5000)
@@ -198,6 +208,25 @@ export class StagePanel {
       },
     })
     wb.append(startSel)
+    /*
+     * WHICH PROGRAM RUNS. The code half of a level (`game/world/level.ts` `program`): a path under
+     * `programs/`, built and run when the level opens. It was settable only from Shell mode or MCP
+     * (TODO #2) even though the validator and the runtime both knew it. The list is `/api/programs`;
+     * it is not validated here — the engine builds it on open, and the server says so on save.
+     */
+    wb.append(
+      select({
+        label: 'program',
+        value: d.program ?? '',
+        options: [{ value: '', label: 'none' }, ...this.programs.map((p) => ({ value: p, label: p }))],
+        note: this.programs.length ? 'a program under programs/, run when the level opens' : 'no programs yet — write one in Program mode',
+        onChange: (v) => {
+          d.program = v || null
+          this.mark(true)
+          void this.check()
+        },
+      }),
+    )
     const others = this.levels.filter((l) => l.id !== d.id)
     const stageOpt = [
       { value: '', label: 'stay on this stage' },
@@ -361,7 +390,28 @@ export class StagePanel {
     d.simulations ??= []
     if (!d.simulations.length) sb.append(empty('nothing running'))
     for (const [i, s] of d.simulations.entries()) {
-      sb.append(readout(String(s.kind), `${s.density ?? 'normal'}${s.seed !== undefined ? ` · seed ${s.seed}` : ''}`))
+      sb.append(readout(String(s.kind), `${s.density ?? 'normal'}${s.set ? ` · ${s.set}` : ''}${s.seed !== undefined ? ` · seed ${s.seed}` : ''}`))
+      /*
+       * WHICH CARS the traffic is made of (TODO #2). `set` names a traffic set build — the mix and
+       * the ratios in Assets → Traffic; absent runs one anonymous saloon. The validator accepts a
+       * string here and the runtime reads it; the control just never existed.
+       */
+      if (s.kind === 'traffic') {
+        sb.append(
+          select({
+            label: 'set',
+            value: typeof s.set === 'string' ? s.set : '',
+            options: [{ value: '', label: 'one anonymous saloon' }, ...this.trafficSets.map((t) => ({ value: t, label: t }))],
+            note: this.trafficSets.length ? 'which cars the traffic is made of (Assets → Traffic)' : 'no traffic sets yet — make one in Assets → Traffic',
+            onChange: (v) => {
+              if (v) s.set = v
+              else delete s.set
+              this.mark(true)
+              void this.check()
+            },
+          }),
+        )
+      }
       sb.append(
         button({
           label: 'remove',

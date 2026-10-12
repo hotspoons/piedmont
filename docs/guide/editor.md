@@ -90,9 +90,11 @@ A **level** is a baked world dressed and given something to do. **New level**, t
 The panel validates as you type: errors block saving, warnings do not. **Play** opens the level in
 the game.
 
-Two level settings have no control in the Stage panel yet: the **program** (the TypeScript game
-logic) and the traffic simulation's **set** (which vehicles the traffic is made of). Set them in
-the level's JSON, either in Shell mode (`levels/<id>.json`) or with the MCP `level_save` tool:
+The panel carries the two settings that used to be JSON-only: the **program** (the TypeScript game
+logic, picked from what `programs/` holds — see [Writing a game program](programs.md)) and, on each
+**traffic** simulation, the **set** (which vehicles the traffic is made of; make one in Assets →
+Traffic). Both remain plain fields in the level's JSON (`levels/<id>.json`), so Shell mode and the
+MCP `level_save` tool are still there for scripting them:
 
 ```json
 {
@@ -116,6 +118,7 @@ The Assets mode fills the screen with the library, in tabs:
 | **Vehicles** | a vehicle build: a model plus its handling, engine and gearing, engine sound, sounds, and weapons |
 | **Actors** | characters and creatures: a model plus their configuration |
 | **Weapons** | weapon builds a vehicle or actor can carry |
+| **Traffic** | which vehicle builds a jam is made of, and in what shares |
 | **Fixtures** | which model the selected world uses for each kind of built-in object: signs, signals, poles, gates, markers |
 | **Sounds** | the sound bank, slot by slot (tyres, crashes, explosions, guns), with a sound board for trimming and saving clips |
 | **Buildings** | which materials each class of building (house, apartments, commercial, tower) draws its walls and roofs from |
@@ -128,8 +131,8 @@ sound slot with what it resolves to. **Edit** a slot to pick bank clips, alias a
 URL, upload a file, or make it silent. **Board** opens the clip in the sound board.
 
 **Traffic sets** (which vehicle builds a jam is made of, and in what shares) are edited in the
-**Traffic** tab of the place editor's asset library (`/editor.html`, drawer → **Assets**) or with
-the MCP `traffic_set_*` tools; the world editor's Assets mode does not show that tab.
+**Traffic** tab of the asset library — in both the place editor (`/editor.html`) and the world
+editor's Assets mode — or with the MCP `traffic_set_*` tools.
 
 ## Program
 
