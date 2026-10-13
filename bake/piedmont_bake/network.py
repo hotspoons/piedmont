@@ -1116,7 +1116,7 @@ def fetch_shard(site: dict, index: int, half_width: float, lidar_half_width: flo
         dem_p = sdir / "dem_1m.tif"
         if not dem_p.exists():
             raise RuntimeError("no lidar and no DEM: nothing can say how high the roads are")
-        prof = network_tiles.profile_from_dem(prim["line"], dem_p)
+        prof = network_tiles.profile_from_dem(prim["line"], dem_p, fill=False)
         if prof.get("s"):
             prof["owned"] = shardlib.owner_runs(shardlib.profile_owner(prim["line"], prof["s"], plan["blocks"]), index)
         (sdir / "profile.json").write_text(json.dumps(prof))

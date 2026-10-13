@@ -1130,7 +1130,8 @@ def profile_many(tasks: list, ldir: Path, pts: dict | None, jobs: int | None = N
     return out
 
 
-def profile_from_dem(line: LineString, dem_path: Path, chm_path: Path | None = None) -> dict:
+def profile_from_dem(line: LineString, dem_path: Path, chm_path: Path | None = None,
+                     fill: bool = True) -> dict:
     """
     The along-track profile of a road with NO POINT CLOUD: height from the elevation model.
 
@@ -1149,6 +1150,14 @@ def profile_from_dem(line: LineString, dem_path: Path, chm_path: Path | None = N
     and a road in a city reads like its rooftops. That is a worse road than lidar gives and a far
     better one than `profile: null`, which puts every branch at z = 0 -- sea level, with the verges
     grading down to it as walls (2026-09-26).
+
+    `fill=False` keeps the raw NaN a station outside the DEM comes back with, and is what a SHARD's
+    primary uses: the shard that owns no lidar (its block carries no world tiles) profiles the WHOLE
+    primary from its own block-sized DEM, so most of the line is outside it. `_fill_along`'s all-bad
+    fallback is `[0.0] * n`, and `stitch_profile`'s "first finite wins" then took that sea level for
+    every station no lidar shard covered -- i70's spine start (s=0..1846) and the far east read
+    exactly 0.00 once the owner's out-of-coverage stations became NaN (2026-10-13). The stitch fills
+    the true NaN along-track itself, exactly as it does for a lidar shard's own holes.
     """
 
     class _Zero:
@@ -1164,7 +1173,8 @@ def profile_from_dem(line: LineString, dem_path: Path, chm_path: Path | None = N
     dtm = LazyRaster(dem_path)
     try:
         empty = {"x": np.zeros(0), "y": np.zeros(0), "z": np.zeros(0), "cls": np.zeros(0, np.uint8), "rn": np.zeros(0, np.uint8), "nr": np.zeros(0, np.uint8), "i": np.zeros(0, np.uint16)}
-        return _fill_profile(lidar.profile(line, dtm, _Zero(dtm.shape), dtm.transform, empty))
+        prof = lidar.profile(line, dtm, _Zero(dtm.shape), dtm.transform, empty)
+        return _fill_profile(prof) if fill else prof
     finally:
         dtm.close()
 

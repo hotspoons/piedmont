@@ -11,6 +11,8 @@ a dead bake).
 """
 from __future__ import annotations
 
+import json
+import math
 import sys
 import tempfile
 import unittest
@@ -186,6 +188,69 @@ class SampleOutsideRasterTest(unittest.TestCase):
     def test_the_filled_run_bridges_the_gap_without_the_edge(self):
         raw = nt.profile_tiled(self.line, self.dir, None, fill=True)
         self.assertTrue(all(abs(z - 5.0) < 1e-6 for z in raw["road_z"]))  # never 999
+
+
+class NoDataShardTest(unittest.TestCase):
+    """A shard that owns no lidar must not fill the stitch with sea level.
+
+    The owner of i70's spine start (s=0..1846) has no lidar raster there, so once `sample` learned to
+    answer NaN outside a raster the station was a hole in the OWNER. The shard that owns no world
+    tiles profiles the WHOLE primary from its own block-sized DEM; where the line leaves that DEM,
+    `_fill_along`'s all-bad branch wrote `0.0` and `stitch_profile`'s "first finite wins" took it --
+    the grade dived to sea level. `profile_from_dem(..., fill=False)` keeps the NaN instead, so the
+    stitch interpolates the hole along-track (2026-10-13).
+    """
+
+    def setUp(self):
+        import rasterio
+        from rasterio.transform import from_origin
+
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        n = 40
+        with rasterio.open(
+            self.dir / "dem.tif", "w", driver="GTiff", height=n, width=n, count=1,
+            dtype="float32", crs="EPSG:32618", transform=from_origin(OX, OY + 40.0, 1.0, 1.0),
+            nodata=-9999.0,
+        ) as dst:
+            dst.write(np.full((n, n), 120.0, np.float32), 1)
+        # 300 m east of the DEM: no station is covered
+        self.far = LineString([(OX + 300.0, OY), (OX + 500.0, OY)])
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_raw_dem_profile_is_nan_not_zero(self):
+        prof = nt.profile_from_dem(self.far, self.dir / "dem.tif", fill=False)
+        self.assertTrue(prof["road_z"])
+        self.assertTrue(all(math.isnan(z) for z in prof["road_z"]))
+
+    def test_the_filled_dem_profile_is_sea_level(self):
+        # the documented all-bad fallback, kept for the whole-site path that has no stitch to fill it
+        prof = nt.profile_from_dem(self.far, self.dir / "dem.tif")
+        self.assertTrue(all(z == 0.0 for z in prof["road_z"]))
+
+    def test_a_no_data_shard_does_not_fill_the_stitch_with_zero(self):
+        from piedmont_bake import shards
+
+        real = self.dir / "shard0"
+        nodata = self.dir / "shard1"
+        real.mkdir()
+        nodata.mkdir()
+        # the no-data shard's profile, exactly as the shard writes it (raw: NaN outside its DEM)
+        nodata_prof = nt.profile_from_dem(self.far, self.dir / "dem.tif", fill=False)
+        nodata_prof["owned"] = []
+        (nodata / "profile.json").write_text(json.dumps(nodata_prof))
+        s = nodata_prof["s"]
+        hole = len(s) // 2
+        real_z = [100.0] * len(s)
+        real_z[hole] = None
+        (real / "profile.json").write_text(json.dumps({
+            "step_m": nodata_prof["step_m"], "s": s, "road_z": real_z, "owned": [[0, len(s) - 1]]}))
+        out = self.dir / "out"
+        self.assertTrue(shards.stitch_profile([real, nodata], out))
+        got = json.loads((out / "profile.json").read_text())["road_z"]
+        self.assertEqual(got, [100.0] * len(s))  # the owner's hole, not the no-data shard's zero
 
 
 class BridgeNanTest(unittest.TestCase):

@@ -33,6 +33,17 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
   Road, 6.7 m); `_hold_grade` bridges a short dip to the stub's own grade. `68329aa`; the sampling
   contract, the hole-bridged detection and the grade hold are unit-tested
   (`bake/tests/test_branch_profile.py`, `test_stub_span.py`).
+- **A shard with no lidar no longer fills the stitched grade with sea level** — the follow-up the
+  overpass fix exposed. `sample()` returning NaN outside a raster is right for a lidar shard, whose
+  `profile.json` keeps its NaN for the stitch to fill along-track. But a shard that owns no world
+  tiles (`larea` empty) profiles the WHOLE primary from its own block-sized DEM — most of the line is
+  outside that DEM, `profile_from_dem`'s `_fill_along` turned the all-NaN run into `[0.0] * n`, and
+  `stitch_profile`'s "first finite wins" then took those zeros for every station no OTHER shard
+  covered. On the i70 rebake the spine start (s=0–1846) and the far east read exactly `0.00`, and the
+  1,615 stations that had leaked `144.93` now read `0.00` — the grade dived to sea level where it had
+  dived into a ditch. `profile_from_dem(..., fill=False)` keeps the raw NaN (the whole-site DEM
+  fallback, which has no stitch to fill it, still fills); the shard's no-lidar primary now uses it, so
+  the stitch interpolates. Tested (`NoDataShardTest`). `48ecd30`-follow-up; rebake confirms.
 - **A finished bake's intermediates are pruned (the volume no longer fills)** — nothing removed a
   shipped world's `shards/`, merged `lidar/`, `canopy_global.tif` or mosaic `.ovr`s, so two big
   worlds filled the 500 Gi `worldeditor-data` PVC and the worldeditor crash-looped on `EDQUOT`

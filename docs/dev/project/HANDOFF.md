@@ -9,7 +9,7 @@ For an agent picking up piedmont after the split from siomporas-arcade. Read thi
 | Area | State |
 |---|---|
 | Repository | Pushed to `github.com/hotspoons/piedmont`, `main`. Imported from arcade `34933bd` ([ORIGIN.md](ORIGIN.md)), then renamed, documented and fixed. |
-| Local gate | `npx tsc -b`, `npx vitest run` (1033 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (379), `npm run build`: all pass on Node 24. |
+| Local gate | `npx tsc -b`, `npx vitest run` (1033 tests, incl. service suites, oxlint, names, pull policy, links), bake `python -m unittest discover -s tests` (382), `npm run build`: all pass on Node 24. |
 | CI | Green. A service suite (`runs-osm.test.mjs`) hung CI on roughly half of pushes — all its tests passed, the process just never exited. Root cause: `Runs.cancel` finishes a run while `#advance` is mid-flight, so the advance started the next phase and re-armed a watcher for an already-terminal run, whose log follower then opened the run's (removed) log file. Fixed 2026-10-12 (`a1439b0`): the phase watchers no-op on a terminal run, sinks tolerate a vanished directory, and the checks wrapper passes `--test-force-exit`. Reproduced and cleared at 16-way concurrency (96 runs). |
 | Images | All six published on ghcr as `latest`: `piedmont-bake`, `-worldeditor`, `-assetsvc`, `-recon`, `-blender`, `-core`. The core image's CI smoke ran its inner dockerd, a nested container and the world editor on the Docker runner, on amd64 and arm64. |
 | Dev container | Fixed but **never built**: Debian trixie base needs `"moby": false`; Node 24; OpenChamber with opencode's PATH on the extension host. Rich's first build is its first test. |
