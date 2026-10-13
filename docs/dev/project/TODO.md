@@ -166,7 +166,15 @@ found, and check it off (or delete it) when it is fixed, with the commit or link
 ## Also open
 
 - **Cloudflare deploy from a piedmont install is unproven** — the client is tested against a stand-in.
-- **dc-metro-take-2's last bake** had 12 coarse pyramid tiles with no NAIP, painted the mean colour.
+- **dc-metro-take-2's last bake** had 12 coarse pyramid tiles with no NAIP. **Assessment (2026-10-13):
+  handled, and a genuine service gap, not a bake bug.** The bake already asks Planetary Computer and
+  the USGS ImageServer for the tiles the road band touches and prefers the newest item per tile
+  (`naip.fetch_tiles`/`plan_tiles`, `_fill_naip_blank` in `naip.py`); where neither has any item it
+  reports the hole by name (`network_tiles.naip_tiled` "service gap"). At pyramid time an ENTIRELY
+  blank coarse window has no local mean to borrow, so it is painted the site mean and recorded
+  (`pyramid.py` `fill_blank`/`naip_mean`, `entry["naip_blank"]` + a `pyramid WARNING`) — a flat tone
+  that reads as ground, rather than a hole. Nothing to change unless we add a non-NAIP fallback for a
+  US gap.
 - **Dev container fixed but never built** — Rich's first build is its first test.
 - **The cluster deployment's acceptance items** — publish/deploy, the OSM-region import, a splat
   training run. See [ACCEPTANCE.md](ACCEPTANCE.md).
